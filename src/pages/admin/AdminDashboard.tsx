@@ -1,0 +1,156 @@
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { StatCard } from "@/components/StatCard";
+import { Users, UserCheck, FileText, DollarSign } from "lucide-react";
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+
+interface StudentRow {
+  display_name: string;
+  learning_days: number;
+  total_points: number;
+  total_revenue: number;
+}
+
+interface RevenueMonth {
+  month: string;
+  revenue: number;
+}
+
+const AdminDashboard = () => {
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [activeStudents, setActiveStudents] = useState(0);
+  const [monthlyTasks, setMonthlyTasks] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueMonth[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch all profiles (admin can see all via RLS? We need to check)
+      // Admin has 'ALL' on some tables but profiles only allow own view
+      // We'll fetch what we can - for a real app, use an edge function
+      const [profilesRes, tasksRes, revenueRes] = await Promise.all([
+        supabase.from("profiles").select("display_name, learning_days, total_points, total_revenue, total_badges"),
+        supabase.from("tasks").select("id, created_at"),
+        supabase.from("revenue_records").select("amount, recorded_at"),
+      ]);
+
+      if (profilesRes.data) {
+        const profiles = profilesRes.data;
+        setTotalStudents(profiles.length);
+        setActiveStudents(profiles.filter(p => p.learning_days > 0).length);
+        setStudents(profiles.map(p => ({
+          display_name: p.display_name,
+          learning_days: p.learning_days,
+          total_points: p.total_points,
+          total_revenue: p.total_revenue,
+        })));
+      }
+
+      if (tasksRes.data) {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        setMonthlyTasks(tasksRes.data.filter(t => t.created_at >= monthStart).length);
+      }
+
+      if (revenueRes.data) {
+        const total = revenueRes.data.reduce((sum, r) => sum + Number(r.amount), 0);
+        setTotalRevenue(total);
+
+        // Group by month
+        const monthMap: Record<string, number> = {};
+        revenueRes.data.forEach(r => {
+          const d = new Date(r.recorded_at);
+          const key = `${d.getMonth() + 1}月`;
+          monthMap[key] = (monthMap[key] || 0) + Number(r.amount);
+        });
+        setRevenueData(Object.entries(monthMap).map(([month, revenue]) => ({ month, revenue })));
+      }
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <h2 className="text-2xl font-bold text-foreground">營運數據看板</h2>
+        <p className="text-sm text-muted-foreground mt-1">俱樂部整體運營狀況一覽</p>
+      </motion.div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={<Users className="w-5 h-5 text-primary-foreground" />} value={totalStudents} label="總學員數" gradient="gradient-orange" delay={0} />
+        <StatCard icon={<UserCheck className="w-5 h-5 text-primary-foreground" />} value={activeStudents} label="活躍學員" gradient="gradient-purple" delay={0.05} />
+        <StatCard icon={<FileText className="w-5 h-5 text-primary-foreground" />} value={monthlyTasks} label="本月任務發布" gradient="gradient-lime" delay={0.1} />
+        <StatCard icon={<DollarSign className="w-5 h-5 text-primary-foreground" />} value={`$${totalRevenue.toLocaleString()}`} label="總發放收益" gradient="gradient-orange" delay={0.15} />
+      </div>
+
+      {revenueData.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="glass-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4">收益趨勢</h3>
+          <div className="h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="adminGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(180, 60%, 50%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(180, 60%, 50%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 18%)" />
+                <XAxis dataKey="month" tick={{ fill: "hsl(220, 9%, 56%)", fontSize: 11 }} axisLine={{ stroke: "hsl(0, 0%, 18%)" }} tickLine={false} />
+                <YAxis tick={{ fill: "hsl(220, 9%, 56%)", fontSize: 11 }} axisLine={{ stroke: "hsl(0, 0%, 18%)" }} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(0, 0%, 12%)", border: "1px solid hsl(0, 0%, 18%)", borderRadius: "8px", fontSize: "12px", color: "hsl(220, 13%, 91%)" }} formatter={(value: number) => [`$${value.toLocaleString()}`, "收益"]} />
+                <Area type="monotone" dataKey="revenue" stroke="hsl(180, 60%, 50%)" strokeWidth={2} fill="url(#adminGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
+
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }} className="glass-card p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-4">學員進度監控</h3>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>姓名</TableHead>
+              <TableHead>連續學習天數</TableHead>
+              <TableHead>總點數</TableHead>
+              <TableHead>總收益</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {students.map((s) => (
+              <TableRow key={s.display_name}>
+                <TableCell className="font-medium">{s.display_name}</TableCell>
+                <TableCell>{s.learning_days} 天</TableCell>
+                <TableCell>{s.total_points.toLocaleString()}</TableCell>
+                <TableCell>${Number(s.total_revenue).toLocaleString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </motion.div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

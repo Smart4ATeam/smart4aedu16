@@ -1,0 +1,835 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      achievements: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          event_date: string
+          event_time: string | null
+          id: string
+          is_global: boolean
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          event_date: string
+          event_time?: string | null
+          id?: string
+          is_global?: boolean
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string | null
+          id?: string
+          is_global?: boolean
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      conversation_participants: {
+        Row: {
+          archived: boolean
+          conversation_id: string
+          id: string
+          joined_at: string
+          starred: boolean
+          unread: boolean
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          starred?: boolean
+          unread?: boolean
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          starred?: boolean
+          unread?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      learning_paths: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          difficulty: string
+          id: string
+          sort_order: number
+          title: string
+          total_steps: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          difficulty?: string
+          id?: string
+          sort_order?: number
+          title: string
+          total_steps?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          difficulty?: string
+          id?: string
+          sort_order?: number
+          title?: string
+          total_steps?: number
+        }
+        Relationships: []
+      }
+      login_tracks: {
+        Row: {
+          created_at: string
+          id: string
+          login_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          login_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          login_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_system: boolean
+          sender_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          sender_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_settings: {
+        Row: {
+          community_notify: boolean
+          course_reminder: boolean
+          deadline_reminder: boolean
+          id: string
+          show_error: boolean
+          show_info: boolean
+          show_success: boolean
+          show_warning: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          community_notify?: boolean
+          course_reminder?: boolean
+          deadline_reminder?: boolean
+          id?: string
+          show_error?: boolean
+          show_info?: boolean
+          show_success?: boolean
+          show_warning?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          community_notify?: boolean
+          course_reminder?: boolean
+          deadline_reminder?: boolean
+          id?: string
+          show_error?: boolean
+          show_info?: boolean
+          show_success?: boolean
+          show_warning?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          activated: boolean
+          ai_api_key: string | null
+          ai_provider: string | null
+          auto_sync: boolean
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          daily_learning_time: string | null
+          difficulty_preference: string | null
+          display_name: string
+          email: string | null
+          id: string
+          learning_days: number
+          learning_goal: string | null
+          make_api_token: string | null
+          organization_id: string | null
+          phone: string | null
+          server_location: string | null
+          student_id: string | null
+          total_badges: number
+          total_points: number
+          total_revenue: number
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          activated?: boolean
+          ai_api_key?: string | null
+          ai_provider?: string | null
+          auto_sync?: boolean
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          daily_learning_time?: string | null
+          difficulty_preference?: string | null
+          display_name?: string
+          email?: string | null
+          id: string
+          learning_days?: number
+          learning_goal?: string | null
+          make_api_token?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          server_location?: string | null
+          student_id?: string | null
+          total_badges?: number
+          total_points?: number
+          total_revenue?: number
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          activated?: boolean
+          ai_api_key?: string | null
+          ai_provider?: string | null
+          auto_sync?: boolean
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          daily_learning_time?: string | null
+          difficulty_preference?: string | null
+          display_name?: string
+          email?: string | null
+          id?: string
+          learning_days?: number
+          learning_goal?: string | null
+          make_api_token?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          server_location?: string | null
+          student_id?: string | null
+          total_badges?: number
+          total_points?: number
+          total_revenue?: number
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      resource_sub_categories: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      resources: {
+        Row: {
+          author: string | null
+          category: string
+          created_at: string
+          description: string
+          detail_url: string | null
+          difficulty: string | null
+          download_url: string | null
+          duration: string | null
+          flow_count: number | null
+          hot_rank: number | null
+          id: string
+          industry_tag: string | null
+          installs: number
+          is_hot: boolean
+          rating: number
+          sort_order: number
+          status: string
+          sub_category: string | null
+          submitted_by: string | null
+          tags: string[]
+          thumbnail_url: string | null
+          title: string
+          trial_url: string | null
+          usage_count: number | null
+          version: string | null
+          video_type: string | null
+        }
+        Insert: {
+          author?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          detail_url?: string | null
+          difficulty?: string | null
+          download_url?: string | null
+          duration?: string | null
+          flow_count?: number | null
+          hot_rank?: number | null
+          id?: string
+          industry_tag?: string | null
+          installs?: number
+          is_hot?: boolean
+          rating?: number
+          sort_order?: number
+          status?: string
+          sub_category?: string | null
+          submitted_by?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title: string
+          trial_url?: string | null
+          usage_count?: number | null
+          version?: string | null
+          video_type?: string | null
+        }
+        Update: {
+          author?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          detail_url?: string | null
+          difficulty?: string | null
+          download_url?: string | null
+          duration?: string | null
+          flow_count?: number | null
+          hot_rank?: number | null
+          id?: string
+          industry_tag?: string | null
+          installs?: number
+          is_hot?: boolean
+          rating?: number
+          sort_order?: number
+          status?: string
+          sub_category?: string | null
+          submitted_by?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title?: string
+          trial_url?: string | null
+          usage_count?: number | null
+          version?: string | null
+          video_type?: string | null
+        }
+        Relationships: []
+      }
+      revenue_records: {
+        Row: {
+          amount: number
+          description: string | null
+          id: string
+          recorded_at: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          description?: string | null
+          id?: string
+          recorded_at?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          description?: string | null
+          id?: string
+          recorded_at?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_applications: {
+        Row: {
+          applied_at: string
+          completed_at: string | null
+          id: string
+          reject_reason: string | null
+          status: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          completed_at?: string | null
+          id?: string
+          reject_reason?: string | null
+          status?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          completed_at?: string | null
+          id?: string
+          reject_reason?: string | null
+          status?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string
+          difficulty: string
+          id: string
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string
+          difficulty?: string
+          id?: string
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string
+          difficulty?: string
+          id?: string
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_learning_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          current_step: number
+          id: string
+          learning_path_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          current_step?: number
+          id?: string
+          learning_path_id: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          current_step?: number
+          id?: string
+          learning_path_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_learning_progress_learning_path_id_fkey"
+            columns: ["learning_path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      admin_set_user_role: {
+        Args: {
+          _new_role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
+      check_and_grant_achievements: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
+      get_task_application_counts: {
+        Args: never
+        Returns: {
+          count: number
+          task_id: string
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      app_role: "admin" | "moderator" | "user"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
+  },
+} as const

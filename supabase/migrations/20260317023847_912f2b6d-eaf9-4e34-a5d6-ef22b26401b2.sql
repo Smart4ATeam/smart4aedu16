@@ -1,0 +1,1 @@
+ALTER TABLE public.resources ADD COLUMN IF NOT EXISTS detail_url text DEFAULT NULL;

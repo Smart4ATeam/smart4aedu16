@@ -1,0 +1,22 @@
+project_id = "clwruolkostoirdwnnuy"
+
+[functions.enroll-student]
+verify_jwt = false
+
+[functions.activate-account]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.api-resources]
+verify_jwt = false
+
+[functions.api-tasks]
+verify_jwt = false
+
+[functions.api-calendar-events]
+verify_jwt = false
+
+[functions.api-messages]
+verify_jwt = false
