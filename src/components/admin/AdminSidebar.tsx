@@ -26,6 +26,7 @@ const navItems = [
   { title: "訊息廣播", url: "/admin/broadcast", icon: Megaphone },
   { title: "行事曆管理", url: "/admin/settings", icon: CalendarDays },
   { title: "API 串接", url: "/admin/integrations", icon: Plug },
+  { title: "學習中心", url: "/admin/learning", icon: BookOpen },
 ];
 
 export function AdminSidebar() {
