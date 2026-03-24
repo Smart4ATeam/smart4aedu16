@@ -327,9 +327,14 @@ export default function Learning() {
             <div className="pt-2 border-t border-border space-y-3">
               {courseSessions.some((s: any) => s.status === "open") ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CalendarDays className="w-4 h-4" />
-                    <span>近期開課：{courseSessions.filter((s: any) => s.status === "open").map((s: any) => s.start_date).join("、")}</span>
+                  <h4 className="font-semibold text-foreground text-sm">近期開課日期</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {courseSessions.filter((s: any) => s.status === "open").map((s: any) => (
+                      <div key={s.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground">
+                        <CalendarDays className="w-3.5 h-3.5 text-primary" />
+                        {s.start_date}{s.end_date && s.end_date !== s.start_date ? ` ~ ${s.end_date}` : ""}
+                      </div>
+                    ))}
                   </div>
                   <Button
                     className="w-full"
