@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 
