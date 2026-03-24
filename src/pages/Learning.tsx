@@ -343,9 +343,6 @@ export default function Learning() {
                       window.open(url, "_blank", "noopener,noreferrer");
                     }}
                   >
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }}
-                  >
                     前往報名
                   </Button>
                 </>
