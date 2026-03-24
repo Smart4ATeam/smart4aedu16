@@ -407,7 +407,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const filtered = filterCourse === "all" ? sessions : sessions.filter((s: any) => s.course_id === filterCourse);
   const sorted = [...filtered].sort((a: any, b: any) => (a.start_date || "").localeCompare(b.start_date || ""));
 
-  const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} 月` }));
+  
 
   return (
     <>
