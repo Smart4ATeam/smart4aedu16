@@ -144,7 +144,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
   const [contentCourse, setContentCourse] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" });
+  const [form, setForm] = useState({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "" });
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -168,8 +168,8 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
     onSuccess: () => { toast.success("已刪除"); queryClient.invalidateQueries({ queryKey: ["admin_courses"] }); },
   });
 
-  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" }); setOpen(true); };
-  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, instructor_id: c.instructor_id || "", status: c.status }); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "" }); setOpen(true); };
+  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, instructor_id: c.instructor_id || "", status: c.status, cover_url: c.cover_url || "", materials_url: c.materials_url || "" }); setOpen(true); };
 
   const statusLabels: Record<string, string> = { draft: "草稿", published: "已發佈", archived: "已封存" };
   const statusColors: Record<string, string> = { draft: "secondary", published: "default", archived: "outline" };
@@ -263,10 +263,12 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>封面圖片 URL</Label><Input value={form.cover_url} onChange={(e) => setForm(f => ({ ...f, cover_url: e.target.value }))} placeholder="https://example.com/image.png" /></div>
+            <div><Label>課前教材連結</Label><Input value={form.materials_url} onChange={(e) => setForm(f => ({ ...f, materials_url: e.target.value }))} placeholder="https://example.com/materials" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null })} disabled={!form.title}>
+            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null, cover_url: form.cover_url || null, materials_url: form.materials_url || null })} disabled={!form.title}>
               {editing ? "更新" : "建立"}
             </Button>
           </DialogFooter>
