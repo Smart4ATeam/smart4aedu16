@@ -327,23 +327,37 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
     onError: () => toast.error("操作失敗"),
   });
 
+  const getBatchMonths = () => {
+    const f = batchForm.frequency;
+    if (f === "monthly") return [1,2,3,4,5,6,7,8,9,10,11,12];
+    if (f === "bimonthly") return [1,3,5,7,9,11];
+    if (f === "quarterly") return [1,4,7,10];
+    return batchForm.selectedMonths.sort((a,b) => a - b);
+  };
+
   const batchMutation = useMutation({
     mutationFn: async () => {
       const year = +batchForm.year;
-      const startM = +batchForm.start_month;
-      const endM = +batchForm.end_month;
       const day = +batchForm.day;
+      const dur = +batchForm.duration;
+      const monthsList = getBatchMonths();
       const rows: any[] = [];
-      for (let m = startM; m <= endM; m++) {
-        // Clamp day to last day of month
+      for (const m of monthsList) {
         const lastDay = new Date(year, m, 0).getDate();
         const actualDay = Math.min(day, lastDay);
         const startDate = `${year}-${String(m).padStart(2, "0")}-${String(actualDay).padStart(2, "0")}`;
-        const courseName = courses.find((c: any) => c.id === batchForm.course_id)?.title || "";
+        let endDate: string | null = null;
+        if (dur > 1) {
+          const end = new Date(year, m - 1, actualDay + dur - 1);
+          endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+        } else {
+          endDate = startDate;
+        }
         rows.push({
           course_id: batchForm.course_id,
           title_suffix: `${year}年${m}月班`,
           start_date: startDate,
+          end_date: endDate,
           location: batchForm.location || "",
           max_students: batchForm.max_students ? +batchForm.max_students : null,
           schedule_type: "recurring",
