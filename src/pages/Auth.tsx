@@ -182,11 +182,6 @@ export default function Auth() {
             className="h-7 mx-auto mb-2 object-contain" />
           
           <h1 className="text-2xl font-bold text-foreground">學員俱樂部</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {mode === "login" && "登入您的帳號"}
-            {mode === "activate" && "首次啟用帳號"}
-            {mode === "forgot" && "重設您的密碼"}
-          </p>
         </div>
 
         {/* Mode tabs */}
