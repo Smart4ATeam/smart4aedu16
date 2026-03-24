@@ -272,6 +272,14 @@ export default function Learning() {
             {/* Description */}
             <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{selectedCourseData?.description}</p>
 
+            {/* Long description */}
+            {selectedCourseData?.long_description && (
+              <div className="pt-2 border-t border-border space-y-2">
+                <h4 className="font-semibold text-foreground text-sm">課程詳細介紹</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{selectedCourseData.long_description}</p>
+              </div>
+            )}
+
             {/* Info grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-muted/30 border border-border text-center">
