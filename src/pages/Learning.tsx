@@ -47,7 +47,7 @@ export default function Learning() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("course_sessions")
-        .select("*")
+        .select("*, registration_url")
         .in("status", ["open", "scheduled"])
         .order("start_date");
       if (error) throw error;
@@ -344,14 +344,24 @@ export default function Learning() {
                     {session.price && (
                       <p className="text-xs text-primary font-medium">本梯次費用：NT$ {session.price.toLocaleString()}</p>
                     )}
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      disabled={enrolled || full || session.status !== "open"}
-                      onClick={() => enrollMutation.mutate(session.id)}
-                    >
-                      {enrolled ? "已報名" : full ? "已額滿" : "立即報名"}
-                    </Button>
+                    {enrolled ? (
+                      <Button size="sm" className="w-full" disabled>已報名</Button>
+                    ) : full ? (
+                      <Button size="sm" className="w-full" disabled>已額滿</Button>
+                    ) : session.status !== "open" ? (
+                      <Button size="sm" className="w-full" disabled>尚未開放</Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          const url = (session as any).registration_url || "https://dao.smart4a.tw/registration";
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        前往報名
+                      </Button>
+                    )}
                   </div>
                 );
               }) : (

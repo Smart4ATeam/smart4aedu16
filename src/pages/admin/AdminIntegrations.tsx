@@ -160,6 +160,28 @@ const endpoints: ApiEndpoint[] = [
     exampleBody: { action: "create_course", title: "AI 實戰工作坊", category: "intermediate", price: 3500 },
     exampleResponse: { success: true, data: { id: "uuid-xxx", title: "AI 實戰工作坊" } },
   },
+  {
+    id: "api-enrollment-callback",
+    name: "報名回呼",
+    icon: <Users className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-enrollment-callback",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "供外部報名系統（如 dao.smart4a.tw）在學員完成報名後，透過 HTTP POST 將資料回傳，系統會自動比對/建立學員 Profile 並建立報名紀錄。",
+    requiredFields: [
+      { name: "email", type: "string", required: true, desc: "報名者信箱" },
+      { name: "name", type: "string", required: true, desc: "姓名" },
+      { name: "course_code", type: "string", required: true, desc: "課程代碼（對應 courses.category，如 quest, basic 等）" },
+    ],
+    optionalFields: [
+      { name: "phone", type: "string", desc: "電話" },
+      { name: "session_date", type: "string", desc: "開課日期（YYYY-MM-DD），用於比對梯次；未提供則取最近 open 梯次" },
+      { name: "paid", type: "boolean", desc: "是否已繳費（預設 false）" },
+      { name: "notes", type: "string", desc: "備註" },
+    ],
+    exampleBody: { email: "student@example.com", name: "王小明", phone: "0912345678", course_code: "quest", session_date: "2026-05-15", paid: false },
+    exampleResponse: { success: true, data: { enrollment_id: "uuid-xxx", user_id: "uuid-xxx", session_id: "uuid-xxx", message: "報名資料已建立" } },
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {

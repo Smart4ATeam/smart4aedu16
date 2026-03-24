@@ -281,25 +281,86 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
 // ========== Sessions Tab ==========
 function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions: any[]; courses: any[]; instructors: any[]; queryClient: any }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", schedule_type: "recurring", status: "scheduled" });
+  const [editing, setEditing] = useState<any>(null);
+  const [filterCourse, setFilterCourse] = useState<string>("all");
+  const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
+  const [form, setForm] = useState(defaultForm);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, max_students: form.max_students ? +form.max_students : null };
-      const { error } = await supabase.from("course_sessions").insert(payload);
-      if (error) throw error;
+      const payload: any = {
+        course_id: form.course_id,
+        title_suffix: form.title_suffix,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
+        location: form.location,
+        max_students: form.max_students ? +form.max_students : null,
+        price: form.price ? +form.price : null,
+        schedule_type: form.schedule_type,
+        status: form.status,
+        registration_url: form.registration_url || "https://dao.smart4a.tw/registration",
+      };
+      if (editing) {
+        const { error } = await supabase.from("course_sessions").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("course_sessions").insert(payload);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("梯次已建立"); queryClient.invalidateQueries({ queryKey: ["admin_sessions"] }); setOpen(false); },
-    onError: () => toast.error("建立失敗"),
+    onSuccess: () => { toast.success(editing ? "已更新" : "梯次已建立"); queryClient.invalidateQueries({ queryKey: ["admin_sessions"] }); setOpen(false); },
+    onError: () => toast.error("操作失敗"),
   });
 
-  const statusLabels: Record<string, string> = { scheduled: "排程中", open: "開放報名", in_progress: "進行中", completed: "已結束", cancelled: "已取消" };
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from("course_sessions").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("狀態已更新"); queryClient.invalidateQueries({ queryKey: ["admin_sessions"] }); },
+  });
+
+  const statusLabels: Record<string, string> = { scheduled: "排程中", open: "開放報名", in_progress: "進行中", completed: "已結束", cancelled: "已停開" };
+  const statusColors: Record<string, string> = { scheduled: "secondary", open: "default", in_progress: "default", completed: "outline", cancelled: "destructive" };
+
+  const openCreate = () => { setEditing(null); setForm(defaultForm); setOpen(true); };
+  const openEdit = (s: any) => {
+    setEditing(s);
+    setForm({
+      course_id: s.course_id,
+      title_suffix: s.title_suffix || "",
+      start_date: s.start_date || "",
+      end_date: s.end_date || "",
+      location: s.location || "",
+      max_students: s.max_students?.toString() || "",
+      price: s.price?.toString() || "",
+      schedule_type: s.schedule_type,
+      status: s.status,
+      registration_url: s.registration_url || "https://dao.smart4a.tw/registration",
+    });
+    setOpen(true);
+  };
+
+  const formatDate = (d: string | null) => d ? d.replace(/-/g, "/") : "-";
+
+  const filtered = filterCourse === "all" ? sessions : sessions.filter((s: any) => s.course_id === filterCourse);
+  // Sort by start_date ascending (nearest first)
+  const sorted = [...filtered].sort((a: any, b: any) => (a.start_date || "").localeCompare(b.start_date || ""));
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-foreground">梯次列表</h2>
-        <Button size="sm" onClick={() => { setForm({ course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", schedule_type: "recurring", status: "scheduled" }); setOpen(true); }} className="gap-1"><Plus className="w-4 h-4" />新增梯次</Button>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h2 className="font-semibold text-foreground">梯次列表</h2>
+          <Select value={filterCourse} onValueChange={setFilterCourse}>
+            <SelectTrigger className="w-40 h-8"><SelectValue placeholder="篩選課程" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部課程</SelectItem>
+              {courses.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button size="sm" onClick={openCreate} className="gap-1"><Plus className="w-4 h-4" />新增梯次</Button>
       </div>
       <div className="glass-card rounded-xl overflow-hidden">
         <Table>
@@ -307,30 +368,50 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
             <TableRow>
               <TableHead>課程</TableHead>
               <TableHead>梯次</TableHead>
-              <TableHead>日期</TableHead>
+              <TableHead>開課日</TableHead>
+              <TableHead>結束日</TableHead>
               <TableHead>地點</TableHead>
               <TableHead>人數上限</TableHead>
+              <TableHead>費用覆寫</TableHead>
               <TableHead>狀態</TableHead>
+              <TableHead className="w-32">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sessions.map((s: any) => (
-              <TableRow key={s.id}>
+            {sorted.map((s: any) => (
+              <TableRow key={s.id} className={s.status === "cancelled" ? "opacity-50" : ""}>
                 <TableCell className="font-medium">{s.courses?.title}</TableCell>
                 <TableCell>{s.title_suffix || "-"}</TableCell>
-                <TableCell className="text-sm">{s.start_date || "-"}</TableCell>
+                <TableCell className="text-sm font-mono">{formatDate(s.start_date)}</TableCell>
+                <TableCell className="text-sm font-mono">{formatDate(s.end_date)}</TableCell>
                 <TableCell className="text-sm">{s.location || "-"}</TableCell>
                 <TableCell className="text-sm">{s.max_students || "不限"}</TableCell>
-                <TableCell><Badge variant="outline">{statusLabels[s.status] || s.status}</Badge></TableCell>
+                <TableCell className="text-sm">{s.price ? `NT$ ${s.price}` : "-"}</TableCell>
+                <TableCell><Badge variant={statusColors[s.status] as any}>{statusLabels[s.status] || s.status}</Badge></TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" title="編輯" onClick={() => openEdit(s)}><Pencil className="w-4 h-4" /></Button>
+                    {s.status !== "cancelled" ? (
+                      <Button size="icon" variant="ghost" title="停開" onClick={() => { if (confirm("確定停開此梯次？")) statusMutation.mutate({ id: s.id, status: "cancelled" }); }}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => statusMutation.mutate({ id: s.id, status: "scheduled" })}>恢復</Button>
+                    )}
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
+            {sorted.length === 0 && (
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>新增梯次</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing ? "編輯梯次" : "新增梯次"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>所屬課程</Label>
@@ -339,7 +420,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                 <SelectContent>{courses.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>梯次名稱</Label><Input value={form.title_suffix} onChange={(e) => setForm(f => ({ ...f, title_suffix: e.target.value }))} placeholder="例如：第三期" /></div>
+            <div><Label>梯次名稱</Label><Input value={form.title_suffix} onChange={(e) => setForm(f => ({ ...f, title_suffix: e.target.value }))} placeholder="例如：2026年5月班" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>開課日</Label><Input type="date" value={form.start_date} onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div><Label>結束日</Label><Input type="date" value={form.end_date} onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
@@ -348,20 +429,37 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <div><Label>地點</Label><Input value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} /></div>
               <div><Label>人數上限</Label><Input type="number" value={form.max_students} onChange={(e) => setForm(f => ({ ...f, max_students: e.target.value }))} placeholder="留空=不限" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>費用覆寫 (NT$)</Label><Input type="number" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} placeholder="留空=用課程預設" /></div>
+              <div>
+                <Label>週期類型</Label>
+                <Select value={form.schedule_type} onValueChange={(v) => setForm(f => ({ ...f, schedule_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recurring">常態開課</SelectItem>
+                    <SelectItem value="ondemand">需求開課</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
-              <Label>週期類型</Label>
-              <Select value={form.schedule_type} onValueChange={(v) => setForm(f => ({ ...f, schedule_type: v }))}>
+              <Label>狀態</Label>
+              <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recurring">常態開課</SelectItem>
-                  <SelectItem value="ondemand">需求開課</SelectItem>
+                  <SelectItem value="scheduled">排程中</SelectItem>
+                  <SelectItem value="open">開放報名</SelectItem>
+                  <SelectItem value="in_progress">進行中</SelectItem>
+                  <SelectItem value="completed">已結束</SelectItem>
+                  <SelectItem value="cancelled">已停開</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>報名連結</Label><Input value={form.registration_url} onChange={(e) => setForm(f => ({ ...f, registration_url: e.target.value }))} placeholder="https://dao.smart4a.tw/registration" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!form.course_id}>建立</Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.course_id}>{editing ? "更新" : "建立"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
