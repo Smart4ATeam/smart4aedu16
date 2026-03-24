@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: userId,
         session_id: sessionId,
-        status: "pending",
+        status: "confirmed",
         paid: paid || false,
       })
       .select("id")
