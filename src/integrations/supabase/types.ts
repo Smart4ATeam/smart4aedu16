@@ -362,6 +362,7 @@ export type Database = {
           long_description: string | null
           materials_url: string | null
           price: number
+          registration_url: string | null
           series_id: string | null
           sort_order: number
           status: string
@@ -380,6 +381,7 @@ export type Database = {
           long_description?: string | null
           materials_url?: string | null
           price?: number
+          registration_url?: string | null
           series_id?: string | null
           sort_order?: number
           status?: string
@@ -398,6 +400,7 @@ export type Database = {
           long_description?: string | null
           materials_url?: string | null
           price?: number
+          registration_url?: string | null
           series_id?: string | null
           sort_order?: number
           status?: string

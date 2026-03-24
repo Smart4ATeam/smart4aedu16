@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN registration_url text DEFAULT 'https://dao.smart4a.tw/registration';
