@@ -323,49 +323,26 @@ export default function Learning() {
               </a>
             )}
 
-            {/* Sessions */}
-            <div className="space-y-3 pt-2 border-t border-border">
-              <h4 className="font-semibold text-foreground text-sm">可報名梯次</h4>
-              {courseSessions.length > 0 ? courseSessions.map((session: any) => {
-                const enrolled = enrolledSessionIds.has(session.id);
-                const count = (enrollmentCounts as Record<string, number>)[session.id] || 0;
-                const full = session.max_students && count >= session.max_students;
-                return (
-                  <div key={session.id} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-foreground text-sm">{session.title_suffix || "一般梯次"}</span>
-                      <Badge variant="outline" className="text-xs">{session.status === "open" ? "開放報名" : session.status}</Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {session.start_date && <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{session.start_date}</span>}
-                      {session.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>}
-                      {session.max_students && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}/{session.max_students}</span>}
-                    </div>
-                    {session.price && (
-                      <p className="text-xs text-primary font-medium">本梯次費用：NT$ {session.price.toLocaleString()}</p>
-                    )}
-                    {enrolled ? (
-                      <Button size="sm" className="w-full" disabled>已報名</Button>
-                    ) : full ? (
-                      <Button size="sm" className="w-full" disabled>已額滿</Button>
-                    ) : session.status !== "open" ? (
-                      <Button size="sm" className="w-full" disabled>尚未開放</Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          const url = (session as any).registration_url || "https://dao.smart4a.tw/registration";
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        前往報名
-                      </Button>
-                    )}
+            {/* Registration */}
+            <div className="pt-2 border-t border-border space-y-3">
+              {courseSessions.some((s: any) => s.status === "open") ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CalendarDays className="w-4 h-4" />
+                    <span>近期開課：{courseSessions.filter((s: any) => s.status === "open").map((s: any) => s.start_date).join("、")}</span>
                   </div>
-                );
-              }) : (
-                <p className="text-sm text-muted-foreground">目前沒有開放的梯次</p>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      const url = courseSessions[0]?.registration_url || "https://dao.smart4a.tw/registration";
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    前往報名
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">目前沒有開放報名的梯次</p>
               )}
             </div>
           </div>
