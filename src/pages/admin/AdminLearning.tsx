@@ -291,9 +291,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const [batchForm, setBatchForm] = useState({
     course_id: "",
     year: new Date().getFullYear().toString(),
-    start_month: "1",
-    end_month: "12",
+    frequency: "monthly" as "monthly" | "bimonthly" | "quarterly" | "custom",
+    selectedMonths: [] as number[],
     day: "15",
+    duration: "1",
     location: "",
     max_students: "",
     status: "open",
@@ -326,23 +327,37 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
     onError: () => toast.error("操作失敗"),
   });
 
+  const getBatchMonths = () => {
+    const f = batchForm.frequency;
+    if (f === "monthly") return [1,2,3,4,5,6,7,8,9,10,11,12];
+    if (f === "bimonthly") return [1,3,5,7,9,11];
+    if (f === "quarterly") return [1,4,7,10];
+    return batchForm.selectedMonths.sort((a,b) => a - b);
+  };
+
   const batchMutation = useMutation({
     mutationFn: async () => {
       const year = +batchForm.year;
-      const startM = +batchForm.start_month;
-      const endM = +batchForm.end_month;
       const day = +batchForm.day;
+      const dur = +batchForm.duration;
+      const monthsList = getBatchMonths();
       const rows: any[] = [];
-      for (let m = startM; m <= endM; m++) {
-        // Clamp day to last day of month
+      for (const m of monthsList) {
         const lastDay = new Date(year, m, 0).getDate();
         const actualDay = Math.min(day, lastDay);
         const startDate = `${year}-${String(m).padStart(2, "0")}-${String(actualDay).padStart(2, "0")}`;
-        const courseName = courses.find((c: any) => c.id === batchForm.course_id)?.title || "";
+        let endDate: string | null = null;
+        if (dur > 1) {
+          const end = new Date(year, m - 1, actualDay + dur - 1);
+          endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+        } else {
+          endDate = startDate;
+        }
         rows.push({
           course_id: batchForm.course_id,
           title_suffix: `${year}年${m}月班`,
           start_date: startDate,
+          end_date: endDate,
           location: batchForm.location || "",
           max_students: batchForm.max_students ? +batchForm.max_students : null,
           schedule_type: "recurring",
@@ -392,7 +407,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const filtered = filterCourse === "all" ? sessions : sessions.filter((s: any) => s.course_id === filterCourse);
   const sorted = [...filtered].sort((a: any, b: any) => (a.start_date || "").localeCompare(b.start_date || ""));
 
-  const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} 月` }));
+  
 
   return (
     <>
@@ -528,25 +543,45 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                 <SelectContent>{courses.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>年份</Label><Input type="number" value={batchForm.year} onChange={(e) => setBatchForm(f => ({ ...f, year: e.target.value }))} /></div>
               <div>
-                <Label>起始月</Label>
-                <Select value={batchForm.start_month} onValueChange={(v) => setBatchForm(f => ({ ...f, start_month: v }))}>
+                <Label>開課頻率</Label>
+                <Select value={batchForm.frequency} onValueChange={(v: any) => setBatchForm(f => ({ ...f, frequency: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>結束月</Label>
-                <Select value={batchForm.end_month} onValueChange={(v) => setBatchForm(f => ({ ...f, end_month: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    <SelectItem value="monthly">每月</SelectItem>
+                    <SelectItem value="bimonthly">每兩月</SelectItem>
+                    <SelectItem value="quarterly">每季</SelectItem>
+                    <SelectItem value="custom">自選月份</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
             </div>
+            {batchForm.frequency === "custom" && (
+              <div>
+                <Label className="mb-2 block">選擇月份</Label>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                    const selected = batchForm.selectedMonths.includes(m);
+                    return (
+                      <button key={m} type="button"
+                        className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${selected ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:bg-muted"}`}
+                        onClick={() => setBatchForm(f => ({
+                          ...f,
+                          selectedMonths: selected ? f.selectedMonths.filter(x => x !== m) : [...f.selectedMonths, m],
+                        }))}
+                      >{m}月</button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>每月開課日（幾號）</Label><Input type="number" min={1} max={31} value={batchForm.day} onChange={(e) => setBatchForm(f => ({ ...f, day: e.target.value }))} /></div>
+              <div><Label>課程天數</Label><Input type="number" min={1} max={14} value={batchForm.duration} onChange={(e) => setBatchForm(f => ({ ...f, duration: e.target.value }))} placeholder="1" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>預設狀態</Label>
                 <Select value={batchForm.status} onValueChange={(v) => setBatchForm(f => ({ ...f, status: v }))}>
@@ -557,24 +592,25 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                   </SelectContent>
                 </Select>
               </div>
+              <div><Label>人數上限</Label><Input type="number" value={batchForm.max_students} onChange={(e) => setBatchForm(f => ({ ...f, max_students: e.target.value }))} placeholder="留空=不限" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>地點</Label><Input value={batchForm.location} onChange={(e) => setBatchForm(f => ({ ...f, location: e.target.value }))} /></div>
-              <div><Label>人數上限</Label><Input type="number" value={batchForm.max_students} onChange={(e) => setBatchForm(f => ({ ...f, max_students: e.target.value }))} placeholder="留空=不限" /></div>
+              <div><Label>報名連結</Label><Input value={batchForm.registration_url} onChange={(e) => setBatchForm(f => ({ ...f, registration_url: e.target.value }))} /></div>
             </div>
-            <div><Label>報名連結</Label><Input value={batchForm.registration_url} onChange={(e) => setBatchForm(f => ({ ...f, registration_url: e.target.value }))} /></div>
             {batchForm.course_id && (
               <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                <p className="font-medium mb-1">預覽：將建立 {Math.max(0, +batchForm.end_month - +batchForm.start_month + 1)} 個梯次</p>
+                <p className="font-medium mb-1">預覽：將建立 {getBatchMonths().length} 個梯次</p>
                 <p className="text-muted-foreground">
-                  {batchForm.year}年{batchForm.start_month}月 ~ {batchForm.year}年{batchForm.end_month}月，每月{batchForm.day}號開課
+                  {getBatchMonths().map(m => `${m}月`).join("、")}，每月{batchForm.day}號開課
+                  {+batchForm.duration > 1 ? `（${batchForm.duration}天）` : ""}
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBatchOpen(false)}>取消</Button>
-            <Button onClick={() => batchMutation.mutate()} disabled={!batchForm.course_id || batchMutation.isPending}>
+            <Button onClick={() => batchMutation.mutate()} disabled={!batchForm.course_id || batchMutation.isPending || (batchForm.frequency === "custom" && batchForm.selectedMonths.length === 0)}>
               {batchMutation.isPending ? "建立中..." : "批次建立"}
             </Button>
           </DialogFooter>
