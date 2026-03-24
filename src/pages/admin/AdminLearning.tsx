@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 
 // ===== Stat Card =====
@@ -140,6 +141,7 @@ export default function AdminLearning() {
 
 // ========== Courses Tab ==========
 function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; instructors: any[]; queryClient: any }) {
+  const [contentCourse, setContentCourse] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ title: "", description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" });
@@ -172,6 +174,10 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
   const statusLabels: Record<string, string> = { draft: "草稿", published: "已發佈", archived: "已封存" };
   const statusColors: Record<string, string> = { draft: "secondary", published: "default", archived: "outline" };
 
+  if (contentCourse) {
+    return <CourseContentEditor course={contentCourse} onBack={() => setContentCourse(null)} />;
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -200,6 +206,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
                 <TableCell><Badge variant={statusColors[c.status] as any}>{statusLabels[c.status]}</Badge></TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" title="管理內容" onClick={() => setContentCourse(c)}><FileText className="w-4 h-4 text-primary" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { if (confirm("確定刪除？")) deleteMutation.mutate(c.id); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
