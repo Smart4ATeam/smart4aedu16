@@ -174,6 +174,10 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
   const statusLabels: Record<string, string> = { draft: "草稿", published: "已發佈", archived: "已封存" };
   const statusColors: Record<string, string> = { draft: "secondary", published: "default", archived: "outline" };
 
+  if (contentCourse) {
+    return <CourseContentEditor course={contentCourse} onBack={() => setContentCourse(null)} />;
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
