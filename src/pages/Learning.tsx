@@ -322,6 +322,17 @@ export default function Learning() {
                 📄 課前教材
               </a>
             )}
+            {selectedCourseData?.detail_url && (
+              <a
+                href={selectedCourseData.detail_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <ArrowRight className="w-4 h-4" />
+                🔗 查看完整課程介紹
+              </a>
+            )}
 
             {/* Registration */}
             <div className="pt-2 border-t border-border space-y-3">
