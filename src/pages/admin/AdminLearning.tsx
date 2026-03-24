@@ -206,6 +206,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
                 <TableCell><Badge variant={statusColors[c.status] as any}>{statusLabels[c.status]}</Badge></TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" title="管理內容" onClick={() => setContentCourse(c)}><FileText className="w-4 h-4 text-primary" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { if (confirm("確定刪除？")) deleteMutation.mutate(c.id); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
