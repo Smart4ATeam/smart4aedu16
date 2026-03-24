@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Gem,
   GraduationCap,
+  BookOpen,
   Settings,
   LogOut,
   ShieldCheck,
