@@ -291,9 +291,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const [batchForm, setBatchForm] = useState({
     course_id: "",
     year: new Date().getFullYear().toString(),
-    start_month: "1",
-    end_month: "12",
+    frequency: "monthly" as "monthly" | "bimonthly" | "quarterly" | "custom",
+    selectedMonths: [] as number[],
     day: "15",
+    duration: "1",
     location: "",
     max_students: "",
     status: "open",
