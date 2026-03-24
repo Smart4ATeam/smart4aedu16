@@ -356,6 +356,7 @@ export type Database = {
           description: string | null
           id: string
           instructor_id: string | null
+          long_description: string | null
           materials_url: string | null
           price: number
           series_id: string | null
@@ -373,6 +374,7 @@ export type Database = {
           description?: string | null
           id?: string
           instructor_id?: string | null
+          long_description?: string | null
           materials_url?: string | null
           price?: number
           series_id?: string | null
@@ -390,6 +392,7 @@ export type Database = {
           description?: string | null
           id?: string
           instructor_id?: string | null
+          long_description?: string | null
           materials_url?: string | null
           price?: number
           series_id?: string | null
