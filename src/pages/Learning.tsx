@@ -339,7 +339,10 @@ export default function Learning() {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      const url = courseSessions[0]?.registration_url || "https://dao.smart4a.tw/registration";
+                      const url = selectedCourseData?.registration_url || courseSessions[0]?.registration_url || "https://dao.smart4a.tw/registration";
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                  >
                       window.open(url, "_blank", "noopener,noreferrer");
                     }}
                   >
