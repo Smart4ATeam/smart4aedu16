@@ -263,6 +263,8 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>封面圖片 URL</Label><Input value={form.cover_url} onChange={(e) => setForm(f => ({ ...f, cover_url: e.target.value }))} placeholder="https://example.com/image.png" /></div>
+            <div><Label>課前教材連結</Label><Input value={form.materials_url} onChange={(e) => setForm(f => ({ ...f, materials_url: e.target.value }))} placeholder="https://example.com/materials" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
