@@ -25,6 +25,9 @@ import AdminBroadcast from "./pages/admin/AdminBroadcast";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminIntegrations from "./pages/admin/AdminIntegrations";
+import AdminLearning from "./pages/admin/AdminLearning";
+import Learning from "./pages/Learning";
+import CourseDetail from "./pages/CourseDetail";
 
 const queryClient = new QueryClient();
 
