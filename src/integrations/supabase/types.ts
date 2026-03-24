@@ -267,6 +267,7 @@ export type Database = {
           max_students: number | null
           price: number | null
           recurrence_rule: string | null
+          registration_url: string | null
           schedule_type: string
           start_date: string | null
           status: string
@@ -282,6 +283,7 @@ export type Database = {
           max_students?: number | null
           price?: number | null
           recurrence_rule?: string | null
+          registration_url?: string | null
           schedule_type?: string
           start_date?: string | null
           status?: string
@@ -297,6 +299,7 @@ export type Database = {
           max_students?: number | null
           price?: number | null
           recurrence_rule?: string | null
+          registration_url?: string | null
           schedule_type?: string
           start_date?: string | null
           status?: string
