@@ -357,6 +357,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           description: string | null
+          detail_url: string | null
           id: string
           instructor_id: string | null
           long_description: string | null
@@ -376,6 +377,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           description?: string | null
+          detail_url?: string | null
           id?: string
           instructor_id?: string | null
           long_description?: string | null
@@ -395,6 +397,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           description?: string | null
+          detail_url?: string | null
           id?: string
           instructor_id?: string | null
           long_description?: string | null
