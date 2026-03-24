@@ -135,6 +135,31 @@ const endpoints: ApiEndpoint[] = [
     exampleBody: { title: "重要公告", content: "本週六 20:00 有直播課程，請準時參加！", category: "system" },
     exampleResponse: { success: true, data: { conversation_id: "uuid-xxx", recipients: 42 } },
   },
+  {
+    id: "api-courses",
+    name: "新增課程/梯次",
+    icon: <BookOpen className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-courses",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "新增課程定義或開課梯次。透過 action 欄位區分操作類型：create_course 或 create_session。",
+    requiredFields: [
+      { name: "action", type: "string", required: true, desc: "操作類型：create_course / create_session" },
+      { name: "title / course_id", type: "string", required: true, desc: "create_course 需 title；create_session 需 course_id" },
+    ],
+    optionalFields: [
+      { name: "description", type: "string", desc: "課程描述" },
+      { name: "category", type: "string", desc: "分類：quest/basic/intermediate/advanced/special" },
+      { name: "price", type: "number", desc: "費用（預設 0）" },
+      { name: "start_date", type: "string", desc: "開課日（YYYY-MM-DD）" },
+      { name: "end_date", type: "string", desc: "結束日" },
+      { name: "location", type: "string", desc: "地點" },
+      { name: "max_students", type: "number", desc: "人數上限" },
+      { name: "schedule_type", type: "string", desc: "recurring / ondemand" },
+    ],
+    exampleBody: { action: "create_course", title: "AI 實戰工作坊", category: "intermediate", price: 3500 },
+    exampleResponse: { success: true, data: { id: "uuid-xxx", title: "AI 實戰工作坊" } },
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {

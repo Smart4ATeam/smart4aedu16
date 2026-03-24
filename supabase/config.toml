@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.api-messages]
 verify_jwt = false
+
+[functions.api-courses]
+verify_jwt = false
