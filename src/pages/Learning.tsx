@@ -1,0 +1,296 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BookOpen, GraduationCap, ClipboardCheck, MapPin, CalendarDays, Users, ArrowRight, Award } from "lucide-react";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+
+const categoryLabels: Record<string, string> = {
+  quest: "入門班", basic: "基礎班", intermediate: "中階班", advanced: "高階班", special: "特殊課程",
+};
+
+const categoryColors: Record<string, string> = {
+  quest: "bg-primary/20 text-primary", basic: "bg-blue-500/20 text-blue-400",
+  intermediate: "bg-amber-500/20 text-amber-400", advanced: "bg-red-500/20 text-red-400",
+  special: "bg-accent/20 text-accent",
+};
+
+export default function Learning() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+
+  // Fetch courses with instructor + partner
+  const { data: courses = [] } = useQuery({
+    queryKey: ["courses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*, instructors(name, partner_id, partners(name))")
+        .eq("status", "published")
+        .order("sort_order");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch sessions
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["course_sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_sessions")
+        .select("*")
+        .in("status", ["open", "scheduled"])
+        .order("start_date");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch user enrollments
+  const { data: enrollments = [] } = useQuery({
+    queryKey: ["my_enrollments", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_enrollments")
+        .select("*, course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch enrollment counts per session
+  const { data: enrollmentCounts = {} } = useQuery({
+    queryKey: ["enrollment_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("course_enrollments").select("session_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      data?.forEach((e: { session_id: string }) => { counts[e.session_id] = (counts[e.session_id] || 0) + 1; });
+      return counts;
+    },
+  });
+
+  // Fetch quiz attempts
+  const { data: quizAttempts = [] } = useQuery({
+    queryKey: ["my_quiz_attempts", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quiz_attempts")
+        .select("*, course_quizzes(title, course_id, courses(title))")
+        .eq("user_id", user!.id)
+        .order("attempted_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Enroll mutation
+  const enrollMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase.from("course_enrollments").insert({
+        user_id: user!.id,
+        session_id: sessionId,
+        status: "pending",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("報名成功！請等待確認。");
+      queryClient.invalidateQueries({ queryKey: ["my_enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["enrollment_counts"] });
+    },
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "您已報名此梯次" : "報名失敗"),
+  });
+
+  const selectedCourseData = courses.find((c: { id: string }) => c.id === selectedCourse);
+  const courseSessions = sessions.filter((s: { course_id: string }) => s.course_id === selectedCourse);
+  const enrolledSessionIds = new Set(enrollments.map((e: { session_id: string }) => e.session_id));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">學習中心</h1>
+        <p className="text-muted-foreground text-sm mt-1">探索課程、追蹤學習進度</p>
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview" className="gap-2"><BookOpen className="w-4 h-4" />課程總覽</TabsTrigger>
+          <TabsTrigger value="my" className="gap-2"><GraduationCap className="w-4 h-4" />我的課程</TabsTrigger>
+          <TabsTrigger value="quiz" className="gap-2"><ClipboardCheck className="w-4 h-4" />測驗與成績</TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: Course Overview */}
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course: any) => (
+              <div
+                key={course.id}
+                className="glass-card rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all group"
+                onClick={() => setSelectedCourse(course.id)}
+              >
+                {course.cover_url ? (
+                  <img src={course.cover_url} alt={course.title} className="w-full h-40 object-cover" />
+                ) : (
+                  <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+                    <BookOpen className="w-12 h-12 text-primary/40" />
+                  </div>
+                )}
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className={categoryColors[course.category] || ""}>{categoryLabels[course.category] || course.category}</Badge>
+                    {course.price === 0 && <Badge variant="outline" className="text-xs">免費</Badge>}
+                  </div>
+                  <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{course.title}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{course.instructors?.name || "未指定講師"}</span>
+                    {course.price > 0 && <span className="text-primary font-bold">NT$ {course.price.toLocaleString()}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {courses.length === 0 && (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>目前沒有可報名的課程</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Tab 2: My Courses */}
+        <TabsContent value="my">
+          <div className="space-y-4">
+            {enrollments.map((enrollment: any) => {
+              const session = enrollment.course_sessions;
+              const course = session?.courses;
+              return (
+                <div key={enrollment.id} className="glass-card rounded-xl p-5 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-foreground truncate">{course?.title}</h3>
+                      <Badge variant={enrollment.paid ? "default" : "outline"} className="text-xs shrink-0">
+                        {enrollment.paid ? "已繳費" : "待繳費"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs shrink-0">{enrollment.status === "confirmed" ? "已確認" : enrollment.status === "pending" ? "待確認" : enrollment.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {session?.start_date && (
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{session.start_date} ~ {session.end_date || "未定"}</span>
+                      )}
+                      {session?.location && (
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>
+                      )}
+                      {session?.title_suffix && <span>{session.title_suffix}</span>}
+                    </div>
+                  </div>
+                  {enrollment.paid && enrollment.status === "confirmed" && (
+                    <Button size="sm" onClick={() => navigate(`/learning/course/${course?.id}`)} className="shrink-0 gap-1">
+                      查看內容 <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            {enrollments.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <GraduationCap className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>您尚未報名任何課程</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Tab 3: Quizzes */}
+        <TabsContent value="quiz">
+          <div className="space-y-4">
+            {quizAttempts.length > 0 ? quizAttempts.map((attempt: any) => (
+              <div key={attempt.id} className="glass-card rounded-xl p-5 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-foreground">{attempt.course_quizzes?.title}</h3>
+                  <p className="text-xs text-muted-foreground">{attempt.course_quizzes?.courses?.title} · {new Date(attempt.attempted_at).toLocaleDateString("zh-TW")}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-lg font-bold ${attempt.passed ? "text-green-500" : "text-destructive"}`}>{attempt.score} 分</span>
+                  <Badge variant={attempt.passed ? "default" : "destructive"}>{attempt.passed ? "通過" : "未通過"}</Badge>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <ClipboardCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>尚無測驗紀錄</p>
+              </div>
+            )}
+            <div className="glass-card rounded-xl p-5 text-center border-dashed border-2 border-border">
+              <Award className="w-8 h-8 mx-auto mb-2 text-primary/40" />
+              <p className="text-sm text-muted-foreground">🎓 證書下載功能即將推出</p>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Course Detail Dialog */}
+      <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedCourseData?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{selectedCourseData?.description}</p>
+            <div className="text-xs text-muted-foreground">
+              <span>講師：{(selectedCourseData as any)?.instructors?.name || "未指定"}</span>
+              {(selectedCourseData as any)?.instructors?.partners?.name && (
+                <span> · {(selectedCourseData as any).instructors.partners.name}</span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-foreground text-sm">可報名梯次</h4>
+              {courseSessions.length > 0 ? courseSessions.map((session: any) => {
+                const enrolled = enrolledSessionIds.has(session.id);
+                const count = (enrollmentCounts as Record<string, number>)[session.id] || 0;
+                const full = session.max_students && count >= session.max_students;
+                return (
+                  <div key={session.id} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground text-sm">{session.title_suffix || "一般梯次"}</span>
+                      <Badge variant="outline" className="text-xs">{session.status === "open" ? "開放報名" : session.status}</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {session.start_date && <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{session.start_date}</span>}
+                      {session.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>}
+                      {session.max_students && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}/{session.max_students}</span>}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={enrolled || full || session.status !== "open"}
+                      onClick={() => enrollMutation.mutate(session.id)}
+                    >
+                      {enrolled ? "已報名" : full ? "已額滿" : "立即報名"}
+                    </Button>
+                  </div>
+                );
+              }) : (
+                <p className="text-sm text-muted-foreground">目前沒有開放的梯次</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
