@@ -141,6 +141,7 @@ export default function AdminLearning() {
 
 // ========== Courses Tab ==========
 function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; instructors: any[]; queryClient: any }) {
+  const [contentCourse, setContentCourse] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ title: "", description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" });
