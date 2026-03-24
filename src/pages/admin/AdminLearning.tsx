@@ -266,6 +266,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
             <div><Label>封面圖片 URL</Label><Input value={form.cover_url} onChange={(e) => setForm(f => ({ ...f, cover_url: e.target.value }))} placeholder="https://example.com/image.png" /></div>
             <div><Label>報名連結</Label><Input value={form.registration_url} onChange={(e) => setForm(f => ({ ...f, registration_url: e.target.value }))} placeholder="https://dao.smart4a.tw/registration" /></div>
             <div><Label>課前教材連結</Label><Input value={form.materials_url} onChange={(e) => setForm(f => ({ ...f, materials_url: e.target.value }))} placeholder="https://example.com/materials" /></div>
+            <div><Label>課程介紹頁連結（選填）</Label><Input value={form.detail_url} onChange={(e) => setForm(f => ({ ...f, detail_url: e.target.value }))} placeholder="https://dao.smart4a.tw/registration?course=wendao" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
