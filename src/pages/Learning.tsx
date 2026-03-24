@@ -244,20 +244,79 @@ export default function Learning() {
 
       {/* Course Detail Dialog */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedCourseData?.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">{selectedCourseData?.description}</p>
-            <div className="text-xs text-muted-foreground">
-              <span>講師：{(selectedCourseData as any)?.instructors?.name || "未指定"}</span>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
+          {/* Cover */}
+          {selectedCourseData?.cover_url ? (
+            <img src={selectedCourseData.cover_url} alt={selectedCourseData.title} className="w-full h-48 object-cover rounded-t-lg" />
+          ) : (
+            <div className="w-full h-48 bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center rounded-t-lg">
+              <BookOpen className="w-16 h-16 text-primary/30" />
+            </div>
+          )}
+
+          <div className="p-6 space-y-5">
+            {/* Title + badges */}
+            <div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <Badge className={categoryColors[selectedCourseData?.category || ""] || ""}>{categoryLabels[selectedCourseData?.category || ""] || selectedCourseData?.category}</Badge>
+                {selectedCourseData?.price === 0 && <Badge variant="outline" className="text-xs">免費</Badge>}
+                {(selectedCourseData?.tags as string[])?.map((tag: string) => (
+                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                ))}
+              </div>
+              <DialogHeader>
+                <DialogTitle className="text-xl">{selectedCourseData?.title}</DialogTitle>
+              </DialogHeader>
+            </div>
+
+            {/* Description */}
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{selectedCourseData?.description}</p>
+
+            {/* Info grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-xl bg-muted/30 border border-border text-center">
+                <GraduationCap className="w-4 h-4 mx-auto mb-1 text-primary" />
+                <p className="text-xs text-muted-foreground">講師</p>
+                <p className="text-sm font-medium text-foreground">{(selectedCourseData as any)?.instructors?.name || "未指定"}</p>
+              </div>
               {(selectedCourseData as any)?.instructors?.partners?.name && (
-                <span> · {(selectedCourseData as any).instructors.partners.name}</span>
+                <div className="p-3 rounded-xl bg-muted/30 border border-border text-center">
+                  <Users className="w-4 h-4 mx-auto mb-1 text-accent" />
+                  <p className="text-xs text-muted-foreground">單位</p>
+                  <p className="text-sm font-medium text-foreground">{(selectedCourseData as any).instructors.partners.name}</p>
+                </div>
+              )}
+              {selectedCourseData?.total_hours > 0 && (
+                <div className="p-3 rounded-xl bg-muted/30 border border-border text-center">
+                  <CalendarDays className="w-4 h-4 mx-auto mb-1 text-blue-400" />
+                  <p className="text-xs text-muted-foreground">總時數</p>
+                  <p className="text-sm font-medium text-foreground">{selectedCourseData.total_hours} 小時</p>
+                </div>
+              )}
+              {selectedCourseData?.price > 0 && (
+                <div className="p-3 rounded-xl bg-muted/30 border border-border text-center">
+                  <Award className="w-4 h-4 mx-auto mb-1 text-primary" />
+                  <p className="text-xs text-muted-foreground">費用</p>
+                  <p className="text-sm font-bold text-primary">NT$ {selectedCourseData.price.toLocaleString()}</p>
+                </div>
               )}
             </div>
 
-            <div className="space-y-3">
+            {/* Materials link */}
+            {selectedCourseData?.materials_url && (
+              <a
+                href={selectedCourseData.materials_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <BookOpen className="w-4 h-4" />
+                📄 課前教材
+              </a>
+            )}
+
+            {/* Sessions */}
+            <div className="space-y-3 pt-2 border-t border-border">
               <h4 className="font-semibold text-foreground text-sm">可報名梯次</h4>
               {courseSessions.length > 0 ? courseSessions.map((session: any) => {
                 const enrolled = enrolledSessionIds.has(session.id);
@@ -274,6 +333,9 @@ export default function Learning() {
                       {session.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>}
                       {session.max_students && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{count}/{session.max_students}</span>}
                     </div>
+                    {session.price && (
+                      <p className="text-xs text-primary font-medium">本梯次費用：NT$ {session.price.toLocaleString()}</p>
+                    )}
                     <Button
                       size="sm"
                       className="w-full"
