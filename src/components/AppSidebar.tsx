@@ -22,11 +22,11 @@ import logoLight from "@/assets/logo-light.png";
 
 const navItems = [
   { title: "儀表板", url: "/", icon: LayoutDashboard },
+  { title: "學習中心", url: "/learning", icon: BookOpen },
   { title: "任務中心", url: "/tasks", icon: Target },
   { title: "行事曆", url: "/calendar", icon: CalendarDays },
   { title: "資源中心", url: "/resources", icon: Gem },
   { title: "訊息中心", url: "/messages", icon: GraduationCap },
-  { title: "學習中心", url: "/learning", icon: BookOpen },
 ];
 
 const bottomNavItems = [

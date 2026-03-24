@@ -21,12 +21,12 @@ import logoLight from "@/assets/logo-light.png";
 const navItems = [
   { title: "營運看板", url: "/admin", icon: LayoutDashboard },
   { title: "使用者管理", url: "/admin/students", icon: Users },
+  { title: "學習中心", url: "/admin/learning", icon: BookOpen },
   { title: "任務審核", url: "/admin/tasks", icon: ClipboardCheck },
   { title: "資源管理", url: "/admin/resources", icon: FolderOpen },
   { title: "訊息廣播", url: "/admin/broadcast", icon: Megaphone },
   { title: "行事曆管理", url: "/admin/settings", icon: CalendarDays },
   { title: "API 串接", url: "/admin/integrations", icon: Plug },
-  { title: "學習中心", url: "/admin/learning", icon: BookOpen },
 ];
 
 export function AdminSidebar() {
