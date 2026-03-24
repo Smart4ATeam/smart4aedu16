@@ -144,7 +144,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
   const [contentCourse, setContentCourse] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ title: "", description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" });
+  const [form, setForm] = useState({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft" });
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
