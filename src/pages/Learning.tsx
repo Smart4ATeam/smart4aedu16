@@ -47,7 +47,7 @@ export default function Learning() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("course_sessions")
-        .select("*")
+        .select("*, registration_url")
         .in("status", ["open", "scheduled"])
         .order("start_date");
       if (error) throw error;
