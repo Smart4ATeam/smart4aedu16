@@ -185,7 +185,6 @@ export default function Learning() {
                       <Badge variant={enrollment.paid ? "default" : "outline"} className="text-xs shrink-0">
                         {enrollment.paid ? "已繳費" : "待繳費"}
                       </Badge>
-                      <Badge variant="outline" className="text-xs shrink-0">{enrollment.status === "confirmed" ? "已確認" : enrollment.status === "pending" ? "待確認" : enrollment.status}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       {session?.start_date && (
@@ -197,7 +196,7 @@ export default function Learning() {
                       {session?.title_suffix && <span>{session.title_suffix}</span>}
                     </div>
                   </div>
-                  {enrollment.paid && enrollment.status === "confirmed" && (
+                  {enrollment.paid && (
                     <Button size="sm" onClick={() => navigate(`/learning/course/${course?.id}`)} className="shrink-0 gap-1">
                       查看內容 <ArrowRight className="w-3 h-3" />
                     </Button>
