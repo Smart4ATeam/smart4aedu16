@@ -145,7 +145,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Enrollment callback error:", err);
+    const message = err instanceof Error ? err.message : JSON.stringify(err);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
