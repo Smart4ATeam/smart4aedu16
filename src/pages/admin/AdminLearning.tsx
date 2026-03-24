@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 
@@ -281,10 +281,24 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
 // ========== Sessions Tab ==========
 function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions: any[]; courses: any[]; instructors: any[]; queryClient: any }) {
   const [open, setOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
   const [form, setForm] = useState(defaultForm);
+
+  // Batch form state
+  const [batchForm, setBatchForm] = useState({
+    course_id: "",
+    year: new Date().getFullYear().toString(),
+    start_month: "1",
+    end_month: "12",
+    day: "15",
+    location: "",
+    max_students: "",
+    status: "open",
+    registration_url: "https://dao.smart4a.tw/registration",
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -310,6 +324,38 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
     },
     onSuccess: () => { toast.success(editing ? "已更新" : "梯次已建立"); queryClient.invalidateQueries({ queryKey: ["admin_sessions"] }); setOpen(false); },
     onError: () => toast.error("操作失敗"),
+  });
+
+  const batchMutation = useMutation({
+    mutationFn: async () => {
+      const year = +batchForm.year;
+      const startM = +batchForm.start_month;
+      const endM = +batchForm.end_month;
+      const day = +batchForm.day;
+      const rows: any[] = [];
+      for (let m = startM; m <= endM; m++) {
+        // Clamp day to last day of month
+        const lastDay = new Date(year, m, 0).getDate();
+        const actualDay = Math.min(day, lastDay);
+        const startDate = `${year}-${String(m).padStart(2, "0")}-${String(actualDay).padStart(2, "0")}`;
+        const courseName = courses.find((c: any) => c.id === batchForm.course_id)?.title || "";
+        rows.push({
+          course_id: batchForm.course_id,
+          title_suffix: `${year}年${m}月班`,
+          start_date: startDate,
+          location: batchForm.location || "",
+          max_students: batchForm.max_students ? +batchForm.max_students : null,
+          schedule_type: "recurring",
+          status: batchForm.status,
+          registration_url: batchForm.registration_url || "https://dao.smart4a.tw/registration",
+        });
+      }
+      const { error } = await supabase.from("course_sessions").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => { toast.success(`已批次建立 ${count} 個梯次`); queryClient.invalidateQueries({ queryKey: ["admin_sessions"] }); setBatchOpen(false); },
+    onError: () => toast.error("批次建立失敗"),
   });
 
   const statusMutation = useMutation({
@@ -344,8 +390,9 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const formatDate = (d: string | null) => d ? d.replace(/-/g, "/") : "-";
 
   const filtered = filterCourse === "all" ? sessions : sessions.filter((s: any) => s.course_id === filterCourse);
-  // Sort by start_date ascending (nearest first)
   const sorted = [...filtered].sort((a: any, b: any) => (a.start_date || "").localeCompare(b.start_date || ""));
+
+  const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} 月` }));
 
   return (
     <>
@@ -360,7 +407,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={openCreate} className="gap-1"><Plus className="w-4 h-4" />新增梯次</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setBatchOpen(true)} className="gap-1"><ListPlus className="w-4 h-4" />批次新增</Button>
+          <Button size="sm" onClick={openCreate} className="gap-1"><Plus className="w-4 h-4" />新增梯次</Button>
+        </div>
       </div>
       <div className="glass-card rounded-xl overflow-hidden">
         <Table>
@@ -409,6 +459,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
         </Table>
       </div>
 
+      {/* Single session dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "編輯梯次" : "新增梯次"}</DialogTitle></DialogHeader>
@@ -460,6 +511,72 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={!form.course_id}>{editing ? "更新" : "建立"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch create dialog */}
+      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>批次新增梯次</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">為選定課程一次建立多個月份的梯次</p>
+          <div className="space-y-4">
+            <div>
+              <Label>所屬課程</Label>
+              <Select value={batchForm.course_id} onValueChange={(v) => setBatchForm(f => ({ ...f, course_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="選擇課程" /></SelectTrigger>
+                <SelectContent>{courses.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>年份</Label><Input type="number" value={batchForm.year} onChange={(e) => setBatchForm(f => ({ ...f, year: e.target.value }))} /></div>
+              <div>
+                <Label>起始月</Label>
+                <Select value={batchForm.start_month} onValueChange={(v) => setBatchForm(f => ({ ...f, start_month: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>結束月</Label>
+                <Select value={batchForm.end_month} onValueChange={(v) => setBatchForm(f => ({ ...f, end_month: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>每月開課日（幾號）</Label><Input type="number" min={1} max={31} value={batchForm.day} onChange={(e) => setBatchForm(f => ({ ...f, day: e.target.value }))} /></div>
+              <div>
+                <Label>預設狀態</Label>
+                <Select value={batchForm.status} onValueChange={(v) => setBatchForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">排程中</SelectItem>
+                    <SelectItem value="open">開放報名</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>地點</Label><Input value={batchForm.location} onChange={(e) => setBatchForm(f => ({ ...f, location: e.target.value }))} /></div>
+              <div><Label>人數上限</Label><Input type="number" value={batchForm.max_students} onChange={(e) => setBatchForm(f => ({ ...f, max_students: e.target.value }))} placeholder="留空=不限" /></div>
+            </div>
+            <div><Label>報名連結</Label><Input value={batchForm.registration_url} onChange={(e) => setBatchForm(f => ({ ...f, registration_url: e.target.value }))} /></div>
+            {batchForm.course_id && (
+              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                <p className="font-medium mb-1">預覽：將建立 {Math.max(0, +batchForm.end_month - +batchForm.start_month + 1)} 個梯次</p>
+                <p className="text-muted-foreground">
+                  {batchForm.year}年{batchForm.start_month}月 ~ {batchForm.year}年{batchForm.end_month}月，每月{batchForm.day}號開課
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchOpen(false)}>取消</Button>
+            <Button onClick={() => batchMutation.mutate()} disabled={!batchForm.course_id || batchMutation.isPending}>
+              {batchMutation.isPending ? "建立中..." : "批次建立"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
