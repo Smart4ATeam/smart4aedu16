@@ -1,0 +1,1 @@
+UPDATE course_enrollments SET status = 'confirmed' WHERE id IN ('9ea31d71-0708-417b-a06d-044799838dd0', '831fca4f-f162-4aaa-b4d1-dd5a6cd86fd9', '82559368-c890-43ff-80cf-640fd84ad4f3', 'b8164367-02c1-45cb-ab90-9ef63a1648f5')
