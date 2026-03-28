@@ -3,58 +3,97 @@ import { motion } from "framer-motion";
 import { Check, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface Step {
   label: string;
   status: "done" | "current" | "locked";
 }
 
+interface SpecialCourse {
+  title: string;
+  enrolled: boolean;
+}
+
+// Extract short label like "入門班" from full title
+function extractShortLabel(title: string): string {
+  const match = title.match(/(入門班|基礎班|中階班|高階班|特訓班)/);
+  return match ? match[1] : title;
+}
+
 export function LearningPath() {
   const { user } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
+  const [specials, setSpecials] = useState<SpecialCourse[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchPath = async () => {
-      // Get first learning path
-      const { data: paths } = await supabase
-        .from("learning_paths")
-        .select("id, title, total_steps")
-        .order("sort_order", { ascending: true })
-        .limit(1);
+      // 1. Get main courses (non-special), ordered by sort_order
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("id, title, category, sort_order")
+        .neq("category", "special")
+        .eq("status", "published")
+        .order("sort_order", { ascending: true });
 
-      if (!paths || paths.length === 0) {
-        setSteps([]);
-        return;
-      }
+      // 2. Get user's enrollments joined with sessions to get course_id
+      const { data: enrollments } = await supabase
+        .from("course_enrollments")
+        .select("paid, status, session_id, course_sessions(course_id)")
+        .eq("user_id", user.id);
 
-      const path = paths[0];
-
-      // Get user progress
-      const { data: progress } = await supabase
-        .from("user_learning_progress")
-        .select("current_step, completed")
-        .eq("user_id", user.id)
-        .eq("learning_path_id", path.id)
-        .maybeSingle();
-
-      const currentStep = progress?.current_step ?? 0;
-      const stepLabels = ["基礎入門", "工具實作", "進階應用", "專案實戰", "認證結業"];
-
-      const result: Step[] = [];
-      for (let i = 0; i < path.total_steps; i++) {
-        const label = stepLabels[i] ?? `步驟 ${i + 1}`;
-        if (i < currentStep) {
-          result.push({ label, status: "done" });
-        } else if (i === currentStep) {
-          result.push({ label, status: progress?.completed ? "done" : "current" });
-        } else {
-          result.push({ label, status: "locked" });
+      // Build set of enrolled course IDs (paid + confirmed)
+      const enrolledCourseIds = new Set<string>();
+      if (enrollments) {
+        for (const e of enrollments) {
+          if (e.paid && e.status === "confirmed") {
+            const session = e.course_sessions as any;
+            if (session?.course_id) {
+              enrolledCourseIds.add(session.course_id);
+            }
+          }
         }
       }
 
-      setSteps(result);
+      // 3. Build main path steps
+      if (courses && courses.length > 0) {
+        let foundCurrent = false;
+        const result: Step[] = courses.map((course) => {
+          const label = extractShortLabel(course.title);
+          if (enrolledCourseIds.has(course.id)) {
+            return { label, status: "done" as const };
+          }
+          if (!foundCurrent) {
+            foundCurrent = true;
+            return { label, status: "current" as const };
+          }
+          return { label, status: "locked" as const };
+        });
+        setSteps(result);
+      } else {
+        setSteps([]);
+      }
+
+      // 4. Get special courses
+      const { data: specialCourses } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("category", "special")
+        .eq("status", "published")
+        .order("sort_order", { ascending: true });
+
+      if (specialCourses && specialCourses.length > 0) {
+        setSpecials(
+          specialCourses.map((c) => ({
+            title: extractShortLabel(c.title),
+            enrolled: enrolledCourseIds.has(c.id),
+          }))
+        );
+      } else {
+        setSpecials([]);
+      }
     };
 
     fetchPath();
@@ -126,6 +165,25 @@ export function LearningPath() {
           </div>
         ))}
       </div>
+
+      {/* Special courses */}
+      {specials.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">特訓課程</p>
+          <div className="flex flex-wrap gap-2">
+            {specials.map((s, i) => (
+              <Badge
+                key={i}
+                variant={s.enrolled ? "default" : "outline"}
+                className={s.enrolled ? "gradient-lime text-primary-foreground border-0" : ""}
+              >
+                {s.enrolled && <Check className="w-3 h-3 mr-1" />}
+                {s.title}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
