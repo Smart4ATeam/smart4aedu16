@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { difficultyColors } from "@/lib/category-colors";
 
 interface Task {
   id: string;
@@ -33,12 +34,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReportConfirm, setShowReportConfirm] = useState(false);
 
-  const difficultyColor =
-    task.difficulty === "初級"
-      ? "text-accent bg-accent/10 border-accent/20"
-      : task.difficulty === "中級" || task.difficulty === "中階"
-      ? "text-chart-cyan bg-chart-cyan/10 border-chart-cyan/20"
-      : "text-success bg-success/10 border-success/20";
+  const difficultyColor = difficultyColors[task.difficulty] || "text-muted-foreground bg-muted/10 border-border";
 
   const handleApplyClick = () => { setShowConfirm(true); };
   const handleConfirmApply = () => { setShowConfirm(false); onApply?.(); };

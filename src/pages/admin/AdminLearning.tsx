@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
-import { categoryLabels, categoryColors } from "@/lib/course-categories";
+import { categoryLabels, categoryColors } from "@/lib/category-colors";
 
 // ===== Stat Card =====
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) {
