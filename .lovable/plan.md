@@ -1,64 +1,60 @@
 
 
-## 計劃：課程報名系統 — 資料表與管理功能（最終版 v2）
+## 計劃：報名明細改為按「個別課程」分頁籤（動態從資料庫讀取）
 
-### 資料表設計（6 張表）
+### 現狀問題
 
-**1. `reg_courses`** — 課程主檔
-- id, course_code, course_name, course_type (beginner/basic/intermediate/advanced/agent_skill), course_date (daterange), price, status, created_at
+報名明細目前按 `course_type`（入門班/基礎班/中階班...）分頁籤，且是寫死的 `COURSE_TYPES` 常數。使用者希望每個課程（`reg_courses`）各自一個頁籤。
 
-**2. `reg_orders`** — 訂單總表
-- id, order_no (unique), course_ids (uuid[]), course_snapshot
-- p1~p3 聯絡資訊 (name, phone, email)
-- payment_status (pending/paid), paid_at, payment_method, total_amount, discount_plan
-- invoice_type, invoice_title, invoice_number
-- invoice_status (active/voided/reissued) — 支援作廢與重開
-- invoice_void_reason, invoice_void_at
-- invoice_reissued_number — 重開後的新發票號碼
-- invoice_reissued_at
-- dealer_id, notes, created_at
+### 改動內容
 
-**3. `reg_members`** — 學員主檔
-- id, member_no (auto SA25040001), name, phone, email, course_level, points, referral_code, notes, created_at
+#### 1. AdminRegistrations — 報名明細頁籤改為按課程分
 
-**4. `reg_enrollments`** — 報名明細（一張表，UI 分頁籤顯示）
-- id, order_id, member_id, course_id, course_type
-- status (enrolled/attended/absent/transferred)
-- payment_status, paid_at, invoice_title
-- dealer_id, referrer, checked_in
-- post_survey, post_test, test_score, certificate, pre_notification_sent
-- points_awarded, lovable_invite, notes, enrolled_at
+- 移除寫死的 `COURSE_TYPES`
+- 動態查詢 `reg_courses`（按 `course_type` 分組排序），每個課程產生一個頁籤
+- 頁籤顯示課程名稱（如「基礎班 B2504」），value 用 course id
+- 加上「全部」頁籤
+- 篩選 enrollments 時改用 `course_id` 而非 `course_type`
 
-**5. `reg_point_transactions`** — 點數流水帳
-- id, member_id, order_id (nullable), points_delta, type, description, created_at
-- type 值：`awarded`（課程給點）/ `redeemed`（兌換扣點）/ `adjusted`（手動調整）/ `referral`（推薦）/ `manual`（手動發放，獨立於訂單）
+#### 2. 移除「學員」和「點數」頁籤
 
-**6. `reg_operation_logs`** — 操作紀錄（append-only）
-- id, entity_type, entity_id, action, old_value (jsonb), new_value (jsonb), reason, operated_by, created_at
+根據先前討論，將 Members 和 Points 移至 AdminStudents，AdminRegistrations 只保留「訂單」和「報名明細」兩個主頁籤。
 
-### 發票流程設計
+#### 3. AdminStudents — 新增報名學員 + 點數管理
 
-| 操作 | 欄位變更 | 操作紀錄 action |
-|---|---|---|
-| 發票作廢 | invoice_status → 'voided', 填入 void_reason + void_at | `void_invoice` |
-| 發票重開 | invoice_status → 'reissued', 填入 reissued_number + reissued_at | `reissue_invoice` |
+- 將現有的三段式表格改為 Tabs 結構
+- 新增「報名學員」頁籤（`reg_members`，僅顯示有付款紀錄者）
+- 新增「點數管理」頁籤（含手動加減點數功能）
 
-作廢與重開是兩步驟操作，管理員可以只作廢不重開，也可以作廢後立即重開。
+#### 4. category-colors.ts — 補齊 course_type
 
-### 手動給點數（獨立功能）
+新增 `beginner` 和 `agent_skill` 的 label 和配色。
 
-手動給點數**不綁定訂單或課程**，是獨立的管理功能：
-- 寫入 `reg_point_transactions`，`order_id` 為 null，`type` = `'manual'`
-- 同步更新 `reg_members.points` 快取值
-- 寫入 `reg_operation_logs`（action = `manual_points`）
-- 未來在後台管理介面會有獨立的「點數管理」區塊，可搜尋學員並手動加減點數
+### 技術細節
 
-### 自動化
-- Trigger: `reg_members` INSERT 自動產生 `member_no`（SA + YYMM + 4位流水號）
-- Trigger: `reg_point_transactions` INSERT 後自動更新 `reg_members.points`
-- RLS: Admin 完整讀寫，authenticated 可讀，Make.com 用 service_role 不受限
+```typescript
+// 動態取得課程列表作為頁籤
+const { data: regCourses = [] } = useQuery({
+  queryKey: ["reg-courses"],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from("reg_courses")
+      .select("id, course_code, course_name, course_type")
+      .eq("status", "active")
+      .order("course_type")
+      .order("course_name");
+    return data || [];
+  },
+});
+
+// 頁籤：全部 + 每個課程一個
+// value="all" | value={course.id}
+```
 
 ### 實作步驟
-1. **Migration SQL** — 建立 6 張表 + 2 triggers + RLS + indexes
-2. 暫不建前端管理頁面（先讓 Make.com 串接寫入）
+
+1. 更新 `category-colors.ts`
+2. 重構 `AdminRegistrations.tsx`：主頁籤改 2 個，報名明細子頁籤改為按 `reg_courses` 動態產生
+3. 重構 `AdminStudents.tsx`：改 Tabs 結構，新增報名學員 + 點數管理頁籤
+4. 建立 `api-reg-payment` Edge Function 供 Make.com 更新付款狀態
 
