@@ -341,15 +341,11 @@ export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl p-6 gradient-orange">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <Plug className="w-6 h-6 text-primary-foreground" />
-            <h1 className="text-2xl font-bold text-primary-foreground">API 串接管理</h1>
-          </div>
-          <p className="text-sm text-primary-foreground/80">管理外部系統（Make.com、AI Agent）串接所需的 API 端點與認證設定</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={<Plug className="w-6 h-6" />}
+        title="API 串接管理"
+        description="管理外部系統（Make.com、AI Agent）串接所需的 API 端點與認證設定"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

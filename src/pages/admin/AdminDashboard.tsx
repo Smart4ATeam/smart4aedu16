@@ -97,10 +97,10 @@ const AdminDashboard = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Users className="w-5 h-5 text-primary-foreground" />} value={totalStudents} label="總學員數" gradient="gradient-orange" delay={0} />
-        <StatCard icon={<UserCheck className="w-5 h-5 text-primary-foreground" />} value={activeStudents} label="活躍學員" gradient="gradient-purple" delay={0.05} />
-        <StatCard icon={<FileText className="w-5 h-5 text-primary-foreground" />} value={monthlyTasks} label="本月任務發布" gradient="gradient-lime" delay={0.1} />
-        <StatCard icon={<DollarSign className="w-5 h-5 text-primary-foreground" />} value={`$${totalRevenue.toLocaleString()}`} label="總發放收益" gradient="gradient-orange" delay={0.15} />
+        <StatCard icon={<Users className="w-5 h-5" />} value={totalStudents} label="總學員數" variant="primary" delay={0} />
+        <StatCard icon={<UserCheck className="w-5 h-5" />} value={activeStudents} label="活躍學員" variant="info" delay={0.05} />
+        <StatCard icon={<FileText className="w-5 h-5" />} value={monthlyTasks} label="本月任務發布" variant="success" delay={0.1} />
+        <StatCard icon={<DollarSign className="w-5 h-5" />} value={`$${totalRevenue.toLocaleString()}`} label="總發放收益" variant="warning" delay={0.15} />
       </div>
 
       {revenueData.length > 0 && (
