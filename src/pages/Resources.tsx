@@ -332,7 +332,7 @@ export default function Resources() {
               onClick={() => setActiveCategory(cat.id)}
               className={`flex-1 p-4 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
                 activeCategory === cat.id
-                  ? "gradient-orange text-primary-foreground border-primary"
+                  ? "bg-primary/10 text-primary border-primary/30"
                   : "border-border hover:border-primary hover:bg-primary/5 text-muted-foreground"
               }`}
             >
