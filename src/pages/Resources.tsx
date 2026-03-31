@@ -66,7 +66,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
 function ActionButton({ href, label, disabled }: { href?: string | null; label: string; disabled?: boolean }) {
   if (!href) {
     return (
-      <button className="gradient-orange py-2 rounded-lg text-xs font-bold text-primary-foreground opacity-50 cursor-not-allowed" disabled>
+      <button className="bg-primary/10 text-primary py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>
         即將推出
       </button>
     );
