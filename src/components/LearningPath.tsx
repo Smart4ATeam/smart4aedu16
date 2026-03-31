@@ -137,9 +137,9 @@ export function LearningPath() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
                 step.status === "done"
-                  ? "bg-success/15 text-success"
+                  ? "bg-success text-success-foreground"
                   : step.status === "current"
-                  ? "bg-primary/15 text-primary ring-2 ring-primary/20"
+                  ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
                   : "bg-muted text-muted-foreground"
               }`}
             >

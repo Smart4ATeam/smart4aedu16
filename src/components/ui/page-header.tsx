@@ -18,7 +18,7 @@ export function PageHeader({ icon, title, description, className, children }: Pa
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl border border-border p-6",
-        "bg-gradient-to-br from-primary/8 via-primary/4 to-transparent",
+        "bg-gradient-to-br from-accent/8 via-accent/4 to-transparent",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function PageHeader({ icon, title, description, className, children }: Pa
         {children}
       </div>
       {/* 裝飾性背景元素 */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
+      <div className="absolute top-0 right-0 w-48 h-48 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
     </div>
   );
 }
