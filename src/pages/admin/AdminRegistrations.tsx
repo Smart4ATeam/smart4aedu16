@@ -323,7 +323,6 @@ function OrdersTab() {
     </div>
   );
 }
-}
 
 // ═══════════════════════════════════════
 // Enrollments Tab (with dynamic course sub-tabs)
