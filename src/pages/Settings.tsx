@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Settings as SettingsIcon, User, Globe, Bell, Eye, Target, Link, BarChart3, Info, Camera } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
