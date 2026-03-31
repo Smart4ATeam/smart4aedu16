@@ -415,16 +415,7 @@ function RegMembersTab() {
         .in("id", paidMemberIds)
         .order("created_at", { ascending: false });
       if (error) return [] as RegMember[];
-      // Deduplicate (a member may have multiple paid enrollments)
-      const seen = new Set<string>();
-      const unique: RegMember[] = [];
-      for (const m of (data || []) as any[]) {
-        if (!seen.has(m.id)) {
-          seen.add(m.id);
-          unique.push(m as RegMember);
-        }
-      }
-      return unique;
+      return (data || []) as RegMember[];
     },
   });
 
