@@ -9,8 +9,8 @@ import { Eye, EyeOff, Mail, Lock, IdCard, UserCheck, LogIn } from "lucide-react"
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import logoFed from "@/assets/logo-fed.png";
+import logoW from "@/assets/logo-w.png";
 
 type AuthMode = "login" | "activate" | "forgot";
 
@@ -177,7 +177,7 @@ export default function Auth() {
         {/* Logo / Header */}
         <div className="text-center mb-8">
           <img
-            src={theme === "dark" || theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? logoDark : logoLight}
+            src={theme === "dark" || theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? logoW : logoFed}
             alt="Smart4A Logo"
             className="h-7 mx-auto mb-2 object-contain" />
           

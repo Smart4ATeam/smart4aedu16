@@ -15,8 +15,8 @@ import {
   Plug,
   BookOpen,
 } from "lucide-react";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import logoFed from "@/assets/logo-fed.png";
+import logoW from "@/assets/logo-w.png";
 
 const navItems = [
   { title: "營運看板", url: "/admin", icon: LayoutDashboard },
@@ -43,7 +43,7 @@ export function AdminSidebar() {
         {/* Logo */}
         <div className="mb-10 px-2">
           <img
-            src={isDark ? logoDark : logoLight}
+            src={isDark ? logoW : logoFed}
             alt="Smart4A"
             className="h-7 w-auto object-contain"
           />

@@ -17,8 +17,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import logoFed from "@/assets/logo-fed.png";
+import logoW from "@/assets/logo-w.png";
 
 const navItems = [
   { title: "儀表板", url: "/", icon: LayoutDashboard },
@@ -52,7 +52,7 @@ export function AppSidebar() {
         {/* Logo */}
         <div className="mb-10 px-2">
           <img
-            src={isDark ? logoDark : logoLight}
+            src={isDark ? logoW : logoFed}
             alt="Smart4A"
             className="h-7 w-auto object-contain"
           />
