@@ -16,9 +16,11 @@ const categoryLabels: Record<string, string> = {
 };
 
 const categoryColors: Record<string, string> = {
-  quest: "bg-primary/20 text-primary", basic: "bg-blue-500/20 text-blue-400",
-  intermediate: "bg-amber-500/20 text-amber-400", advanced: "bg-red-500/20 text-red-400",
-  special: "bg-accent/20 text-accent",
+  quest: "bg-primary/10 text-primary border border-primary/20",
+  basic: "bg-chart-cyan/10 text-chart-cyan border border-chart-cyan/20",
+  intermediate: "bg-accent/10 text-accent border border-accent/20",
+  advanced: "bg-destructive/10 text-destructive border border-destructive/20",
+  special: "bg-accent/10 text-accent border border-accent/20",
 };
 
 export default function Learning() {
