@@ -9,8 +9,8 @@ import { Eye, EyeOff, Mail, Lock, IdCard, UserCheck, LogIn } from "lucide-react"
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import logoFed from "@/assets/logo-fed.png";
+import logoW from "@/assets/logo-w.png";
 
 type AuthMode = "login" | "activate" | "forgot";
 
