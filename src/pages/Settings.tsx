@@ -217,7 +217,7 @@ export default function Settings() {
                 onClick={() => setServerLocation(s)}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                   serverLocation === s
-                    ? "gradient-orange text-primary-foreground"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted border border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
