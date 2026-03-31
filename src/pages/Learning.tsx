@@ -20,7 +20,7 @@ const categoryColors: Record<string, string> = {
   basic: "bg-accent/10 text-accent border border-accent/20",
   intermediate: "bg-chart-cyan/10 text-chart-cyan border border-chart-cyan/20",
   advanced: "bg-success/10 text-success border border-success/20",
-  special: "bg-accent/10 text-accent border border-accent/20",
+  special: "bg-destructive/10 text-destructive border border-destructive/20",
 };
 
 export default function Learning() {
