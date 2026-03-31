@@ -764,6 +764,349 @@ export type Database = {
           },
         ]
       }
+      reg_courses: {
+        Row: {
+          course_code: string
+          course_date: unknown
+          course_name: string
+          course_type: string
+          created_at: string
+          id: string
+          price: number
+          status: string
+        }
+        Insert: {
+          course_code: string
+          course_date?: unknown
+          course_name: string
+          course_type?: string
+          created_at?: string
+          id?: string
+          price?: number
+          status?: string
+        }
+        Update: {
+          course_code?: string
+          course_date?: unknown
+          course_name?: string
+          course_type?: string
+          created_at?: string
+          id?: string
+          price?: number
+          status?: string
+        }
+        Relationships: []
+      }
+      reg_enrollments: {
+        Row: {
+          certificate: string | null
+          checked_in: boolean
+          course_id: string | null
+          course_type: string | null
+          dealer_id: string | null
+          enrolled_at: string
+          id: string
+          invoice_title: string | null
+          lovable_invite: string | null
+          member_id: string | null
+          notes: string | null
+          order_id: string | null
+          paid_at: string | null
+          payment_status: string | null
+          points_awarded: number
+          post_survey: string | null
+          post_test: string | null
+          pre_notification_sent: boolean
+          referrer: string | null
+          status: string
+          test_score: number | null
+        }
+        Insert: {
+          certificate?: string | null
+          checked_in?: boolean
+          course_id?: string | null
+          course_type?: string | null
+          dealer_id?: string | null
+          enrolled_at?: string
+          id?: string
+          invoice_title?: string | null
+          lovable_invite?: string | null
+          member_id?: string | null
+          notes?: string | null
+          order_id?: string | null
+          paid_at?: string | null
+          payment_status?: string | null
+          points_awarded?: number
+          post_survey?: string | null
+          post_test?: string | null
+          pre_notification_sent?: boolean
+          referrer?: string | null
+          status?: string
+          test_score?: number | null
+        }
+        Update: {
+          certificate?: string | null
+          checked_in?: boolean
+          course_id?: string | null
+          course_type?: string | null
+          dealer_id?: string | null
+          enrolled_at?: string
+          id?: string
+          invoice_title?: string | null
+          lovable_invite?: string | null
+          member_id?: string | null
+          notes?: string | null
+          order_id?: string | null
+          paid_at?: string | null
+          payment_status?: string | null
+          points_awarded?: number
+          post_survey?: string | null
+          post_test?: string | null
+          pre_notification_sent?: boolean
+          referrer?: string | null
+          status?: string
+          test_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reg_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "reg_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reg_enrollments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "reg_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reg_enrollments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "reg_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reg_members: {
+        Row: {
+          course_level: string | null
+          created_at: string
+          email: string | null
+          id: string
+          member_no: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          points: number
+          referral_code: string | null
+        }
+        Insert: {
+          course_level?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          member_no?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          points?: number
+          referral_code?: string | null
+        }
+        Update: {
+          course_level?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          member_no?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          points?: number
+          referral_code?: string | null
+        }
+        Relationships: []
+      }
+      reg_operation_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          operated_by: string | null
+          reason: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          operated_by?: string | null
+          reason: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          operated_by?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
+      reg_orders: {
+        Row: {
+          course_ids: string[]
+          course_snapshot: Json | null
+          created_at: string
+          dealer_id: string | null
+          discount_plan: string | null
+          id: string
+          invoice_number: string | null
+          invoice_reissued_at: string | null
+          invoice_reissued_number: string | null
+          invoice_status: string
+          invoice_title: string | null
+          invoice_type: string | null
+          invoice_void_at: string | null
+          invoice_void_reason: string | null
+          notes: string | null
+          order_no: string
+          p1_email: string | null
+          p1_name: string | null
+          p1_phone: string | null
+          p2_email: string | null
+          p2_name: string | null
+          p2_phone: string | null
+          p3_email: string | null
+          p3_name: string | null
+          p3_phone: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_status: string
+          total_amount: number
+        }
+        Insert: {
+          course_ids?: string[]
+          course_snapshot?: Json | null
+          created_at?: string
+          dealer_id?: string | null
+          discount_plan?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_reissued_at?: string | null
+          invoice_reissued_number?: string | null
+          invoice_status?: string
+          invoice_title?: string | null
+          invoice_type?: string | null
+          invoice_void_at?: string | null
+          invoice_void_reason?: string | null
+          notes?: string | null
+          order_no: string
+          p1_email?: string | null
+          p1_name?: string | null
+          p1_phone?: string | null
+          p2_email?: string | null
+          p2_name?: string | null
+          p2_phone?: string | null
+          p3_email?: string | null
+          p3_name?: string | null
+          p3_phone?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          total_amount?: number
+        }
+        Update: {
+          course_ids?: string[]
+          course_snapshot?: Json | null
+          created_at?: string
+          dealer_id?: string | null
+          discount_plan?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_reissued_at?: string | null
+          invoice_reissued_number?: string | null
+          invoice_status?: string
+          invoice_title?: string | null
+          invoice_type?: string | null
+          invoice_void_at?: string | null
+          invoice_void_reason?: string | null
+          notes?: string | null
+          order_no?: string
+          p1_email?: string | null
+          p1_name?: string | null
+          p1_phone?: string | null
+          p2_email?: string | null
+          p2_name?: string | null
+          p2_phone?: string | null
+          p3_email?: string | null
+          p3_name?: string | null
+          p3_phone?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_status?: string
+          total_amount?: number
+        }
+        Relationships: []
+      }
+      reg_point_transactions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          member_id: string
+          order_id: string | null
+          points_delta: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_id: string
+          order_id?: string | null
+          points_delta: number
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_id?: string
+          order_id?: string | null
+          points_delta?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reg_point_transactions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "reg_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reg_point_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "reg_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resource_sub_categories: {
         Row: {
           category: string
