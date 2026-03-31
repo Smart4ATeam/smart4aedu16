@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ClipboardList, Search, CreditCard, FileText,
-  Eye, RotateCcw,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -117,7 +117,51 @@ export default function AdminRegistrations() {
 function OrdersTab() {
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<RegOrder | null>(null);
-  const [invoiceDialog, setInvoiceDialog] = useState(false);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // Invoice edit state
+  const [editInvoiceStatus, setEditInvoiceStatus] = useState("");
+  const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
+  const [editReason, setEditReason] = useState("");
+
+  const openOrderDetail = (o: RegOrder) => {
+    setSelectedOrder(o);
+    setEditInvoiceStatus(o.invoice_status);
+    setEditInvoiceNumber(o.invoice_number || "");
+    setEditReason("");
+  };
+
+  const invoiceMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOrder) throw new Error("無訂單");
+      if (!editReason.trim()) throw new Error("請填寫變更原因");
+
+      const updates: Record<string, any> = { invoice_status: editInvoiceStatus };
+      if (editInvoiceStatus === "voided") {
+        updates.invoice_void_reason = editReason;
+        updates.invoice_void_at = new Date().toISOString();
+      } else if (editInvoiceStatus === "reissued") {
+        updates.invoice_reissued_number = editInvoiceNumber;
+        updates.invoice_reissued_at = new Date().toISOString();
+      }
+      if (editInvoiceNumber !== (selectedOrder.invoice_number || "")) {
+        updates.invoice_number = editInvoiceNumber || null;
+      }
+
+      const { error } = await supabase.from("reg_orders" as any).update(updates as any).eq("id", selectedOrder.id);
+      if (error) throw error;
+
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "order", entity_id: selectedOrder.id, action: "update_invoice",
+        old_value: { invoice_status: selectedOrder.invoice_status, invoice_number: selectedOrder.invoice_number },
+        new_value: updates,
+        reason: editReason, operated_by: user?.id,
+      } as any);
+    },
+    onSuccess: () => { toast.success("發票已更新"); queryClient.invalidateQueries({ queryKey: ["reg-orders"] }); setSelectedOrder(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["reg-orders"],
@@ -135,6 +179,11 @@ function OrdersTab() {
     !search || o.order_no?.toLowerCase().includes(search.toLowerCase()) ||
     o.p1_name?.toLowerCase().includes(search.toLowerCase()) ||
     o.p1_email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const hasInvoiceChanges = selectedOrder && (
+    editInvoiceStatus !== selectedOrder.invoice_status ||
+    editInvoiceNumber !== (selectedOrder.invoice_number || "")
   );
 
   return (
@@ -191,14 +240,9 @@ function OrdersTab() {
                 <TableCell className="text-xs">{o.dealer_id || "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatDate(o.created_at)}</TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedOrder(o)}>
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedOrder(o); setInvoiceDialog(true); }}>
-                      <FileText className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openOrderDetail(o)}>
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -206,15 +250,15 @@ function OrdersTab() {
         </Table>
       </div>
 
-      {/* Order Detail Dialog */}
-      <Dialog open={!!selectedOrder && !invoiceDialog} onOpenChange={v => { if (!v) setSelectedOrder(null); }}>
+      {/* Order Detail + Invoice Edit Dialog */}
+      <Dialog open={!!selectedOrder} onOpenChange={v => { if (!v) setSelectedOrder(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>訂單詳情</DialogTitle>
             <DialogDescription>{selectedOrder?.order_no}</DialogDescription>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">金額：</span>NT${Number(selectedOrder.total_amount).toLocaleString()}</div>
                 <div><span className="text-muted-foreground">折扣方案：</span>{selectedOrder.discount_plan || "—"}</div>
@@ -222,9 +266,8 @@ function OrdersTab() {
                 <div><span className="text-muted-foreground">付款狀態：</span>{paymentBadge(selectedOrder.payment_status)}</div>
                 <div><span className="text-muted-foreground">經銷商：</span>{selectedOrder.dealer_id || "—"}</div>
                 <div><span className="text-muted-foreground">發票抬頭：</span>{selectedOrder.invoice_title || "—"}</div>
-                <div><span className="text-muted-foreground">發票號碼：</span>{selectedOrder.invoice_number || "—"}</div>
-                <div><span className="text-muted-foreground">發票狀態：</span>{invoiceBadge(selectedOrder.invoice_status)}</div>
               </div>
+
               <div className="border-t border-border pt-2">
                 <p className="text-xs font-medium mb-1">報名人員</p>
                 {[
@@ -235,118 +278,49 @@ function OrdersTab() {
                   <div key={i} className="text-xs text-muted-foreground">P{i + 1}: {p.name} {('phone' in p && p.phone) ? `/ ${p.phone}` : ""} {('email' in p && p.email) ? `/ ${p.email}` : ""}</div>
                 ))}
               </div>
+
               {selectedOrder.notes && (
                 <div className="border-t border-border pt-2">
                   <p className="text-xs text-muted-foreground">{selectedOrder.notes}</p>
                 </div>
               )}
+
+              {/* Invoice Edit Section */}
+              <div className="border-t border-border pt-3 space-y-3">
+                <p className="text-xs font-medium">發票管理</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">發票狀態</label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={editInvoiceStatus}
+                      onChange={e => setEditInvoiceStatus(e.target.value)}
+                    >
+                      <option value="pending">待開立</option>
+                      <option value="active">有效</option>
+                      <option value="voided">已作廢</option>
+                      <option value="reissued">已重開</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">發票號碼</label>
+                    <Input value={editInvoiceNumber} onChange={e => setEditInvoiceNumber(e.target.value)} placeholder="輸入發票號碼" className="h-9" />
+                  </div>
+                </div>
+                {hasInvoiceChanges && (
+                  <div className="space-y-2">
+                    <Textarea placeholder="變更原因（必填）" value={editReason} onChange={e => setEditReason(e.target.value)} className="h-16" />
+                    <Button size="sm" onClick={() => invoiceMutation.mutate()} disabled={invoiceMutation.isPending || !editReason.trim()}>
+                      儲存發票變更
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Invoice Management Dialog */}
-      {selectedOrder && (
-        <InvoiceDialog
-          open={invoiceDialog}
-          onOpenChange={v => { setInvoiceDialog(v); if (!v) setSelectedOrder(null); }}
-          order={selectedOrder}
-        />
-      )}
     </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// Invoice Dialog
-// ═══════════════════════════════════════
-function InvoiceDialog({ open, onOpenChange, order }: { open: boolean; onOpenChange: (v: boolean) => void; order: RegOrder }) {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const [voidReason, setVoidReason] = useState("");
-  const [reissuedNumber, setReissuedNumber] = useState("");
-
-  const voidMutation = useMutation({
-    mutationFn: async () => {
-      if (!voidReason.trim()) throw new Error("請填寫作廢原因");
-      const { error } = await supabase.from("reg_orders" as any).update({
-        invoice_status: "voided",
-        invoice_void_reason: voidReason,
-        invoice_void_at: new Date().toISOString(),
-      } as any).eq("id", order.id);
-      if (error) throw error;
-      await supabase.from("reg_operation_logs" as any).insert({
-        entity_type: "order", entity_id: order.id, action: "void_invoice",
-        old_value: { invoice_status: order.invoice_status, invoice_number: order.invoice_number },
-        new_value: { invoice_status: "voided", void_reason: voidReason },
-        reason: voidReason, operated_by: user?.id,
-      } as any);
-    },
-    onSuccess: () => { toast.success("發票已作廢"); queryClient.invalidateQueries({ queryKey: ["reg-orders"] }); onOpenChange(false); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const reissueMutation = useMutation({
-    mutationFn: async () => {
-      if (!reissuedNumber.trim()) throw new Error("請填寫新發票號碼");
-      const { error } = await supabase.from("reg_orders" as any).update({
-        invoice_status: "reissued",
-        invoice_reissued_number: reissuedNumber,
-        invoice_reissued_at: new Date().toISOString(),
-      } as any).eq("id", order.id);
-      if (error) throw error;
-      await supabase.from("reg_operation_logs" as any).insert({
-        entity_type: "order", entity_id: order.id, action: "reissue_invoice",
-        old_value: { invoice_status: order.invoice_status },
-        new_value: { invoice_status: "reissued", reissued_number: reissuedNumber },
-        reason: `重開發票：${reissuedNumber}`, operated_by: user?.id,
-      } as any);
-    },
-    onSuccess: () => { toast.success("發票已重開"); queryClient.invalidateQueries({ queryKey: ["reg-orders"] }); onOpenChange(false); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>發票管理</DialogTitle>
-          <DialogDescription>訂單 {order.order_no} — 目前狀態：{invoiceBadge(order.invoice_status)}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="text-sm space-y-1">
-            <div><span className="text-muted-foreground">發票號碼：</span>{order.invoice_number || "—"}</div>
-            <div><span className="text-muted-foreground">發票抬頭：</span>{order.invoice_title || "—"}</div>
-            {order.invoice_status === "voided" && (
-              <div><span className="text-muted-foreground">作廢原因：</span>{order.invoice_void_reason}</div>
-            )}
-            {order.invoice_status === "reissued" && (
-              <div><span className="text-muted-foreground">新發票號碼：</span>{order.invoice_reissued_number}</div>
-            )}
-          </div>
-
-          {order.invoice_status === "active" && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium">作廢發票</p>
-              <Textarea placeholder="作廢原因（必填）" value={voidReason} onChange={e => setVoidReason(e.target.value)} className="h-20" />
-              <Button variant="destructive" size="sm" onClick={() => voidMutation.mutate()} disabled={voidMutation.isPending}>
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />作廢
-              </Button>
-            </div>
-          )}
-
-          {order.invoice_status === "voided" && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium">重開發票</p>
-              <Input placeholder="新發票號碼" value={reissuedNumber} onChange={e => setReissuedNumber(e.target.value)} />
-              <Button size="sm" onClick={() => reissueMutation.mutate()} disabled={reissueMutation.isPending}>
-                <FileText className="w-3.5 h-3.5 mr-1.5" />重開發票
-              </Button>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
