@@ -175,7 +175,7 @@ export function LearningPath() {
               <Badge
                 key={i}
                 variant={s.enrolled ? "default" : "outline"}
-                className={s.enrolled ? "gradient-lime text-primary-foreground border-0" : ""}
+                className={s.enrolled ? "bg-success/15 text-success border-success/20" : ""}
               >
                 {s.enrolled && <Check className="w-3 h-3 mr-1" />}
                 {s.title}
