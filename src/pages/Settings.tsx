@@ -152,16 +152,11 @@ export default function Settings() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl p-6 gradient-orange">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <SettingsIcon className="w-6 h-6 text-primary-foreground" />
-            <h1 className="text-2xl font-bold text-primary-foreground">學員俱樂部專區設定</h1>
-          </div>
-          <p className="text-sm text-primary-foreground/80">個人化您的學習體驗</p>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />
-      </div>
+      <PageHeader
+        icon={<SettingsIcon className="w-6 h-6" />}
+        title="學員俱樂部專區設定"
+        description="個人化您的學習體驗"
+      />
 
       {/* 個人資料 */}
       <SectionCard icon={<User className="w-5 h-5 text-primary" />} title="個人資料">
