@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 interface Step {
   label: string;
   status: "done" | "current" | "locked";
+  category: string;
 }
 
 interface SpecialCourse {
