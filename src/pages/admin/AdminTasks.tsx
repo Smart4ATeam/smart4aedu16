@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { difficultyColors } from "@/lib/category-colors";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Task = Tables<"tasks">;

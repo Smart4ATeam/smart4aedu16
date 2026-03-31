@@ -3,6 +3,7 @@ import { Search, Play, Flame, Star, FolderOpen, Wrench, Puzzle, LayoutTemplate, 
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { difficultyColors } from "@/lib/category-colors";
 
 type Resource = Tables<"resources"> & {
   sub_category?: string | null;
