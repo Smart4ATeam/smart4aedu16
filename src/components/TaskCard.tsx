@@ -199,7 +199,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowDetail(false)} className="w-full gradient-orange text-primary-foreground">確定</Button>
+            <Button onClick={() => setShowDetail(false)} className="w-full">確定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
