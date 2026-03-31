@@ -54,7 +54,7 @@ export default function ResetPassword() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="glass-card p-6 text-center max-w-md">
           <p className="text-foreground">無效的密碼重設連結。</p>
-          <Button onClick={() => navigate("/auth")} className="mt-4 gradient-orange text-primary-foreground">
+          <Button onClick={() => navigate("/auth")} className="mt-4">
             返回登入
           </Button>
         </div>
