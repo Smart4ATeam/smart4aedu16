@@ -282,7 +282,7 @@ export default function Settings() {
       {/* 數據管理 */}
       <SectionCard icon={<BarChart3 className="w-5 h-5 text-primary" />} title="數據管理">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Button className="gradient-orange text-primary-foreground hover:opacity-90">📤 匯出學習資料</Button>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">📤 匯出學習資料</Button>
           <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">🔄 同步雲端資料</Button>
           <Button variant="outline" className="text-muted-foreground hover:text-foreground">🗑 清除快取</Button>
           <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10">⚠ 重置所有設定</Button>
