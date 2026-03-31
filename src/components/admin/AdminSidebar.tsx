@@ -15,8 +15,8 @@ import {
   Plug,
   BookOpen,
 } from "lucide-react";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import logoFed from "@/assets/logo-fed.png";
+import logoW from "@/assets/logo-w.png";
 
 const navItems = [
   { title: "營運看板", url: "/admin", icon: LayoutDashboard },
