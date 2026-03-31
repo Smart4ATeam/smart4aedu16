@@ -230,9 +230,9 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
         className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gradient-orange flex items-center justify-center text-primary-foreground">
+          <IconBox variant="primary" size="sm">
             {endpoint.icon}
-          </div>
+          </IconBox>
           <div className="text-left">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-primary/20 text-primary font-bold">
