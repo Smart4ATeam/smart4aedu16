@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ClipboardList, Search, Users, CreditCard, Award, FileText,
-  ChevronDown, ChevronUp, Eye, RotateCcw, Plus, Minus, History,
+  ClipboardList, Search, CreditCard, FileText,
+  Eye, RotateCcw,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { IconBox } from "@/components/ui/icon-box";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,15 +13,13 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { categoryLabels } from "@/lib/category-colors";
 
 // ── Types ──
 type RegOrder = {
@@ -50,26 +47,8 @@ type RegEnrollment = {
   reg_courses?: { id: string; course_code: string; course_name: string; course_type: string } | null;
 };
 
-type RegMember = {
-  id: string; member_no: string | null; name: string; phone: string | null;
-  email: string | null; course_level: string | null; points: number;
-  referral_code: string | null; notes: string | null; created_at: string;
-};
-
-type RegPointTx = {
-  id: string; member_id: string; order_id: string | null;
-  points_delta: number; type: string; description: string | null; created_at: string;
-  reg_members?: { name: string; member_no: string | null } | null;
-};
-
-// ── Course type labels ──
-const COURSE_TYPES: Record<string, string> = {
-  all: "全部",
-  beginner: "入門班",
-  basic: "基礎班",
-  intermediate: "中階班",
-  advanced: "高階班",
-  agent_skill: "經紀人特訓",
+type RegCourse = {
+  id: string; course_code: string; course_name: string; course_type: string;
 };
 
 // ── Helpers ──
@@ -116,21 +95,17 @@ export default function AdminRegistrations() {
       <PageHeader
         icon={<ClipboardList className="w-6 h-6" />}
         title="報名管理"
-        description="管理課程報名訂單、學員資料、發票與點數"
+        description="管理課程報名訂單與報名明細"
       />
 
       <Tabs value={mainTab} onValueChange={setMainTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-xl">
+        <TabsList className="grid grid-cols-2 w-full max-w-xs">
           <TabsTrigger value="orders" className="gap-1.5 text-xs"><FileText className="w-3.5 h-3.5" />訂單</TabsTrigger>
           <TabsTrigger value="enrollments" className="gap-1.5 text-xs"><ClipboardList className="w-3.5 h-3.5" />報名明細</TabsTrigger>
-          <TabsTrigger value="members" className="gap-1.5 text-xs"><Users className="w-3.5 h-3.5" />學員</TabsTrigger>
-          <TabsTrigger value="points" className="gap-1.5 text-xs"><Award className="w-3.5 h-3.5" />點數</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders"><OrdersTab /></TabsContent>
         <TabsContent value="enrollments"><EnrollmentsTab /></TabsContent>
-        <TabsContent value="members"><MembersTab /></TabsContent>
-        <TabsContent value="points"><PointsTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -199,11 +174,7 @@ function OrdersTab() {
                 </TableCell>
                 <TableCell className="text-sm">NT${Number(o.total_amount).toLocaleString()}</TableCell>
                 <TableCell>{paymentBadge(o.payment_status)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    {invoiceBadge(o.invoice_status)}
-                  </div>
-                </TableCell>
+                <TableCell>{invoiceBadge(o.invoice_status)}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatDate(o.created_at)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -290,7 +261,6 @@ function InvoiceDialog({ open, onOpenChange, order }: { open: boolean; onOpenCha
         invoice_void_at: new Date().toISOString(),
       } as any).eq("id", order.id);
       if (error) throw error;
-      // Log operation
       await supabase.from("reg_operation_logs" as any).insert({
         entity_type: "order", entity_id: order.id, action: "void_invoice",
         old_value: { invoice_status: order.invoice_status, invoice_number: order.invoice_number },
@@ -367,11 +337,25 @@ function InvoiceDialog({ open, onOpenChange, order }: { open: boolean; onOpenCha
 }
 
 // ═══════════════════════════════════════
-// Enrollments Tab (with course type sub-tabs)
+// Enrollments Tab (with dynamic course sub-tabs)
 // ═══════════════════════════════════════
 function EnrollmentsTab() {
-  const [courseType, setCourseType] = useState("all");
+  const [selectedCourse, setSelectedCourse] = useState("all");
   const [search, setSearch] = useState("");
+
+  const { data: regCourses = [] } = useQuery({
+    queryKey: ["reg-courses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reg_courses" as any)
+        .select("id, course_code, course_name, course_type")
+        .eq("status", "active")
+        .order("course_type")
+        .order("course_name");
+      if (error) throw error;
+      return (data || []) as unknown as RegCourse[];
+    },
+  });
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["reg-enrollments"],
@@ -386,7 +370,7 @@ function EnrollmentsTab() {
   });
 
   const filtered = enrollments.filter(e => {
-    if (courseType !== "all" && e.course_type !== courseType) return false;
+    if (selectedCourse !== "all" && e.course_id !== selectedCourse) return false;
     if (search) {
       const s = search.toLowerCase();
       const memberName = (e.reg_members as any)?.name?.toLowerCase() || "";
@@ -400,10 +384,13 @@ function EnrollmentsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Tabs value={courseType} onValueChange={setCourseType}>
-          <TabsList>
-            {Object.entries(COURSE_TYPES).map(([k, v]) => (
-              <TabsTrigger key={k} value={k} className="text-xs">{v}</TabsTrigger>
+        <Tabs value={selectedCourse} onValueChange={setSelectedCourse}>
+          <TabsList className="flex-wrap h-auto gap-0.5">
+            <TabsTrigger value="all" className="text-xs">全部</TabsTrigger>
+            {regCourses.map(c => (
+              <TabsTrigger key={c.id} value={c.id} className="text-xs">
+                {c.course_name}
+              </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
@@ -441,7 +428,7 @@ function EnrollmentsTab() {
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">{(e.reg_courses as any)?.course_name || "—"}</div>
-                  <div className="text-xs text-muted-foreground">{COURSE_TYPES[e.course_type || ""] || e.course_type}</div>
+                  <div className="text-xs text-muted-foreground">{categoryLabels[e.course_type || ""] || e.course_type}</div>
                 </TableCell>
                 <TableCell>{statusBadge(e.status)}</TableCell>
                 <TableCell>{e.payment_status ? paymentBadge(e.payment_status) : "—"}</TableCell>
@@ -454,259 +441,6 @@ function EnrollmentsTab() {
           </TableBody>
         </Table>
       </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// Members Tab
-// ═══════════════════════════════════════
-function MembersTab() {
-  const [search, setSearch] = useState("");
-
-  const { data: members = [], isLoading } = useQuery({
-    queryKey: ["reg-members"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reg_members" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data || []) as unknown as RegMember[];
-    },
-  });
-
-  const filtered = members.filter(m => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return m.name?.toLowerCase().includes(s) || m.member_no?.toLowerCase().includes(s) || m.email?.toLowerCase().includes(s) || m.phone?.includes(s);
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="搜尋學員編號、姓名、信箱、電話..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
-        <Badge variant="outline">{filtered.length} 位學員</Badge>
-      </div>
-
-      <div className="glass-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32">學員編號</TableHead>
-              <TableHead>姓名</TableHead>
-              <TableHead>電話</TableHead>
-              <TableHead>信箱</TableHead>
-              <TableHead className="w-20">點數</TableHead>
-              <TableHead className="w-28">建立日期</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">尚無學員資料</TableCell></TableRow>
-            ) : filtered.map(m => (
-              <TableRow key={m.id}>
-                <TableCell className="font-mono text-xs">{m.member_no || "—"}</TableCell>
-                <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{m.phone || "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{m.email || "—"}</TableCell>
-                <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// Points Tab
-// ═══════════════════════════════════════
-function PointsTab() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState("");
-  const [pointsDelta, setPointsDelta] = useState(0);
-  const [pointType, setPointType] = useState("manual");
-  const [pointDesc, setPointDesc] = useState("");
-  const [reason, setReason] = useState("");
-
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["reg-point-transactions"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reg_point_transactions" as any)
-        .select("*, reg_members(name, member_no)")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return (data || []) as unknown as RegPointTx[];
-    },
-  });
-
-  const { data: members = [] } = useQuery({
-    queryKey: ["reg-members-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reg_members" as any)
-        .select("id, name, member_no, points")
-        .order("name");
-      if (error) throw error;
-      return (data || []) as unknown as { id: string; name: string; member_no: string | null; points: number }[];
-    },
-  });
-
-  const addMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedMemberId) throw new Error("請選擇學員");
-      if (pointsDelta === 0) throw new Error("點數不可為 0");
-      if (!reason.trim()) throw new Error("請填寫操作原因");
-
-      const { error } = await supabase.from("reg_point_transactions" as any).insert({
-        member_id: selectedMemberId,
-        points_delta: pointsDelta,
-        type: pointType,
-        description: pointDesc || null,
-      } as any);
-      if (error) throw error;
-
-      // Log operation
-      await supabase.from("reg_operation_logs" as any).insert({
-        entity_type: "member", entity_id: selectedMemberId, action: "manual_points",
-        new_value: { points_delta: pointsDelta, type: pointType, description: pointDesc },
-        reason, operated_by: user?.id,
-      } as any);
-    },
-    onSuccess: () => {
-      toast.success("點數已調整");
-      queryClient.invalidateQueries({ queryKey: ["reg-point-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["reg-members"] });
-      queryClient.invalidateQueries({ queryKey: ["reg-members-list"] });
-      setShowAddDialog(false);
-      setSelectedMemberId("");
-      setPointsDelta(0);
-      setPointDesc("");
-      setReason("");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const typeLabels: Record<string, string> = {
-    manual: "手動發放",
-    awarded: "課程給點",
-    redeemed: "兌換扣點",
-    adjusted: "手動調整",
-    referral: "推薦獎勵",
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Badge variant="outline">{transactions.length} 筆紀錄（最近 200 筆）</Badge>
-        <Button size="sm" onClick={() => setShowAddDialog(true)} className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" />手動調整點數
-        </Button>
-      </div>
-
-      <div className="glass-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>學員</TableHead>
-              <TableHead className="w-24">點數</TableHead>
-              <TableHead className="w-24">類型</TableHead>
-              <TableHead>說明</TableHead>
-              <TableHead className="w-32">時間</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
-            ) : transactions.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">尚無點數紀錄</TableCell></TableRow>
-            ) : transactions.map(tx => (
-              <TableRow key={tx.id}>
-                <TableCell>
-                  <div className="text-sm font-medium">{(tx.reg_members as any)?.name || "—"}</div>
-                  <div className="text-xs text-muted-foreground">{(tx.reg_members as any)?.member_no || ""}</div>
-                </TableCell>
-                <TableCell>
-                  <span className={`text-sm font-mono font-bold ${tx.points_delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                    {tx.points_delta > 0 ? "+" : ""}{tx.points_delta}
-                  </span>
-                </TableCell>
-                <TableCell><Badge variant="outline" className="text-xs">{typeLabels[tx.type] || tx.type}</Badge></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{tx.description || "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDate(tx.created_at)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Add Points Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>手動調整點數</DialogTitle>
-            <DialogDescription>為學員增加或扣除點數</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">選擇學員</label>
-              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="選擇學員..." /></SelectTrigger>
-                <SelectContent>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name} ({m.member_no || "無編號"}) — {m.points} 點
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="text-sm text-muted-foreground mb-1 block">點數（正數加、負數扣）</label>
-                <Input type="number" value={pointsDelta} onChange={e => setPointsDelta(Number(e.target.value))} className="h-9" />
-              </div>
-              <div className="w-32">
-                <label className="text-sm text-muted-foreground mb-1 block">類型</label>
-                <Select value={pointType} onValueChange={setPointType}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">手動發放</SelectItem>
-                    <SelectItem value="adjusted">手動調整</SelectItem>
-                    <SelectItem value="awarded">課程給點</SelectItem>
-                    <SelectItem value="referral">推薦獎勵</SelectItem>
-                    <SelectItem value="redeemed">兌換扣點</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">說明</label>
-              <Input value={pointDesc} onChange={e => setPointDesc(e.target.value)} placeholder="例：完課獎勵" className="h-9" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">操作原因（必填，會記錄在操作紀錄中）</label>
-              <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="例：管理員手動補發活動獎勵點數" className="h-16" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>取消</Button>
-            <Button onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>確認調整</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
