@@ -118,6 +118,11 @@
     @apply bg-background text-foreground font-sans;
     font-family: 'Noto Sans TC', 'Inter', system-ui, sans-serif;
   }
+
+  .dark body {
+    background: linear-gradient(145deg, hsl(220 45% 14%), hsl(215 40% 18%), hsl(220 45% 14%));
+    background-attachment: fixed;
+  }
 }
 
 @layer utilities {
