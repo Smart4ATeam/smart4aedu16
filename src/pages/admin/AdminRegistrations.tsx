@@ -147,24 +147,31 @@ function OrdersTab() {
         <Badge variant="outline">{filtered.length} 筆訂單</Badge>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-36">訂單編號</TableHead>
-              <TableHead>報名人</TableHead>
+              <TableHead className="w-32 min-w-[8rem]">訂單編號</TableHead>
+              <TableHead className="min-w-[6rem]">報名人</TableHead>
               <TableHead className="w-24">金額</TableHead>
-              <TableHead className="w-24">付款</TableHead>
-              <TableHead className="w-24">發票</TableHead>
+              <TableHead className="w-24">付款狀態</TableHead>
+              <TableHead className="w-24">付款方式</TableHead>
+              <TableHead className="w-28">付款日期</TableHead>
+              <TableHead className="w-24">優惠方案</TableHead>
+              <TableHead className="w-24">發票狀態</TableHead>
+              <TableHead className="w-28">發票號碼</TableHead>
+              <TableHead className="w-24">發票類型</TableHead>
+              <TableHead className="w-28">發票抬頭</TableHead>
+              <TableHead className="w-24">經銷商</TableHead>
               <TableHead className="w-28">建立日期</TableHead>
               <TableHead className="w-20">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">尚無訂單資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">尚無訂單資料</TableCell></TableRow>
             ) : filtered.map(o => (
               <TableRow key={o.id}>
                 <TableCell className="font-mono text-xs">{o.order_no}</TableCell>
@@ -174,7 +181,14 @@ function OrdersTab() {
                 </TableCell>
                 <TableCell className="text-sm">NT${Number(o.total_amount).toLocaleString()}</TableCell>
                 <TableCell>{paymentBadge(o.payment_status)}</TableCell>
+                <TableCell className="text-xs">{o.payment_method || "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{formatDate(o.paid_at)}</TableCell>
+                <TableCell className="text-xs">{o.discount_plan || "—"}</TableCell>
                 <TableCell>{invoiceBadge(o.invoice_status)}</TableCell>
+                <TableCell className="text-xs font-mono">{o.invoice_number || "—"}</TableCell>
+                <TableCell className="text-xs">{o.invoice_type || "—"}</TableCell>
+                <TableCell className="text-xs">{o.invoice_title || "—"}</TableCell>
+                <TableCell className="text-xs">{o.dealer_id || "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatDate(o.created_at)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
