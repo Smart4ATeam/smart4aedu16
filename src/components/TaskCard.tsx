@@ -226,7 +226,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowReportConfirm(false)}>取消</Button>
-            <Button onClick={handleConfirmReport} className="gradient-orange text-primary-foreground">確認回報</Button>
+            <Button onClick={handleConfirmReport}>確認回報</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
