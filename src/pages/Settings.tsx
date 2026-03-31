@@ -165,7 +165,7 @@ export default function Settings() {
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
             <Avatar className="w-16 h-16">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
-              <AvatarFallback className="gradient-orange text-lg font-bold text-primary-foreground">
+              <AvatarFallback className="bg-primary/15 text-primary text-lg font-bold">
                 {displayName.slice(0, 1)}
               </AvatarFallback>
             </Avatar>
