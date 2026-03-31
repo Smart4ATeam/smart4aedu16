@@ -130,7 +130,7 @@ export function LearningPath() {
         {/* Connecting line */}
         <div className="absolute top-4 left-[10%] right-[10%] h-0.5 bg-border" />
         <div
-          className="absolute top-4 left-[10%] h-0.5 bg-chart-green"
+          className="absolute top-4 left-[10%] h-0.5 bg-accent"
           style={{ width: `${Math.min(progressPercent * 0.8, 80)}%` }}
         />
 
