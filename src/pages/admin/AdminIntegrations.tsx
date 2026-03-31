@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield } from "lucide-react";
+import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
@@ -209,6 +209,39 @@ const endpoints: ApiEndpoint[] = [
         enrollments_count: 4,
         message: "報名資料已建立",
       },
+    },
+  },
+  {
+    id: "api-reg-payment",
+    name: "付款狀態更新（reg_ 系統）",
+    icon: <CreditCard className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-reg-payment",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "供 Make.com 呼叫，根據訂單編號更新付款狀態。同時會同步更新該訂單下所有 reg_enrollments 的付款欄位，並寫入操作紀錄。",
+    requiredFields: [
+      { name: "order_no", type: "string", required: true, desc: "訂單編號（對應 reg_orders.order_no）" },
+      { name: "payment_status", type: "string", required: true, desc: "付款狀態：paid / pending" },
+    ],
+    optionalFields: [
+      { name: "payment_method", type: "string", desc: "付款方式（如 credit_card、bank_transfer）" },
+      { name: "paid_at", type: "string", desc: "付款時間（ISO 8601，預設為當前時間）" },
+      { name: "invoice_number", type: "string", desc: "發票號碼" },
+      { name: "invoice_title", type: "string", desc: "發票抬頭" },
+      { name: "invoice_type", type: "string", desc: "發票類型" },
+    ],
+    exampleBody: {
+      order_no: "ORD20250401001",
+      payment_status: "paid",
+      payment_method: "credit_card",
+      invoice_number: "AB12345678",
+      invoice_title: "公司名稱",
+    },
+    exampleResponse: {
+      success: true,
+      order_id: "uuid-xxx",
+      order_no: "ORD20250401001",
+      payment_status: "paid",
     },
   },
   {
