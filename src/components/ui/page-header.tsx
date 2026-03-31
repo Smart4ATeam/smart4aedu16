@@ -18,7 +18,7 @@ export function PageHeader({ icon, title, description, className, children }: Pa
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl border border-border p-6",
-        "bg-gradient-to-br from-primary/8 via-primary/4 to-transparent",
+        "bg-gradient-to-br from-accent/8 via-accent/4 to-transparent",
         className
       )}
     >
