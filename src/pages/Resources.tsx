@@ -43,7 +43,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
       <button
         onClick={() => onChange("")}
         className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-          !active ? "gradient-orange text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+          !active ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
         }`}
       >
         全部
