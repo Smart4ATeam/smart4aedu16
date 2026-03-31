@@ -1,0 +1,2 @@
+ALTER TABLE public.tasks DROP CONSTRAINT tasks_difficulty_check;
+ALTER TABLE public.tasks ADD CONSTRAINT tasks_difficulty_check CHECK (difficulty = ANY (ARRAY['初級'::text, '中級'::text, '中階'::text, '高階'::text, '進階'::text]));
