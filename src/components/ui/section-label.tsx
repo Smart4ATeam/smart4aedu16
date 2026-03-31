@@ -11,7 +11,7 @@ interface SectionLabelProps {
 export function SectionLabel({ children, className }: SectionLabelProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="w-1 h-5 rounded-full bg-primary" />
+      <div className="w-1 h-5 rounded-full bg-accent" />
       <h2 className="text-sm font-semibold text-foreground">{children}</h2>
     </div>
   );

@@ -35,7 +35,7 @@ export function PageHeader({ icon, title, description, className, children }: Pa
         {children}
       </div>
       {/* 裝飾性背景元素 */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
+      <div className="absolute top-0 right-0 w-48 h-48 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
     </div>
   );
 }

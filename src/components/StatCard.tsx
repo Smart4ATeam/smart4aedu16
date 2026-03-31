@@ -30,7 +30,7 @@ export function StatCard({ icon, value, label, gradient, variant, delay = 0 }: S
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className="glass-card p-5 flex items-center gap-4 hover:border-primary/40 transition-colors"
+      className="glass-card p-5 flex items-center gap-4 hover:border-accent/40 transition-colors"
     >
       <IconBox variant={resolvedVariant}>
         {icon}
