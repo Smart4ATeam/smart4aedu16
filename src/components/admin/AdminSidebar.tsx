@@ -38,7 +38,7 @@ export function AdminSidebar() {
   const initials = displayName.slice(0, 1);
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col justify-between h-screen sticky top-0">
+    <aside className="w-[220px] flex-shrink-0 bg-sidebar shadow-[2px_0_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_8px_-2px_rgba(0,0,0,0.3)] flex flex-col justify-between h-screen sticky top-0">
       <div className="p-5">
         {/* Logo */}
         <div className="mb-10 px-2">
