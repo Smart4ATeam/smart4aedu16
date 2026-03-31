@@ -402,20 +402,19 @@ function RegMembersTab() {
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["reg-members-paid"],
     queryFn: async () => {
-      // Get members who have at least one paid enrollment
-      const { data, error } = await supabase
-        .from("reg_members" as any)
-        .select("*, reg_enrollments!inner(payment_status)")
-        .eq("reg_enrollments.payment_status" as any, "paid")
+      // Get paid enrollment member_ids first, then fetch members
+      const { data: paidEnrollments } = await (supabase as any)
+        .from("reg_enrollments")
+        .select("member_id")
+        .eq("payment_status", "paid");
+      const paidMemberIds = [...new Set((paidEnrollments || []).map((e: any) => e.member_id).filter(Boolean))] as string[];
+      if (paidMemberIds.length === 0) return [] as RegMember[];
+      const { data, error } = await (supabase as any)
+        .from("reg_members")
+        .select("*")
+        .in("id", paidMemberIds)
         .order("created_at", { ascending: false });
-      if (error) {
-        // Fallback: if inner join fails, just get all members
-        const { data: fallback } = await supabase
-          .from("reg_members" as any)
-          .select("*")
-          .order("created_at", { ascending: false });
-        return (fallback || []) as unknown as RegMember[];
-      }
+      if (error) return [] as RegMember[];
       // Deduplicate (a member may have multiple paid enrollments)
       const seen = new Set<string>();
       const unique: RegMember[] = [];
