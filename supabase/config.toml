@@ -1,8 +1,5 @@
 project_id = "clwruolkostoirdwnnuy"
 
-[functions.enroll-student]
-verify_jwt = false
-
 [functions.activate-account]
 verify_jwt = false
 
@@ -22,12 +19,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.api-courses]
-verify_jwt = false
-
-[functions.api-enrollment-callback]
-verify_jwt = false
-
-[functions.api-reg-enrollment]
 verify_jwt = false
 
 [functions.api-reg-order]
