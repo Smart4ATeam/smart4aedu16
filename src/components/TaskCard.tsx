@@ -35,10 +35,10 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
 
   const difficultyColor =
     task.difficulty === "初級"
-      ? "text-chart-green bg-chart-green/15 border-chart-green/30"
+      ? "text-accent bg-accent/10 border-accent/20"
       : task.difficulty === "中級" || task.difficulty === "中階"
-      ? "text-chart-yellow bg-chart-yellow/15 border-chart-yellow/30"
-      : "text-primary bg-primary/15 border-primary/30";
+      ? "text-chart-cyan bg-chart-cyan/10 border-chart-cyan/20"
+      : "text-success bg-success/10 border-success/20";
 
   const handleApplyClick = () => { setShowConfirm(true); };
   const handleConfirmApply = () => { setShowConfirm(false); onApply?.(); };
