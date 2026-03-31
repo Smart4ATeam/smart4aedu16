@@ -219,7 +219,7 @@ function VideoCard({ r }: { r: Resource }) {
       <h5 className="text-xs font-bold mb-2 leading-snug text-foreground">{r.title}</h5>
       <div className="flex items-center justify-between text-[10px]">
         <div className="flex items-center gap-2">
-          <span className="bg-secondary/20 text-secondary-foreground px-2 py-0.5 rounded-full">{r.difficulty || "初級"}</span>
+          <span className={`px-2 py-0.5 rounded-full border ${difficultyColors[r.difficulty || "初級"] || "bg-secondary/20 text-secondary-foreground"}`}>{r.difficulty || "初級"}</span>
           {r.video_type && <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{r.video_type}</span>}
         </div>
         <div className="flex items-center gap-2">

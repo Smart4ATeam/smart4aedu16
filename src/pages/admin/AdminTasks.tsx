@@ -272,7 +272,7 @@ const AdminTasks = () => {
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="outline">{t.difficulty}</Badge></TableCell>
+                      <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
                       <TableCell>${Number(t.amount).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
