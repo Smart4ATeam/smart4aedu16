@@ -63,14 +63,15 @@ export function LearningPath() {
         let foundCurrent = false;
         const result: Step[] = courses.map((course) => {
           const label = extractShortLabel(course.title);
+          const category = course.category;
           if (enrolledCourseIds.has(course.id)) {
-            return { label, status: "done" as const };
+            return { label, status: "done" as const, category };
           }
           if (!foundCurrent) {
             foundCurrent = true;
-            return { label, status: "current" as const };
+            return { label, status: "current" as const, category };
           }
-          return { label, status: "locked" as const };
+          return { label, status: "locked" as const, category };
         });
         setSteps(result);
       } else {
