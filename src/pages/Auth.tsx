@@ -177,7 +177,7 @@ export default function Auth() {
         {/* Logo / Header */}
         <div className="text-center mb-8">
           <img
-            src={theme === "dark" || theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? logoDark : logoLight}
+            src={theme === "dark" || theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches ? logoW : logoFed}
             alt="Smart4A Logo"
             className="h-7 mx-auto mb-2 object-contain" />
           
