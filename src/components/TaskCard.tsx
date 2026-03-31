@@ -149,7 +149,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             <button
               onClick={handleApplyClick}
               disabled={applying}
-              className="flex-1 gradient-orange text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="flex-1 bg-primary text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <>立即接案 <ArrowRight className="w-4 h-4" /></>}
             </button>
