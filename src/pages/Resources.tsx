@@ -312,7 +312,7 @@ export default function Resources() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-background/60 border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
           />
-          <button className="gradient-orange px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 text-primary-foreground">
+          <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary/90 transition-colors">
             <Search className="w-4 h-4" />
             <span>搜尋</span>
           </button>
