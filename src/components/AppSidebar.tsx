@@ -73,7 +73,7 @@ export function AppSidebar() {
                     ? ""
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
-                activeClassName="bg-primary/10 text-primary font-medium glow-orange"
+                activeClassName="bg-accent/10 text-accent font-medium"
               >
                 <item.icon className="w-[18px] h-[18px]" />
                 <span>{item.title}</span>
@@ -96,7 +96,7 @@ export function AppSidebar() {
                     ? ""
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
-                activeClassName="bg-primary/10 text-primary font-medium glow-orange"
+                activeClassName="bg-accent/10 text-accent font-medium"
               >
                 <item.icon className="w-[18px] h-[18px]" />
                 <span>{item.title}</span>
