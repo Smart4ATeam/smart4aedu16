@@ -53,7 +53,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
           key={sc.id}
           onClick={() => onChange(sc.label)}
           className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-            active === sc.label ? "gradient-orange text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+            active === sc.label ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
           }`}
         >
           {sc.label}
