@@ -312,7 +312,7 @@ export default function Settings() {
       <Button
         onClick={handleSave}
         disabled={saving}
-        className="w-full h-12 text-base font-semibold gradient-orange text-primary-foreground hover:opacity-90 rounded-xl"
+        className="w-full h-12 text-base font-semibold rounded-xl"
       >
         {saving ? "儲存中..." : "💾 儲存所有設定"}
       </Button>

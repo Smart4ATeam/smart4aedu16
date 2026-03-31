@@ -322,7 +322,7 @@ export default function Auth() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 gradient-orange text-primary-foreground font-semibold hover:opacity-90">
+              className="w-full h-11 font-semibold hover:bg-primary/90">
               
               {loading ?
               <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> :

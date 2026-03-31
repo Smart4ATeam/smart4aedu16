@@ -120,10 +120,10 @@ const Tasks = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Target className="w-5 h-5 text-primary-foreground" />} value={stats.available} label="可接任務" gradient="gradient-orange" delay={0} />
-        <StatCard icon={<Hourglass className="w-5 h-5 text-primary-foreground" />} value={stats.pending} label="審核中" gradient="gradient-purple" delay={0.05} />
-        <StatCard icon={<Zap className="w-5 h-5 text-primary-foreground" />} value={stats.inProgress} label="進行中" gradient="gradient-lime" delay={0.1} />
-        <StatCard icon={<Clock className="w-5 h-5 text-primary-foreground" />} value={`$${stats.totalRevenue.toLocaleString()}`} label="累計收益" gradient="gradient-orange" delay={0.15} />
+        <StatCard icon={<Target className="w-5 h-5" />} value={stats.available} label="可接任務" variant="primary" delay={0} />
+        <StatCard icon={<Hourglass className="w-5 h-5" />} value={stats.pending} label="審核中" variant="info" delay={0.05} />
+        <StatCard icon={<Zap className="w-5 h-5" />} value={stats.inProgress} label="進行中" variant="success" delay={0.1} />
+        <StatCard icon={<Clock className="w-5 h-5" />} value={`$${stats.totalRevenue.toLocaleString()}`} label="累計收益" variant="warning" delay={0.15} />
       </div>
 
       <div className="flex gap-2 flex-wrap">

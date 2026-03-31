@@ -433,7 +433,7 @@ export default function Messages() {
                     />
                     <Button
                       size="icon"
-                      className="h-8 w-8 gradient-orange flex-shrink-0"
+                      className="h-8 w-8 bg-primary text-primary-foreground flex-shrink-0"
                       onClick={handleSend}
                       disabled={sending || !replyText.trim()}
                     >

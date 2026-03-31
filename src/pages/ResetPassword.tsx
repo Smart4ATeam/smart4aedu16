@@ -112,7 +112,7 @@ export default function ResetPassword() {
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full h-11 gradient-orange text-primary-foreground font-semibold">
+            <Button type="submit" disabled={loading} className="w-full h-11 font-semibold">
               {loading ? <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : "更新密碼"}
             </Button>
           </form>
