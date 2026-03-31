@@ -26,3 +26,15 @@ verify_jwt = false
 
 [functions.api-enrollment-callback]
 verify_jwt = false
+
+[functions.api-reg-enrollment]
+verify_jwt = false
+
+[functions.api-reg-order]
+verify_jwt = false
+
+[functions.api-reg-split]
+verify_jwt = false
+
+[functions.api-reg-payment]
+verify_jwt = false
