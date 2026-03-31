@@ -204,8 +204,8 @@ function VideoCard({ r }: { r: Resource }) {
       <div className="aspect-video bg-muted rounded-xl relative mb-3 overflow-hidden group cursor-pointer">
         {r.download_url ? (
           <a href={r.download_url} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center">
-            <div className="w-10 h-10 gradient-orange rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Play className="w-3 h-3 text-primary-foreground ml-0.5" />
+            <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Play className="w-3 h-3 text-primary ml-0.5" />
             </div>
           </a>
         ) : (
