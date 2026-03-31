@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
+import { categoryLabels, categoryColors } from "@/lib/course-categories";
 
 // ===== Stat Card =====
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) {
@@ -200,7 +201,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
             {courses.map((c: any) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.title}</TableCell>
-                <TableCell><Badge variant="outline" className="text-xs">{c.category}</Badge></TableCell>
+                <TableCell><Badge className={`text-xs ${categoryColors[c.category] || ""}`}>{categoryLabels[c.category] || c.category}</Badge></TableCell>
                 <TableCell className="text-sm">{c.instructors?.name || "-"}</TableCell>
                 <TableCell className="text-sm">{c.price === 0 ? "免費" : `NT$ ${c.price}`}</TableCell>
                 <TableCell><Badge variant={statusColors[c.status] as any}>{statusLabels[c.status]}</Badge></TableCell>
