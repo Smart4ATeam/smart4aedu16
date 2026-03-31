@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
