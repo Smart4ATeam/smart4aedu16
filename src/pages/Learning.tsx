@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BookOpen, GraduationCap, ClipboardCheck, MapPin, CalendarDays, Users, ArrowRight, Award } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { categoryLabels, categoryColors } from "@/lib/course-categories";
+import { categoryLabels, categoryColors } from "@/lib/category-colors";
 
 export default function Learning() {
   const { user } = useAuth();

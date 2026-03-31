@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { difficultyColors } from "@/lib/course-categories";
+import { difficultyColors } from "@/lib/category-colors";
 
 interface Task {
   id: string;
