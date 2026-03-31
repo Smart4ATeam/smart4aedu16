@@ -6,101 +6,106 @@
 
 @layer base {
   :root {
-    --background: 40 25% 96%;
-    --foreground: 215 35% 22%;
+    --background: 40 20% 96%;
+    --foreground: 213 40% 22%;
 
-    --card: 40 20% 99%;
-    --card-foreground: 215 35% 22%;
+    --card: 40 15% 99%;
+    --card-foreground: 213 40% 22%;
 
-    --popover: 40 20% 99%;
-    --popover-foreground: 215 35% 22%;
+    --popover: 40 15% 99%;
+    --popover-foreground: 213 40% 22%;
 
-    --primary: 37 65% 50%;
+    /* 主色：深海軍藍（標題、按鈕） */
+    --primary: 213 40% 28%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 35 18% 68%;
-    --secondary-foreground: 215 35% 22%;
+    /* 次色：鋼藍灰 */
+    --secondary: 210 18% 62%;
+    --secondary-foreground: 213 40% 22%;
 
-    --muted: 38 18% 91%;
-    --muted-foreground: 215 15% 48%;
+    --muted: 38 14% 91%;
+    --muted-foreground: 213 12% 50%;
 
-    --accent: 215 35% 22%;
+    /* 金色點綴（僅裝飾用） */
+    --accent: 37 58% 52%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 38 15% 87%;
-    --input: 38 15% 87%;
-    --ring: 37 65% 50%;
+    --border: 38 12% 87%;
+    --input: 38 12% 87%;
+    --ring: 213 40% 28%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 40 22% 97%;
-    --sidebar-foreground: 215 15% 48%;
-    --sidebar-primary: 37 65% 50%;
+    --sidebar-background: 40 18% 97%;
+    --sidebar-foreground: 213 12% 50%;
+    --sidebar-primary: 213 40% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 18% 93%;
-    --sidebar-accent-foreground: 215 35% 22%;
-    --sidebar-border: 38 15% 90%;
-    --sidebar-ring: 37 65% 50%;
+    --sidebar-accent: 38 14% 93%;
+    --sidebar-accent-foreground: 213 40% 22%;
+    --sidebar-border: 38 12% 90%;
+    --sidebar-ring: 213 40% 28%;
 
-    --success: 145 55% 42%;
+    /* 青綠色（與老闆網站一致） */
+    --success: 168 42% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 40 85% 55%;
-    --warning-foreground: 215 35% 22%;
+    /* 琥珀色警告 */
+    --warning: 37 58% 52%;
+    --warning-foreground: 213 40% 22%;
 
-    --chart-green: 145 55% 42%;
-    --chart-yellow: 40 85% 55%;
-    --chart-cyan: 200 45% 52%;
+    --chart-green: 168 42% 38%;
+    --chart-yellow: 37 58% 52%;
+    --chart-cyan: 200 35% 48%;
   }
 
   .dark {
-    --background: 220 28% 12%;
-    --foreground: 38 15% 90%;
+    --background: 218 28% 11%;
+    --foreground: 38 12% 88%;
 
-    --card: 220 25% 16%;
-    --card-foreground: 38 15% 90%;
+    --card: 218 25% 15%;
+    --card-foreground: 38 12% 88%;
 
-    --popover: 220 25% 16%;
-    --popover-foreground: 38 15% 90%;
+    --popover: 218 25% 15%;
+    --popover-foreground: 38 12% 88%;
 
-    --primary: 38 72% 55%;
-    --primary-foreground: 220 28% 12%;
+    --primary: 210 35% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 35 22% 40%;
-    --secondary-foreground: 38 15% 90%;
+    --secondary: 210 18% 42%;
+    --secondary-foreground: 38 12% 88%;
 
-    --muted: 220 20% 20%;
-    --muted-foreground: 38 10% 58%;
+    --muted: 218 20% 19%;
+    --muted-foreground: 210 12% 55%;
 
-    --accent: 38 50% 45%;
+    --accent: 37 55% 48%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 18% 22%;
-    --input: 220 18% 22%;
-    --ring: 38 72% 55%;
+    --border: 218 18% 21%;
+    --input: 218 18% 21%;
+    --ring: 210 35% 55%;
 
-    --sidebar-background: 220 30% 10%;
-    --sidebar-foreground: 38 10% 58%;
-    --sidebar-primary: 38 72% 55%;
-    --sidebar-primary-foreground: 220 28% 12%;
-    --sidebar-accent: 220 22% 18%;
-    --sidebar-accent-foreground: 38 15% 90%;
-    --sidebar-border: 220 22% 16%;
-    --sidebar-ring: 38 72% 55%;
+    --sidebar-background: 218 30% 9%;
+    --sidebar-foreground: 210 12% 55%;
+    --sidebar-primary: 210 35% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 22% 17%;
+    --sidebar-accent-foreground: 38 12% 88%;
+    --sidebar-border: 218 22% 15%;
+    --sidebar-ring: 210 35% 55%;
 
-    --success: 145 50% 48%;
-    --success-foreground: 220 28% 12%;
-    --warning: 45 93% 58%;
-    --warning-foreground: 220 28% 12%;
+    --success: 168 38% 42%;
+    --success-foreground: 218 28% 11%;
+    --warning: 37 55% 48%;
+    --warning-foreground: 218 28% 11%;
 
-    --chart-green: 145 50% 48%;
-    --chart-yellow: 45 93% 58%;
-    --chart-cyan: 200 40% 55%;
+    --chart-green: 168 38% 42%;
+    --chart-yellow: 37 55% 48%;
+    --chart-cyan: 200 30% 50%;
   }
 }
 
@@ -128,7 +133,7 @@
 
   /* ── 透明度漸層（用於區塊背景） ──────── */
   .gradient-orange {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.04));
+    background: linear-gradient(135deg, hsl(var(--accent) / 0.12), hsl(var(--accent) / 0.04));
   }
 
   .gradient-purple {
@@ -148,19 +153,19 @@
   }
 
   .gradient-dark {
-    background: linear-gradient(135deg, hsl(var(--accent) / 0.15), hsl(var(--accent) / 0.05));
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
   }
 
   /* ── 實色漸層（僅用於小元素如按鈕） ──── */
   .gradient-solid-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(42 75% 55%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(210 35% 32%));
   }
 
   .gradient-solid-accent {
-    background: linear-gradient(135deg, hsl(var(--accent)), hsl(220 30% 28%));
+    background: linear-gradient(135deg, hsl(var(--accent)), hsl(42 55% 48%));
   }
 
   .gradient-solid-success {
-    background: linear-gradient(135deg, hsl(var(--success)), hsl(155 50% 45%));
+    background: linear-gradient(135deg, hsl(var(--success)), hsl(175 38% 42%));
   }
 }
