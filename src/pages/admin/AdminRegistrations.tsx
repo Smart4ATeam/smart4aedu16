@@ -151,20 +151,20 @@ function OrdersTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-32 min-w-[8rem]">訂單編號</TableHead>
-              <TableHead className="min-w-[6rem]">報名人</TableHead>
-              <TableHead className="w-24">金額</TableHead>
-              <TableHead className="w-24">付款狀態</TableHead>
-              <TableHead className="w-24">付款方式</TableHead>
-              <TableHead className="w-28">付款日期</TableHead>
-              <TableHead className="w-24">優惠方案</TableHead>
-              <TableHead className="w-24">發票狀態</TableHead>
-              <TableHead className="w-28">發票號碼</TableHead>
-              <TableHead className="w-24">發票類型</TableHead>
-              <TableHead className="w-28">發票抬頭</TableHead>
-              <TableHead className="w-24">經銷商</TableHead>
-              <TableHead className="w-28">建立日期</TableHead>
-              <TableHead className="w-20">操作</TableHead>
+              <TableHead className="min-w-[10rem] whitespace-nowrap text-xs">訂單編號</TableHead>
+              <TableHead className="min-w-[5rem] whitespace-nowrap text-xs">報名人</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">金額</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">付款狀態</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">付款方式</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">付款日期</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">優惠方案</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">發票狀態</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">發票號碼</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">發票類型</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">發票抬頭</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">經銷商</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">建立日期</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
