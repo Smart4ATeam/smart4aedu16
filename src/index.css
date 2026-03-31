@@ -39,13 +39,13 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 40 18% 97%;
+    --sidebar-background: 40 20% 96%;
     --sidebar-foreground: 213 12% 50%;
     --sidebar-primary: 213 40% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 38 14% 93%;
     --sidebar-accent-foreground: 213 40% 22%;
-    --sidebar-border: 38 12% 90%;
+    --sidebar-border: 38 12% 92%;
     --sidebar-ring: 213 40% 28%;
 
     /* 青綠色（與老闆網站一致） */
@@ -89,13 +89,13 @@
     --input: 218 18% 21%;
     --ring: 210 35% 55%;
 
-    --sidebar-background: 218 30% 9%;
+    --sidebar-background: 220 42% 15%;
     --sidebar-foreground: 210 12% 55%;
     --sidebar-primary: 210 35% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 218 22% 17%;
+    --sidebar-accent: 218 22% 19%;
     --sidebar-accent-foreground: 38 12% 88%;
-    --sidebar-border: 218 22% 15%;
+    --sidebar-border: 218 20% 18%;
     --sidebar-ring: 210 35% 55%;
 
     --success: 168 38% 42%;
