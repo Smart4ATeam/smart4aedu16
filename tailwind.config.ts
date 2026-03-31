@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"Noto Sans TC"', '"Inter"', 'system-ui', 'sans-serif'],
+        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"PingFang TC"', '"Microsoft JhengHei"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
