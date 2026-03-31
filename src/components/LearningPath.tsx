@@ -134,38 +134,50 @@ export function LearningPath() {
           style={{ width: `${Math.min(progressPercent * 0.8, 80)}%` }}
         />
 
-        {steps.map((step, i) => (
-          <div key={i} className="flex flex-col items-center relative z-10 flex-1">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
-                step.status === "done"
-                  ? "bg-success text-success-foreground"
-                  : step.status === "current"
-                  ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {step.status === "done" ? (
-                <Check className="w-4 h-4" />
-              ) : step.status === "locked" ? (
-                <Lock className="w-3.5 h-3.5" />
-              ) : (
-                i + 1
-              )}
+        {steps.map((step, i) => {
+          // Category-based circle colors
+          const categoryCircleColors: Record<string, string> = {
+            quest: "bg-accent text-accent-foreground",
+            basic: "bg-accent text-accent-foreground",
+            intermediate: "bg-chart-cyan text-white",
+            advanced: "bg-success text-white",
+            special: "bg-destructive text-white",
+          };
+          const activeColor = categoryCircleColors[step.category] || "bg-primary text-primary-foreground";
+          const circleClass =
+            step.status === "done"
+              ? activeColor
+              : step.status === "current"
+              ? `${activeColor} ring-2 ring-offset-2 ring-offset-background ring-accent/50`
+              : "bg-muted text-muted-foreground";
+
+          return (
+            <div key={i} className="flex flex-col items-center relative z-10 flex-1">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${circleClass}`}
+              >
+                {step.status === "done" ? (
+                  <Check className="w-4 h-4" />
+                ) : step.status === "locked" ? (
+                  <Lock className="w-3.5 h-3.5" />
+                ) : (
+                  i + 1
+                )}
+              </div>
+              <span
+                className={`text-[11px] ${
+                  step.status === "current"
+                    ? "text-primary font-medium"
+                    : step.status === "done"
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {step.label}
+              </span>
             </div>
-            <span
-              className={`text-[11px] ${
-                step.status === "current"
-                  ? "text-primary font-medium"
-                  : step.status === "done"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {step.label}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Special courses */}
