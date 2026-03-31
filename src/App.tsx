@@ -26,6 +26,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminIntegrations from "./pages/admin/AdminIntegrations";
 import AdminLearning from "./pages/admin/AdminLearning";
+import AdminRegistrations from "./pages/admin/AdminRegistrations";
 import Learning from "./pages/Learning";
 import CourseDetail from "./pages/CourseDetail";
 
