@@ -1,15 +1,30 @@
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import { IconBox } from "@/components/ui/icon-box";
+
+type StatVariant = "primary" | "success" | "warning" | "info";
 
 interface StatCardProps {
   icon: ReactNode;
   value: string | number;
   label: string;
+  /** @deprecated Use `variant` instead. Kept for backward compatibility. */
   gradient?: string;
+  variant?: StatVariant;
   delay?: number;
 }
 
-export function StatCard({ icon, value, label, gradient = "gradient-orange", delay = 0 }: StatCardProps) {
+const gradientToVariant: Record<string, StatVariant> = {
+  "gradient-orange": "primary",
+  "gradient-purple": "info",
+  "gradient-lime": "success",
+  "gradient-green": "success",
+  "gradient-cyan": "info",
+};
+
+export function StatCard({ icon, value, label, gradient, variant, delay = 0 }: StatCardProps) {
+  const resolvedVariant = variant ?? gradientToVariant[gradient ?? ""] ?? "primary";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -17,9 +32,9 @@ export function StatCard({ icon, value, label, gradient = "gradient-orange", del
       transition={{ duration: 0.4, delay }}
       className="glass-card p-5 flex items-center gap-4 hover:border-primary/40 transition-colors"
     >
-      <div className={`w-10 h-10 rounded-xl ${gradient} flex items-center justify-center`}>
+      <IconBox variant={resolvedVariant}>
         {icon}
-      </div>
+      </IconBox>
       <div>
         <p className="text-2xl font-bold text-foreground">{value}</p>
         <p className="text-[11px] text-muted-foreground">{label}</p>
