@@ -76,7 +76,7 @@ function ActionButton({ href, label, disabled }: { href?: string | null; label: 
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="gradient-orange py-2 rounded-lg text-xs font-bold text-primary-foreground hover:opacity-90 transition text-center flex items-center justify-center gap-1.5"
+      className="bg-primary text-primary-foreground py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition text-center flex items-center justify-center gap-1.5"
     >
       <ExternalLink className="w-3.5 h-3.5" /> {label}
     </a>
