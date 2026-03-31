@@ -114,7 +114,7 @@ export function AppSidebar() {
               {profile?.avatar_url ? (
                 <AvatarImage src={profile.avatar_url} alt={displayName} />
               ) : null}
-              <AvatarFallback className="gradient-orange text-xs font-bold text-primary-foreground">
+              <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Settings as SettingsIcon, User, Globe, Bell, Eye, Target, Link, BarChart3, Info, Camera } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -151,16 +152,11 @@ export default function Settings() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl p-6 gradient-orange">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <SettingsIcon className="w-6 h-6 text-primary-foreground" />
-            <h1 className="text-2xl font-bold text-primary-foreground">學員俱樂部專區設定</h1>
-          </div>
-          <p className="text-sm text-primary-foreground/80">個人化您的學習體驗</p>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />
-      </div>
+      <PageHeader
+        icon={<SettingsIcon className="w-6 h-6" />}
+        title="學員俱樂部專區設定"
+        description="個人化您的學習體驗"
+      />
 
       {/* 個人資料 */}
       <SectionCard icon={<User className="w-5 h-5 text-primary" />} title="個人資料">
@@ -169,7 +165,7 @@ export default function Settings() {
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
             <Avatar className="w-16 h-16">
               {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
-              <AvatarFallback className="gradient-orange text-lg font-bold text-primary-foreground">
+              <AvatarFallback className="bg-primary/15 text-primary text-lg font-bold">
                 {displayName.slice(0, 1)}
               </AvatarFallback>
             </Avatar>
@@ -221,7 +217,7 @@ export default function Settings() {
                 onClick={() => setServerLocation(s)}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                   serverLocation === s
-                    ? "gradient-orange text-primary-foreground"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted border border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -286,7 +282,7 @@ export default function Settings() {
       {/* 數據管理 */}
       <SectionCard icon={<BarChart3 className="w-5 h-5 text-primary" />} title="數據管理">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Button className="gradient-orange text-primary-foreground hover:opacity-90">📤 匯出學習資料</Button>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">📤 匯出學習資料</Button>
           <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">🔄 同步雲端資料</Button>
           <Button variant="outline" className="text-muted-foreground hover:text-foreground">🗑 清除快取</Button>
           <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10">⚠ 重置所有設定</Button>
@@ -316,7 +312,7 @@ export default function Settings() {
       <Button
         onClick={handleSave}
         disabled={saving}
-        className="w-full h-12 text-base font-semibold gradient-orange text-primary-foreground hover:opacity-90 rounded-xl"
+        className="w-full h-12 text-base font-semibold rounded-xl"
       >
         {saving ? "儲存中..." : "💾 儲存所有設定"}
       </Button>

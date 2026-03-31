@@ -43,7 +43,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
       <button
         onClick={() => onChange("")}
         className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-          !active ? "gradient-orange text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+          !active ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
         }`}
       >
         全部
@@ -53,7 +53,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
           key={sc.id}
           onClick={() => onChange(sc.label)}
           className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-            active === sc.label ? "gradient-orange text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+            active === sc.label ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
           }`}
         >
           {sc.label}
@@ -66,7 +66,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
 function ActionButton({ href, label, disabled }: { href?: string | null; label: string; disabled?: boolean }) {
   if (!href) {
     return (
-      <button className="gradient-orange py-2 rounded-lg text-xs font-bold text-primary-foreground opacity-50 cursor-not-allowed" disabled>
+      <button className="bg-primary/10 text-primary py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>
         即將推出
       </button>
     );
@@ -76,7 +76,7 @@ function ActionButton({ href, label, disabled }: { href?: string | null; label: 
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="gradient-orange py-2 rounded-lg text-xs font-bold text-primary-foreground hover:opacity-90 transition text-center flex items-center justify-center gap-1.5"
+      className="bg-primary text-primary-foreground py-2 rounded-lg text-xs font-bold hover:bg-primary/90 transition text-center flex items-center justify-center gap-1.5"
     >
       <ExternalLink className="w-3.5 h-3.5" /> {label}
     </a>
@@ -204,8 +204,8 @@ function VideoCard({ r }: { r: Resource }) {
       <div className="aspect-video bg-muted rounded-xl relative mb-3 overflow-hidden group cursor-pointer">
         {r.download_url ? (
           <a href={r.download_url} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center">
-            <div className="w-10 h-10 gradient-orange rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Play className="w-3 h-3 text-primary-foreground ml-0.5" />
+            <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Play className="w-3 h-3 text-primary ml-0.5" />
             </div>
           </a>
         ) : (
@@ -312,7 +312,7 @@ export default function Resources() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-background/60 border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
           />
-          <button className="gradient-orange px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 text-primary-foreground">
+          <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary/90 transition-colors">
             <Search className="w-4 h-4" />
             <span>搜尋</span>
           </button>
@@ -332,7 +332,7 @@ export default function Resources() {
               onClick={() => setActiveCategory(cat.id)}
               className={`flex-1 p-4 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
                 activeCategory === cat.id
-                  ? "gradient-orange text-primary-foreground border-primary"
+                  ? "bg-primary/10 text-primary border-primary/30"
                   : "border-border hover:border-primary hover:bg-primary/5 text-muted-foreground"
               }`}
             >

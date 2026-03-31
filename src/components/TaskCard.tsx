@@ -149,7 +149,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             <button
               onClick={handleApplyClick}
               disabled={applying}
-              className="flex-1 gradient-orange text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="flex-1 bg-primary text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <>立即接案 <ArrowRight className="w-4 h-4" /></>}
             </button>
@@ -199,7 +199,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowDetail(false)} className="w-full gradient-orange text-primary-foreground">確定</Button>
+            <Button onClick={() => setShowDetail(false)} className="w-full">確定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -212,7 +212,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             <DialogDescription>您確定要接受「{task.title}」嗎？</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={handleConfirmApply} className="w-full gradient-orange text-primary-foreground">確定</Button>
+            <Button onClick={handleConfirmApply} className="w-full">確定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -226,7 +226,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowReportConfirm(false)}>取消</Button>
-            <Button onClick={handleConfirmReport} className="gradient-orange text-primary-foreground">確認回報</Button>
+            <Button onClick={handleConfirmReport}>確認回報</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

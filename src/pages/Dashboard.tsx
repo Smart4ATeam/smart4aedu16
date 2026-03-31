@@ -54,31 +54,31 @@ const Dashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon={<CalendarDays className="w-5 h-5 text-primary-foreground" />}
+          icon={<CalendarDays className="w-5 h-5" />}
           value={profile?.learning_days ?? 0}
           label="學習天數"
-          gradient="gradient-orange"
+          variant="primary"
           delay={0}
         />
         <StatCard
-          icon={<Zap className="w-5 h-5 text-primary-foreground" />}
+          icon={<Zap className="w-5 h-5" />}
           value={(profile?.total_points ?? 0).toLocaleString()}
           label="累計點數"
-          gradient="gradient-purple"
+          variant="info"
           delay={0.05}
         />
         <StatCard
-          icon={<Award className="w-5 h-5 text-primary-foreground" />}
+          icon={<Award className="w-5 h-5" />}
           value={profile?.total_badges ?? 0}
           label="獲得勳章"
-          gradient="gradient-lime"
+          variant="success"
           delay={0.1}
         />
         <StatCard
-          icon={<TrendingUp className="w-5 h-5 text-primary-foreground" />}
+          icon={<TrendingUp className="w-5 h-5" />}
           value={`$${(profile?.total_revenue ?? 0).toLocaleString()}`}
           label="總收益"
-          gradient="gradient-orange"
+          variant="warning"
           delay={0.15}
         />
       </div>

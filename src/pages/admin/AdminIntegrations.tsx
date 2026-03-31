@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -228,9 +230,9 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
         className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gradient-orange flex items-center justify-center text-primary-foreground">
+          <IconBox variant="primary" size="sm">
             {endpoint.icon}
-          </div>
+          </IconBox>
           <div className="text-left">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-primary/20 text-primary font-bold">
@@ -339,15 +341,11 @@ export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl p-6 gradient-orange">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <Plug className="w-6 h-6 text-primary-foreground" />
-            <h1 className="text-2xl font-bold text-primary-foreground">API 串接管理</h1>
-          </div>
-          <p className="text-sm text-primary-foreground/80">管理外部系統（Make.com、AI Agent）串接所需的 API 端點與認證設定</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={<Plug className="w-6 h-6" />}
+        title="API 串接管理"
+        description="管理外部系統（Make.com、AI Agent）串接所需的 API 端點與認證設定"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

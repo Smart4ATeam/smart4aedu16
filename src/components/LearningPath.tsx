@@ -137,9 +137,9 @@ export function LearningPath() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
                 step.status === "done"
-                  ? "gradient-lime text-primary-foreground"
+                  ? "bg-success/15 text-success"
                   : step.status === "current"
-                  ? "gradient-orange text-primary-foreground ring-2 ring-primary/30"
+                  ? "bg-primary/15 text-primary ring-2 ring-primary/20"
                   : "bg-muted text-muted-foreground"
               }`}
             >
@@ -175,7 +175,7 @@ export function LearningPath() {
               <Badge
                 key={i}
                 variant={s.enrolled ? "default" : "outline"}
-                className={s.enrolled ? "gradient-lime text-primary-foreground border-0" : ""}
+                className={s.enrolled ? "bg-success/15 text-success border-success/20" : ""}
               >
                 {s.enrolled && <Check className="w-3 h-3 mr-1" />}
                 {s.title}
