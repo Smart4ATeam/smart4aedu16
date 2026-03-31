@@ -116,7 +116,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Noto Sans TC', 'Inter', system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   }
 
   .dark body {
