@@ -137,7 +137,7 @@ export function LearningPath() {
         {steps.map((step, i) => {
           // Category-based circle colors
           const categoryCircleColors: Record<string, string> = {
-            quest: "bg-accent text-accent-foreground",
+            quest: "bg-primary text-primary-foreground",
             basic: "bg-accent text-accent-foreground",
             intermediate: "bg-chart-cyan text-white",
             advanced: "bg-success text-white",
