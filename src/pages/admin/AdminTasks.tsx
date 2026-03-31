@@ -463,7 +463,7 @@ const AdminTasks = () => {
                   {selectedApplicant.applicant.avatar_url ? (
                     <AvatarImage src={selectedApplicant.applicant.avatar_url} alt={selectedApplicant.applicant.display_name} />
                   ) : null}
-                  <AvatarFallback className="gradient-orange text-lg font-bold text-primary-foreground">
+                  <AvatarFallback className="bg-primary/15 text-primary text-lg font-bold">
                     {selectedApplicant.applicant.display_name.slice(0, 1)}
                   </AvatarFallback>
                 </Avatar>

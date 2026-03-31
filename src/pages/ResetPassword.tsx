@@ -66,8 +66,8 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 gradient-orange rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-primary-foreground" />
+          <div className="w-16 h-16 bg-primary/12 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">重設密碼</h1>
           <p className="text-sm text-muted-foreground mt-1">請輸入您的新密碼</p>
