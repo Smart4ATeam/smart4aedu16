@@ -52,7 +52,7 @@ export function AppSidebar() {
         {/* Logo */}
         <div className="mb-10 px-2">
           <img
-            src={isDark ? logoDark : logoLight}
+            src={isDark ? logoW : logoFed}
             alt="Smart4A"
             className="h-7 w-auto object-contain"
           />
