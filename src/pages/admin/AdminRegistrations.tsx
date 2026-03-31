@@ -60,13 +60,13 @@ function statusBadge(status: string) {
     transferred: { label: "已轉班", variant: "secondary" },
   };
   const m = map[status] || { label: status, variant: "outline" as const };
-  return <Badge variant={m.variant}>{m.label}</Badge>;
+  return <Badge variant={m.variant} className="text-[10px] px-1.5 py-0">{m.label}</Badge>;
 }
 
 function paymentBadge(status: string) {
   return status === "paid"
-    ? <Badge variant="default">已付款</Badge>
-    : <Badge variant="secondary">未付款</Badge>;
+    ? <Badge variant="default" className="text-[10px] px-1.5 py-0">已付款</Badge>
+    : <Badge variant="secondary" className="text-[10px] px-1.5 py-0">未付款</Badge>;
 }
 
 function invoiceBadge(status: string) {
@@ -76,7 +76,7 @@ function invoiceBadge(status: string) {
     reissued: { label: "已重開", variant: "secondary" },
   };
   const m = map[status] || { label: status, variant: "default" as const };
-  return <Badge variant={m.variant}>{m.label}</Badge>;
+  return <Badge variant={m.variant} className="text-[10px] px-1.5 py-0">{m.label}</Badge>;
 }
 
 function formatDate(d: string | null) {
