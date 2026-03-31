@@ -21,4 +21,5 @@ export const difficultyColors: Record<string, string> = {
   "中級": "text-chart-cyan bg-chart-cyan/10 border-chart-cyan/20",
   "中階": "text-chart-cyan bg-chart-cyan/10 border-chart-cyan/20",
   "高階": "text-success bg-success/10 border-success/20",
+  "進階": "text-success bg-success/10 border-success/20",
 };
