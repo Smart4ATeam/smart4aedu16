@@ -212,7 +212,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             <DialogDescription>您確定要接受「{task.title}」嗎？</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={handleConfirmApply} className="w-full gradient-orange text-primary-foreground">確定</Button>
+            <Button onClick={handleConfirmApply} className="w-full">確定</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
