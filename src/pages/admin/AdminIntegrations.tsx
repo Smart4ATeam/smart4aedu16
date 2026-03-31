@@ -23,23 +23,6 @@ interface ApiEndpoint {
 
 const endpoints: ApiEndpoint[] = [
   {
-    id: "enroll-student",
-    name: "預建學員資料",
-    icon: <Users className="w-4 h-4" />,
-    method: "POST",
-    path: "/enroll-student",
-    authType: "x-api-key (ENROLL_API_KEY)",
-    description: "從外部系統預建學員資料（未啟用狀態），學員後續可透過啟用流程綁定帳號。",
-    requiredFields: [
-      { name: "email", type: "string", required: true, desc: "學員電子信箱" },
-      { name: "student_id", type: "string", required: true, desc: "學員編號" },
-      { name: "display_name", type: "string", required: true, desc: "顯示名稱" },
-    ],
-    optionalFields: [],
-    exampleBody: { email: "student@example.com", student_id: "S20250001", display_name: "王小明" },
-    exampleResponse: { message: "學員資料已建立", id: "uuid-xxx" },
-  },
-  {
     id: "api-resources",
     name: "新增資源",
     icon: <BookOpen className="w-4 h-4" />,
