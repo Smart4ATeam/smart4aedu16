@@ -169,8 +169,8 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
     onSuccess: () => { toast.success("已刪除"); queryClient.invalidateQueries({ queryKey: ["admin_courses"] }); },
   });
 
-  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "" }); setOpen(true); };
-  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, instructor_id: c.instructor_id || "", status: c.status, cover_url: c.cover_url || "", materials_url: c.materials_url || "", registration_url: c.registration_url || "https://dao.smart4a.tw/registration", detail_url: c.detail_url || "" }); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "", course_code: "" }); setOpen(true); };
+  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, instructor_id: c.instructor_id || "", status: c.status, cover_url: c.cover_url || "", materials_url: c.materials_url || "", registration_url: c.registration_url || "https://dao.smart4a.tw/registration", detail_url: c.detail_url || "", course_code: c.course_code || "" }); setOpen(true); };
 
   const statusLabels: Record<string, string> = { draft: "草稿", published: "已發佈", archived: "已封存" };
   const statusColors: Record<string, string> = { draft: "secondary", published: "default", archived: "outline" };
