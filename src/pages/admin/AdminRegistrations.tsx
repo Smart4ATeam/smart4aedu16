@@ -42,7 +42,7 @@ type RegEnrollment = {
   post_survey: string | null; post_test: string | null; test_score: number | null;
   certificate: string | null; pre_notification_sent: boolean;
   points_awarded: number; lovable_invite: string | null; notes: string | null;
-  enrolled_at: string;
+  enrolled_at: string; session_date: string | null;
   reg_members?: { id: string; member_no: string | null; name: string; phone: string | null; email: string | null } | null;
   courses?: { id: string; course_code: string | null; title: string; category: string } | null;
 };
@@ -55,6 +55,9 @@ type RegCourse = {
 function statusBadge(status: string) {
   const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     enrolled: { label: "已報名", variant: "default" },
+    completed: { label: "已完課", variant: "secondary" },
+    cancelled: { label: "已取消", variant: "destructive" },
+    no_show: { label: "未到課", variant: "destructive" },
     attended: { label: "已出席", variant: "default" },
     absent: { label: "缺席", variant: "destructive" },
     transferred: { label: "已轉班", variant: "secondary" },
@@ -395,6 +398,7 @@ function EnrollmentsTab() {
             <TableRow>
               <TableHead>學員</TableHead>
               <TableHead>課程</TableHead>
+              <TableHead className="w-28">上課日期</TableHead>
               <TableHead className="w-20">狀態</TableHead>
               <TableHead className="w-20">付款</TableHead>
               <TableHead className="w-16">出席</TableHead>
@@ -405,9 +409,9 @@ function EnrollmentsTab() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
             ) : filtered.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
@@ -418,6 +422,7 @@ function EnrollmentsTab() {
                   <div className="text-sm">{(e.courses as any)?.title || "—"}</div>
                   <div className="text-xs text-muted-foreground">{categoryLabels[e.course_type || ""] || e.course_type}</div>
                 </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{e.session_date || "—"}</TableCell>
                 <TableCell>{statusBadge(e.status)}</TableCell>
                 <TableCell>{e.payment_status ? paymentBadge(e.payment_status) : "—"}</TableCell>
                 <TableCell className="text-center">{e.checked_in ? "✅" : "—"}</TableCell>
