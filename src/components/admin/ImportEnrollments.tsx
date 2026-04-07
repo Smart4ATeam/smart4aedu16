@@ -59,7 +59,7 @@ const REQUIRED_FIELDS = ["member_no", "course_code"];
 // Lookup fields that need resolving
 const LOOKUP_FIELDS = ["member_no", "member_name", "member_email", "order_no", "course_code"];
 
-const DATE_FIELDS = ["paid_at", "session_date", "enrolled_at"];
+const DATE_FIELDS = ["paid_at", "enrolled_at"];
 
 function excelDateToISO(value: string): string | null {
   if (!value || value.startsWith("#") || value.toLowerCase() === "n/a") {
@@ -156,9 +156,7 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       if (dbCol === "test_score" || dbCol === "points_awarded") {
         val = parseFloat(val as string) || 0;
       }
-      if (dbCol === "session_date") {
-        val = excelDateToDate(val as string);
-      } else if (DATE_FIELDS.includes(dbCol)) {
+      if (DATE_FIELDS.includes(dbCol)) {
         val = excelDateToISO(val as string);
       }
       if (val !== null) {
