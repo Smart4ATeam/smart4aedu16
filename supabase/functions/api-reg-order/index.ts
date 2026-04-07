@@ -13,7 +13,8 @@ interface PersonInfo {
 
 interface RequestBody {
   order_no: string;
-  course_codes: string[];
+  course_codes?: string[];
+  course_names?: string[];
   persons: PersonInfo[];
   payment_status?: string;
   total_amount?: number;
@@ -22,6 +23,8 @@ interface RequestBody {
   invoice_title?: string;
   dealer_id?: string;
   notes?: string;
+  is_retrain?: boolean;
+  referrer?: string;
 }
 
 Deno.serve(async (req) => {
@@ -41,9 +44,13 @@ Deno.serve(async (req) => {
 
     const body: RequestBody = await req.json();
 
-    if (!body.order_no || !body.course_codes?.length || !body.persons?.length) {
+    // Validate: must have either course_codes or course_names
+    const hasCodes = body.course_codes && body.course_codes.length > 0;
+    const hasNames = body.course_names && body.course_names.length > 0;
+
+    if (!body.order_no || (!hasCodes && !hasNames) || !body.persons?.length) {
       return new Response(JSON.stringify({
-        error: "Missing required fields: order_no, course_codes, persons",
+        error: "Missing required fields: order_no, (course_codes or course_names), persons",
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,7 +64,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (body.course_codes.length > 4) {
+    const courseCount = hasCodes ? body.course_codes!.length : body.course_names!.length;
+    if (courseCount > 4) {
       return new Response(JSON.stringify({ error: "Maximum 4 courses per order" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -79,34 +87,61 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Look up courses by course_code
-    const { data: courses, error: courseErr } = await adminClient
-      .from("reg_courses")
-      .select("id, course_code, course_name, course_type, price")
-      .in("course_code", body.course_codes);
+    // Look up courses by course_code OR title
+    let courses: any[];
+    let lookupKeys: string[];
 
-    if (courseErr) throw courseErr;
+    if (hasCodes) {
+      lookupKeys = body.course_codes!;
+      const { data, error } = await adminClient
+        .from("courses")
+        .select("id, course_code, title, category, price")
+        .in("course_code", lookupKeys);
+      if (error) throw error;
+      courses = data || [];
 
-    if (!courses || courses.length !== body.course_codes.length) {
-      const foundCodes = courses?.map((c) => c.course_code) || [];
-      const missing = body.course_codes.filter((c) => !foundCodes.includes(c));
-      return new Response(JSON.stringify({
-        error: `Courses not found: ${missing.join(", ")}`,
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Check missing
+      const foundCodes = courses.map((c) => c.course_code);
+      const missing = lookupKeys.filter((c) => !foundCodes.includes(c));
+      if (missing.length > 0) {
+        return new Response(JSON.stringify({
+          error: `課程代碼不存在: ${missing.join(", ")}`,
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      lookupKeys = body.course_names!;
+      const { data, error } = await adminClient
+        .from("courses")
+        .select("id, course_code, title, category, price")
+        .in("title", lookupKeys);
+      if (error) throw error;
+      courses = data || [];
+
+      // Check missing
+      const foundTitles = courses.map((c) => c.title);
+      const missing = lookupKeys.filter((n) => !foundTitles.includes(n));
+      if (missing.length > 0) {
+        return new Response(JSON.stringify({
+          error: `課程名稱不存在: ${missing.join(", ")}`,
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Build course snapshot
-    const courseMap = new Map(courses.map((c) => [c.course_code, c]));
-    const courseSnapshot = body.course_codes.map((code) => {
-      const c = courseMap.get(code)!;
-      return { course_code: c.course_code, course_name: c.course_name, price: c.price };
-    });
-    const courseIds = body.course_codes.map((code) => courseMap.get(code)!.id);
+    const courseSnapshot = courses.map((c) => ({
+      course_code: c.course_code,
+      course_name: c.title,
+      price: c.price,
+    }));
+    const courseIds = courses.map((c) => c.id);
 
-    // Build order insert (NO members, NO enrollments)
+    // Build order insert
     const orderInsert: Record<string, unknown> = {
       order_no: body.order_no,
       course_ids: courseIds,
@@ -118,6 +153,8 @@ Deno.serve(async (req) => {
       invoice_title: body.invoice_title || null,
       dealer_id: body.dealer_id || null,
       notes: body.notes || null,
+      is_retrain: body.is_retrain || false,
+      referrer: body.referrer || null,
     };
 
     // Map persons to p1/p2/p3
