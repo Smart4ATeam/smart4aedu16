@@ -6,9 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, CheckCircle, AlertTriangle, Download, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import ImportEnrollments from "@/components/admin/ImportEnrollments";
 
 // CSV column mapping: CSV header → reg_orders column
 const COLUMN_MAP: Record<string, string> = {
@@ -294,8 +296,16 @@ export default function AdminImport() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">資料匯入</h1>
-        <p className="text-muted-foreground text-sm mt-1">匯入舊訂單資料至報名管理系統</p>
+        <p className="text-muted-foreground text-sm mt-1">匯入舊資料至報名管理系統</p>
       </div>
+
+      <Tabs defaultValue="orders" className="w-full">
+        <TabsList>
+          <TabsTrigger value="orders">訂單匯入</TabsTrigger>
+          <TabsTrigger value="enrollments">報名明細匯入</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="orders" className="space-y-6 mt-4">
 
       {/* Upload area */}
       <motion.div
