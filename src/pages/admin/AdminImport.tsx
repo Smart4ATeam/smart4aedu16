@@ -70,6 +70,13 @@ const COLUMN_MAP: Record<string, string> = {
   課程代碼: "course_codes",
   is_retrain: "is_retrain",
   複訓: "is_retrain",
+  session_dates: "session_dates",
+  上課日期: "session_dates",
+  入門課程日期: "session_dates_quest",
+  基礎課程日期: "session_dates_basic",
+  中階課程日期: "session_dates_intermediate",
+  高階課程日期: "session_dates_advanced",
+  特殊課日期: "session_dates_special",
 };
 
 const REQUIRED_FIELDS = ["order_no"];
