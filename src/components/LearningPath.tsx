@@ -39,20 +39,19 @@ export function LearningPath() {
         .eq("status", "published")
         .order("sort_order", { ascending: true });
 
-      // 2. Get user's enrollments joined with sessions to get course_id
+      // 2. Get user's enrollments to determine enrolled course IDs
       const { data: enrollments } = await supabase
-        .from("course_enrollments")
-        .select("paid, status, session_id, course_sessions(course_id)")
+        .from("reg_enrollments")
+        .select("payment_status, status, course_id")
         .eq("user_id", user.id);
 
-      // Build set of enrolled course IDs (paid + confirmed)
+      // Build set of enrolled course IDs (paid + enrolled)
       const enrolledCourseIds = new Set<string>();
       if (enrollments) {
-        for (const e of enrollments) {
-          if (e.paid && e.status === "confirmed") {
-            const session = e.course_sessions as any;
-            if (session?.course_id) {
-              enrolledCourseIds.add(session.course_id);
+        for (const e of enrollments as any[]) {
+          if (e.payment_status === "paid" && e.status === "enrolled") {
+            if (e.course_id) {
+              enrolledCourseIds.add(e.course_id);
             }
           }
         }
