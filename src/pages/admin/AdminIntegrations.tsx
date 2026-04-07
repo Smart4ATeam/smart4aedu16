@@ -418,7 +418,7 @@ export default function AdminIntegrations() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Server className="w-4 h-4 text-primary" />
@@ -433,13 +433,6 @@ export default function AdminIntegrations() {
           </div>
           <p className="text-sm font-medium text-success">✓ 已設定 (API_INTEGRATION_KEY)</p>
         </div>
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-4 h-4 text-blue-400" />
-            <p className="text-xs text-muted-foreground">學員註冊 API Key</p>
-          </div>
-          <p className="text-sm font-medium text-blue-400">✓ 已設定 (ENROLL_API_KEY)</p>
-        </div>
       </div>
 
       {/* Info */}
@@ -450,8 +443,7 @@ export default function AdminIntegrations() {
         </div>
         <div className="text-xs text-muted-foreground space-y-1.5">
           <p>• 所有 API 端點使用 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">x-api-key</code> Header 進行認證</p>
-          <p>• <strong>enroll-student</strong> 使用獨立的 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">ENROLL_API_KEY</code></p>
-          <p>• 其餘端點統一使用 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">API_INTEGRATION_KEY</code></p>
+          <p>• 所有端點統一使用 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">API_INTEGRATION_KEY</code></p>
           <p>• 學員個人的 AI 與 Make.com Key 可於「學員設定頁 → 平台連線設定」中自行設定</p>
           <p>• 所有回應格式：成功 <code className="px-1 py-0.5 rounded bg-muted font-mono">{"{ success: true, data: {...} }"}</code>，失敗 <code className="px-1 py-0.5 rounded bg-muted font-mono">{"{ error: \"...\" }"}</code></p>
         </div>
