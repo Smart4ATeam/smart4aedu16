@@ -161,7 +161,9 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       } else if (DATE_FIELDS.includes(dbCol)) {
         val = excelDateToISO(val as string);
       }
-      mapped[dbCol] = val;
+      if (val !== null) {
+        mapped[dbCol] = val;
+      }
     }
   });
 
