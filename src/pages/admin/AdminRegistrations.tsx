@@ -44,11 +44,11 @@ type RegEnrollment = {
   points_awarded: number; lovable_invite: string | null; notes: string | null;
   enrolled_at: string;
   reg_members?: { id: string; member_no: string | null; name: string; phone: string | null; email: string | null } | null;
-  reg_courses?: { id: string; course_code: string; course_name: string; course_type: string } | null;
+  courses?: { id: string; course_code: string | null; title: string; category: string } | null;
 };
 
 type RegCourse = {
-  id: string; course_code: string; course_name: string; course_type: string;
+  id: string; course_code: string | null; title: string; category: string;
 };
 
 // ── Helpers ──
@@ -335,11 +335,11 @@ function EnrollmentsTab() {
     queryKey: ["reg-courses-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("reg_courses" as any)
-        .select("id, course_code, course_name, course_type")
-        .eq("status", "active")
-        .order("course_type")
-        .order("course_name");
+        .from("courses")
+        .select("id, course_code, title, category")
+        .eq("status", "published")
+        .order("category")
+        .order("title");
       if (error) throw error;
       return (data || []) as unknown as RegCourse[];
     },
@@ -363,7 +363,7 @@ function EnrollmentsTab() {
       const s = search.toLowerCase();
       const memberName = (e.reg_members as any)?.name?.toLowerCase() || "";
       const memberNo = (e.reg_members as any)?.member_no?.toLowerCase() || "";
-      const courseName = (e.reg_courses as any)?.course_name?.toLowerCase() || "";
+      const courseName = (e.courses as any)?.title?.toLowerCase() || "";
       if (!memberName.includes(s) && !memberNo.includes(s) && !courseName.includes(s)) return false;
     }
     return true;
@@ -377,7 +377,7 @@ function EnrollmentsTab() {
             <TabsTrigger value="all" className="text-xs">全部</TabsTrigger>
             {regCourses.map(c => (
               <TabsTrigger key={c.id} value={c.id} className="text-xs">
-                {c.course_name}
+                {c.title}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -415,7 +415,7 @@ function EnrollmentsTab() {
                   <div className="text-xs text-muted-foreground">{(e.reg_members as any)?.member_no || ""}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">{(e.reg_courses as any)?.course_name || "—"}</div>
+                  <div className="text-sm">{(e.courses as any)?.title || "—"}</div>
                   <div className="text-xs text-muted-foreground">{categoryLabels[e.course_type || ""] || e.course_type}</div>
                 </TableCell>
                 <TableCell>{statusBadge(e.status)}</TableCell>
