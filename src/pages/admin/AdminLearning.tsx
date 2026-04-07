@@ -224,7 +224,10 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "編輯課程" : "新增課程"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>課程名稱</Label><Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2"><Label>課程名稱</Label><Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+              <div><Label>課程代碼</Label><Input value={form.course_code} onChange={(e) => setForm(f => ({ ...f, course_code: e.target.value }))} placeholder="例: VC-101" className="font-mono" /></div>
+            </div>
             <div><Label>簡短描述</Label><Textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="顯示在課程卡片上的簡短介紹" /></div>
             <div><Label>詳細介紹</Label><Textarea value={form.long_description} onChange={(e) => setForm(f => ({ ...f, long_description: e.target.value }))} rows={6} placeholder="點開課程後看到的完整介紹，支援多段落（換行即分段）" /></div>
             <div className="grid grid-cols-2 gap-4">
