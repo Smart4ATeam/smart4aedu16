@@ -260,7 +260,7 @@ export default function AdminImport() {
       "discount_plan", "invoice_type", "invoice_title", "invoice_number", "invoice_status",
       "invoice_date", "tax_id", "dealer_id", "referrer", "notes",
       "p1_name", "p1_phone", "p1_email", "p2_name", "p2_phone", "p2_email",
-      "p3_name", "p3_phone", "p3_email", "course_ids", "is_retrain",
+      "p3_name", "p3_phone", "p3_email", "course_codes", "is_retrain",
     ];
     const csv = templateHeaders.join(",") + "\n";
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -273,7 +273,7 @@ export default function AdminImport() {
   };
 
   // Display columns for preview
-  const previewCols = ["order_no", "p1_name", "total_amount", "payment_status", "invoice_number", "notes"];
+  const previewCols = ["order_no", "p1_name", "total_amount", "payment_status", "course_codes", "notes"];
 
   return (
     <div className="space-y-6">
@@ -466,8 +466,9 @@ export default function AdminImport() {
           <p>2. 必填欄位：<code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>（訂單編號）</p>
           <p>3. 支援中英文欄位名稱（如 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">訂單編號</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>）</p>
           <p>4. 付款狀態預設為 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">pending</code>，可填入 paid / pending / refunded</p>
-          <p>5. course_ids 欄位以 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">|</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">;</code> 分隔多個課程 UUID</p>
-          <p>6. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
+          <p>5. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_codes</code> 欄位填入課程代碼，多個課程以 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">,</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">;</code> 分隔，系統會自動轉換為課程 ID</p>
+          <p>6. 也可直接使用 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_ids</code> 欄位填入 UUID</p>
+          <p>7. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
         </div>
       </motion.div>
     </div>
