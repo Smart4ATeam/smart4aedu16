@@ -62,6 +62,8 @@ const COLUMN_MAP: Record<string, string> = {
   報名人3信箱: "p3_email",
   course_ids: "course_ids",
   課程ID: "course_ids",
+  course_codes: "course_codes",
+  課程代碼: "course_codes",
   is_retrain: "is_retrain",
   複訓: "is_retrain",
 };
