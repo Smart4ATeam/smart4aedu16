@@ -184,9 +184,41 @@ export default function AdminImport() {
       let failed = 0;
       const errors: string[] = [];
 
+      // Collect all unique course_codes that need resolving
+      const allCodes = new Set<string>();
+      for (const r of validRows) {
+        const codes = r.mapped.course_codes as string[] | undefined;
+        if (codes?.length) codes.forEach((c) => allCodes.add(c));
+      }
+
+      // Resolve course_codes → course_ids
+      let codeToId: Record<string, string> = {};
+      if (allCodes.size > 0) {
+        const { data: courses, error: courseErr } = await supabase
+          .from("courses")
+          .select("id, course_code")
+          .in("course_code", Array.from(allCodes));
+        if (courseErr) throw courseErr;
+        codeToId = Object.fromEntries((courses || []).map((c) => [c.course_code, c.id]));
+        const missing = Array.from(allCodes).filter((c) => !codeToId[c]);
+        if (missing.length > 0) {
+          errors.push(`找不到課程代碼: ${missing.join(", ")}`);
+        }
+      }
+
       for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
         const batch = validRows.slice(i, i + BATCH_SIZE);
-        const inserts = batch.map((r) => r.mapped);
+        const inserts = batch.map((r) => {
+          const row = { ...r.mapped };
+          // Resolve course_codes to course_ids
+          if (row.course_codes) {
+            const codes = row.course_codes as string[];
+            const ids = codes.map((c) => codeToId[c]).filter(Boolean);
+            row.course_ids = [...((row.course_ids as string[] | undefined) || []), ...ids];
+            delete row.course_codes;
+          }
+          return row;
+        });
 
         const { error } = await supabase.from("reg_orders").insert(inserts as any);
         if (error) {
