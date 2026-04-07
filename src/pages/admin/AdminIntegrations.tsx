@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { ApiKeyManager } from "@/components/admin/ApiKeyManager";
 import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -417,22 +418,16 @@ export default function AdminIntegrations() {
         description="管理外部系統（Make.com、AI Agent）串接所需的 API 端點與認證設定"
       />
 
+      {/* API Key Management */}
+      <ApiKeyManager />
+
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Server className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">可用 API 端點</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{endpoints.length}</p>
+      <div className="glass-card p-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Server className="w-4 h-4 text-primary" />
+          <p className="text-xs text-muted-foreground">可用 API 端點</p>
         </div>
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-4 h-4 text-success" />
-            <p className="text-xs text-muted-foreground">系統級 API Key</p>
-          </div>
-          <p className="text-sm font-medium text-success">✓ 已設定 (API_INTEGRATION_KEY)</p>
-        </div>
+        <p className="text-2xl font-bold text-foreground">{endpoints.length}</p>
       </div>
 
       {/* Info */}
