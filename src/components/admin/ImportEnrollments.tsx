@@ -156,9 +156,7 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       if (dbCol === "test_score" || dbCol === "points_awarded") {
         val = parseFloat(val as string) || 0;
       }
-      if (dbCol === "session_date") {
-        val = excelDateToDate(val as string);
-      } else if (DATE_FIELDS.includes(dbCol)) {
+      if (DATE_FIELDS.includes(dbCol)) {
         val = excelDateToISO(val as string);
       }
       if (val !== null) {
