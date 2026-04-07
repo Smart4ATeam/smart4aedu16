@@ -122,9 +122,9 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       let val: unknown = values[i].trim();
       if (dbCol === "total_amount") val = parseFloat(val as string) || 0;
       if (dbCol === "is_retrain") val = ["true", "1", "是", "yes"].includes((val as string).toLowerCase());
-      if (dbCol === "course_ids") {
-        // Accept comma-separated UUIDs within the field
-        val = (val as string).split(/[;|]/).map((s) => s.trim()).filter(Boolean);
+      if (dbCol === "course_ids" || dbCol === "course_codes") {
+        // Accept comma/semicolon/pipe-separated values
+        val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
       }
       mapped[dbCol] = val;
     }
