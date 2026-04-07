@@ -27,6 +27,7 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminIntegrations from "./pages/admin/AdminIntegrations";
 import AdminLearning from "./pages/admin/AdminLearning";
 import AdminRegistrations from "./pages/admin/AdminRegistrations";
+import AdminImport from "./pages/admin/AdminImport";
 import Learning from "./pages/Learning";
 import CourseDetail from "./pages/CourseDetail";
 
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/admin/integrations" element={<AdminProtectedRoute><AdminLayout><AdminIntegrations /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/learning" element={<AdminProtectedRoute><AdminLayout><AdminLearning /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/registrations" element={<AdminProtectedRoute><AdminLayout><AdminRegistrations /></AdminLayout></AdminProtectedRoute>} />
+            <Route path="/admin/import" element={<AdminProtectedRoute><AdminLayout><AdminImport /></AdminLayout></AdminProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
