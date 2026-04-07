@@ -6,75 +6,31 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, CheckCircle, AlertTriangle, Download, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import ImportEnrollments from "@/components/admin/ImportEnrollments";
-import ImportMembers from "@/components/admin/ImportMembers";
-import ImportPointTransactions from "@/components/admin/ImportPointTransactions";
 
-// CSV column mapping: CSV header → reg_orders column
 const COLUMN_MAP: Record<string, string> = {
+  member_no: "member_no",
+  學員編號: "member_no",
+  points_delta: "points_delta",
+  點數異動: "points_delta",
+  異動點數: "points_delta",
+  type: "type",
+  類型: "type",
+  description: "description",
+  說明: "description",
+  備註: "description",
   order_no: "order_no",
   訂單編號: "order_no",
-  total_amount: "total_amount",
-  總金額: "total_amount",
-  payment_status: "payment_status",
-  付款狀態: "payment_status",
-  payment_method: "payment_method",
-  付款方式: "payment_method",
-  paid_at: "paid_at",
-  付款日期: "paid_at",
-  discount_plan: "discount_plan",
-  優惠方案: "discount_plan",
-  invoice_type: "invoice_type",
-  發票類型: "invoice_type",
-  invoice_title: "invoice_title",
-  發票抬頭: "invoice_title",
-  invoice_number: "invoice_number",
-  發票號碼: "invoice_number",
-  invoice_status: "invoice_status",
-  發票狀態: "invoice_status",
-  invoice_date: "invoice_date",
-  發票日期: "invoice_date",
-  tax_id: "tax_id",
-  統一編號: "tax_id",
-  dealer_id: "dealer_id",
-  經銷商: "dealer_id",
-  referrer: "referrer",
-  推薦人: "referrer",
-  notes: "notes",
-  備註: "notes",
-  p1_name: "p1_name",
-  報名人1姓名: "p1_name",
-  p1_phone: "p1_phone",
-  報名人1電話: "p1_phone",
-  p1_email: "p1_email",
-  報名人1信箱: "p1_email",
-  p2_name: "p2_name",
-  報名人2姓名: "p2_name",
-  p2_phone: "p2_phone",
-  報名人2電話: "p2_phone",
-  p2_email: "p2_email",
-  報名人2信箱: "p2_email",
-  p3_name: "p3_name",
-  報名人3姓名: "p3_name",
-  p3_phone: "p3_phone",
-  報名人3電話: "p3_phone",
-  p3_email: "p3_email",
-  報名人3信箱: "p3_email",
-  course_ids: "course_ids",
-  課程ID: "course_ids",
-  course_codes: "course_codes",
-  課程代碼: "course_codes",
-  is_retrain: "is_retrain",
-  複訓: "is_retrain",
+  created_at: "created_at",
+  建立時間: "created_at",
+  異動時間: "created_at",
 };
 
-const REQUIRED_FIELDS = ["order_no"];
+const REQUIRED_FIELDS = ["member_no", "points_delta"];
 
-const DATE_FIELDS = ["paid_at", "invoice_date", "invoice_void_at", "invoice_reissued_at"];
+const DATE_FIELDS = ["created_at"];
 
 function excelDateToISO(value: string): string {
   const num = parseFloat(value);
@@ -135,37 +91,26 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
     const dbCol = COLUMN_MAP[h];
     if (dbCol && values[i]?.trim()) {
       let val: unknown = values[i].trim();
-      if (dbCol === "total_amount") val = parseFloat(val as string) || 0;
-      if (dbCol === "is_retrain") val = ["true", "1", "是", "yes"].includes((val as string).toLowerCase());
-      if (dbCol === "course_ids" || dbCol === "course_codes") {
-        // Accept comma/semicolon/pipe-separated values
-        val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
-      }
-      if (DATE_FIELDS.includes(dbCol)) {
-        val = excelDateToISO(val as string);
-      }
+      if (dbCol === "points_delta") val = parseInt(val as string, 10) || 0;
+      if (DATE_FIELDS.includes(dbCol)) val = excelDateToISO(val as string);
       mapped[dbCol] = val;
     }
   });
 
-  // Validate required
   for (const field of REQUIRED_FIELDS) {
     if (!mapped[field]) errors.push(`缺少必要欄位: ${field}`);
   }
 
-  // Default values
-  if (!mapped.payment_status) mapped.payment_status = "pending";
-  if (!mapped.total_amount) mapped.total_amount = 0;
-  if (!mapped.invoice_status) mapped.invoice_status = "pending";
-  if (!mapped.course_ids) mapped.course_ids = [];
-  if (mapped.is_retrain === undefined) mapped.is_retrain = false;
+  if (!mapped.type) mapped.type = "manual";
 
   return { raw, mapped, errors, rowIndex };
 }
 
 const BATCH_SIZE = 50;
 
-export default function AdminImport() {
+const previewCols = ["member_no", "points_delta", "type", "description", "order_no"];
+
+export default function ImportPointTransactions() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -185,10 +130,9 @@ export default function AdminImport() {
       const text = ev.target?.result as string;
       const { headers: h, rows } = parseCSV(text);
       setHeaders(h);
-
       const mapped = rows
         .filter((r) => r.some((v) => v.trim()))
-        .map((r, i) => mapRow(h, r, i + 2)); // +2 for 1-indexed + header row
+        .map((r, i) => mapRow(h, r, i + 2));
       setParsedRows(mapped);
     };
     reader.readAsText(file, "UTF-8");
@@ -203,48 +147,78 @@ export default function AdminImport() {
       let failed = 0;
       const errors: string[] = [];
 
-      // Collect all unique course_codes that need resolving
-      const allCodes = new Set<string>();
+      // Resolve member_no → member_id
+      const allMemberNos = new Set<string>();
+      const allOrderNos = new Set<string>();
       for (const r of validRows) {
-        const codes = r.mapped.course_codes as string[] | undefined;
-        if (codes?.length) codes.forEach((c) => allCodes.add(c));
+        if (r.mapped.member_no) allMemberNos.add(r.mapped.member_no as string);
+        if (r.mapped.order_no) allOrderNos.add(r.mapped.order_no as string);
       }
 
-      // Resolve course_codes → course_ids
-      let codeToId: Record<string, string> = {};
-      if (allCodes.size > 0) {
-        const { data: courses, error: courseErr } = await supabase
-          .from("courses")
-          .select("id, course_code")
-          .in("course_code", Array.from(allCodes));
-        if (courseErr) throw courseErr;
-        codeToId = Object.fromEntries((courses || []).map((c) => [c.course_code, c.id]));
-        const missing = Array.from(allCodes).filter((c) => !codeToId[c]);
+      let memberNoToId: Record<string, string> = {};
+      if (allMemberNos.size > 0) {
+        const { data, error } = await supabase
+          .from("reg_members")
+          .select("id, member_no")
+          .in("member_no", Array.from(allMemberNos));
+        if (error) throw error;
+        memberNoToId = Object.fromEntries((data || []).map((m) => [m.member_no, m.id]));
+        const missing = Array.from(allMemberNos).filter((n) => !memberNoToId[n]);
         if (missing.length > 0) {
-          errors.push(`找不到課程代碼: ${missing.join(", ")}`);
+          errors.push(`找不到學員編號: ${missing.join(", ")}`);
+        }
+      }
+
+      let orderNoToId: Record<string, string> = {};
+      if (allOrderNos.size > 0) {
+        const { data, error } = await supabase
+          .from("reg_orders")
+          .select("id, order_no")
+          .in("order_no", Array.from(allOrderNos));
+        if (error) throw error;
+        orderNoToId = Object.fromEntries((data || []).map((o) => [o.order_no, o.id]));
+        const missing = Array.from(allOrderNos).filter((n) => !orderNoToId[n]);
+        if (missing.length > 0) {
+          errors.push(`找不到訂單編號: ${missing.join(", ")}`);
         }
       }
 
       for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
         const batch = validRows.slice(i, i + BATCH_SIZE);
-        const inserts = batch.map((r) => {
-          const row = { ...r.mapped };
-          // Resolve course_codes to course_ids
-          if (row.course_codes) {
-            const codes = row.course_codes as string[];
-            const ids = codes.map((c) => codeToId[c]).filter(Boolean);
-            row.course_ids = [...((row.course_ids as string[] | undefined) || []), ...ids];
-            delete row.course_codes;
-          }
-          return row;
-        });
+        const inserts = batch
+          .map((r) => {
+            const row: Record<string, unknown> = {};
+            const memberNo = r.mapped.member_no as string;
+            const memberId = memberNoToId[memberNo];
+            if (!memberId) return null;
 
-        const { error } = await supabase.from("reg_orders").insert(inserts as any);
+            row.member_id = memberId;
+            row.points_delta = r.mapped.points_delta;
+            if (r.mapped.type) row.type = r.mapped.type;
+            if (r.mapped.description) row.description = r.mapped.description;
+            if (r.mapped.created_at) row.created_at = r.mapped.created_at;
+
+            const orderNo = r.mapped.order_no as string | undefined;
+            if (orderNo && orderNoToId[orderNo]) {
+              row.order_id = orderNoToId[orderNo];
+            }
+
+            return row;
+          })
+          .filter(Boolean);
+
+        if (inserts.length === 0) {
+          failed += batch.length;
+          continue;
+        }
+
+        const { error } = await supabase.from("reg_point_transactions").insert(inserts as any);
         if (error) {
           failed += batch.length;
           errors.push(`批次 ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
         } else {
-          success += batch.length;
+          success += inserts.length;
+          failed += batch.length - inserts.length;
         }
         setProgress(Math.round(((i + batch.length) / validRows.length) * 100));
       }
@@ -254,7 +228,7 @@ export default function AdminImport() {
     onSuccess: (result) => {
       setImportResult(result);
       if (result.failed === 0) {
-        toast.success(`成功匯入 ${result.success} 筆訂單`);
+        toast.success(`成功匯入 ${result.success} 筆點數異動`);
       } else {
         toast.warning(`匯入完成：${result.success} 成功 / ${result.failed} 失敗`);
       }
@@ -274,51 +248,22 @@ export default function AdminImport() {
   };
 
   const downloadTemplate = () => {
-    const templateHeaders = [
-      "order_no", "total_amount", "payment_status", "payment_method", "paid_at",
-      "discount_plan", "invoice_type", "invoice_title", "invoice_number", "invoice_status",
-      "invoice_date", "tax_id", "dealer_id", "referrer", "notes",
-      "p1_name", "p1_phone", "p1_email", "p2_name", "p2_phone", "p2_email",
-      "p3_name", "p3_phone", "p3_email", "course_codes", "is_retrain",
-    ];
+    const templateHeaders = ["member_no", "points_delta", "type", "description", "order_no", "created_at"];
     const csv = templateHeaders.join(",") + "\n";
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "orders-import-template.csv";
+    a.download = "point-transactions-import-template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Display columns for preview
-  const previewCols = ["order_no", "p1_name", "total_amount", "payment_status", "course_codes", "notes"];
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">資料匯入</h1>
-        <p className="text-muted-foreground text-sm mt-1">匯入舊資料至報名管理系統</p>
-      </div>
-
-      <Tabs defaultValue="orders" className="w-full">
-        <TabsList>
-          <TabsTrigger value="orders">訂單匯入</TabsTrigger>
-          <TabsTrigger value="enrollments">報名明細匯入</TabsTrigger>
-          <TabsTrigger value="members">學員匯入</TabsTrigger>
-          <TabsTrigger value="points">點數異動匯入</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="orders" className="space-y-6 mt-4">
-
-      {/* Upload area */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl p-8"
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-semibold text-foreground">上傳 CSV 檔案</h2>
+          <h2 className="font-semibold text-foreground">上傳點數異動 CSV</h2>
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
             <Download className="w-4 h-4" />
             下載範本
@@ -330,13 +275,7 @@ export default function AdminImport() {
             <Upload className="w-10 h-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">點擊或拖曳 CSV 檔案至此</p>
             <p className="text-xs text-muted-foreground">支援 UTF-8 編碼的 CSV 檔案</p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv"
-              onChange={handleFile}
-              className="hidden"
-            />
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="hidden" />
           </label>
         ) : (
           <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border">
@@ -355,7 +294,6 @@ export default function AdminImport() {
           </div>
         )}
 
-        {/* Column mapping info */}
         {headers.length > 0 && (
           <div className="mt-4 p-3 rounded-lg bg-muted/20 border border-border">
             <p className="text-xs font-medium text-foreground mb-2">欄位對應</p>
@@ -363,11 +301,7 @@ export default function AdminImport() {
               {headers.map((h) => {
                 const mapped = COLUMN_MAP[h];
                 return (
-                  <Badge
-                    key={h}
-                    variant={mapped ? "default" : "outline"}
-                    className={`text-[10px] px-1.5 py-0 ${!mapped ? "border-destructive text-destructive" : ""}`}
-                  >
+                  <Badge key={h} variant={mapped ? "default" : "outline"} className={`text-[10px] px-1.5 py-0 ${!mapped ? "border-destructive text-destructive" : ""}`}>
                     {h} → {mapped || "❌ 未識別"}
                   </Badge>
                 );
@@ -377,7 +311,6 @@ export default function AdminImport() {
         )}
       </motion.div>
 
-      {/* Error rows */}
       {errorRows.length > 0 && (
         <Alert variant="destructive">
           <AlertTriangle className="w-4 h-4" />
@@ -393,26 +326,16 @@ export default function AdminImport() {
         </Alert>
       )}
 
-      {/* Preview table */}
       {validRows.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card rounded-2xl overflow-hidden"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl overflow-hidden">
           <div className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Eye className="w-4 h-4 text-primary" />
               <h2 className="font-semibold text-foreground">預覽（前 20 筆）</h2>
             </div>
-            <Button
-              onClick={() => importMutation.mutate()}
-              disabled={importMutation.isPending || !!importResult}
-              className="gap-2"
-            >
+            <Button onClick={() => importMutation.mutate()} disabled={importMutation.isPending || !!importResult} className="gap-2">
               <Upload className="w-4 h-4" />
-              匯入 {validRows.length} 筆訂單
+              匯入 {validRows.length} 筆點數異動
             </Button>
           </div>
 
@@ -450,13 +373,8 @@ export default function AdminImport() {
         </motion.div>
       )}
 
-      {/* Import result */}
       {importResult && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <h2 className="font-semibold text-foreground">匯入完成</h2>
@@ -482,38 +400,16 @@ export default function AdminImport() {
         </motion.div>
       )}
 
-      {/* Help info */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass-card rounded-2xl p-6"
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-6">
         <h3 className="font-semibold text-foreground mb-3">使用說明</h3>
         <div className="text-sm text-muted-foreground space-y-2">
           <p>1. 下載 CSV 範本，依照欄位格式填入資料</p>
-          <p>2. 必填欄位：<code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>（訂單編號）</p>
-          <p>3. 支援中英文欄位名稱（如 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">訂單編號</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>）</p>
-          <p>4. 付款狀態預設為 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">pending</code>，可填入 paid / pending / refunded</p>
-          <p>5. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_codes</code> 欄位填入課程代碼，多個課程以 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">,</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">;</code> 分隔，系統會自動轉換為課程 ID</p>
-          <p>6. 也可直接使用 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_ids</code> 欄位填入 UUID</p>
-          <p>7. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
+          <p>2. 必填欄位：<code className="px-1.5 py-0.5 rounded bg-muted text-xs">member_no</code>（學員編號）、<code className="px-1.5 py-0.5 rounded bg-muted text-xs">points_delta</code>（異動點數）</p>
+          <p>3. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">type</code> 預設為 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">manual</code>，可填入 earn / redeem / manual / adjustment</p>
+          <p>4. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code> 為選填，系統會自動對應訂單 ID</p>
+          <p>5. 匯入後會自動觸發資料庫觸發器同步學員點數餘額</p>
         </div>
       </motion.div>
-        </TabsContent>
-
-        <TabsContent value="enrollments" className="mt-4">
-          <ImportEnrollments />
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-4">
-          <ImportMembers />
-        </TabsContent>
-
-        <TabsContent value="points" className="mt-4">
-          <ImportPointTransactions />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
