@@ -350,7 +350,7 @@ function EnrollmentsTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reg_enrollments" as any)
-        .select("*, reg_members(id, member_no, name, phone, email), reg_courses(id, course_code, course_name, course_type)")
+        .select("*, reg_members(id, member_no, name, phone, email), courses(id, course_code, title, category)")
         .order("enrolled_at", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as RegEnrollment[];
