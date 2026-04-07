@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
 
     // 5. Look up courses
     const courseIds: string[] = order.course_ids || [];
+    const sessionDates: string[] = order.session_dates || [];
     if (courseIds.length === 0) {
       return new Response(JSON.stringify({ error: "訂單中無課程資料" }), {
         status: 400,
@@ -119,24 +120,6 @@ Deno.serve(async (req) => {
     if (courseErr) throw courseErr;
 
     const courseMap = new Map(courses!.map((c: Record<string, unknown>) => [c.id, c]));
-
-    // 5b. Look up active sessions for each course
-    const { data: sessions } = await adminClient
-      .from("course_sessions")
-      .select("id, course_id")
-      .in("course_id", courseIds)
-      .in("status", ["scheduled", "active"])
-      .order("start_date", { ascending: true });
-
-    const sessionMap = new Map<string, string>();
-    if (sessions) {
-      for (const s of sessions) {
-        // Keep first (earliest) session per course
-        if (!sessionMap.has(s.course_id)) {
-          sessionMap.set(s.course_id, s.id);
-        }
-      }
-    }
 
     // 6. Find or create reg_members for each person
     const memberIds: string[] = [];
