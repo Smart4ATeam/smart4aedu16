@@ -404,7 +404,7 @@ function EnrollmentsTab() {
               <TableHead className="w-16">出席</TableHead>
               <TableHead className="w-16">測驗</TableHead>
               <TableHead className="w-16">證書</TableHead>
-              <TableHead className="w-28">報名日期</TableHead>
+              <TableHead className="w-28">繳費日期</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
