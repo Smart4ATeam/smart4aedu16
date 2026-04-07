@@ -70,6 +70,13 @@ const COLUMN_MAP: Record<string, string> = {
   課程代碼: "course_codes",
   is_retrain: "is_retrain",
   複訓: "is_retrain",
+  session_dates: "session_dates",
+  上課日期: "session_dates",
+  入門課程日期: "session_dates_quest",
+  基礎課程日期: "session_dates_basic",
+  中階課程日期: "session_dates_intermediate",
+  高階課程日期: "session_dates_advanced",
+  特殊課日期: "session_dates_special",
 };
 
 const REQUIRED_FIELDS = ["order_no"];
@@ -138,15 +145,35 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       if (dbCol === "total_amount") val = parseFloat(val as string) || 0;
       if (dbCol === "is_retrain") val = ["true", "1", "是", "yes"].includes((val as string).toLowerCase());
       if (dbCol === "course_ids" || dbCol === "course_codes") {
-        // Accept comma/semicolon/pipe-separated values
+        val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
+      }
+      if (dbCol === "session_dates") {
         val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
       }
       if (DATE_FIELDS.includes(dbCol)) {
         val = excelDateToISO(val as string);
       }
-      mapped[dbCol] = val;
+      // Collect individual session date columns into session_dates array
+      if (dbCol.startsWith("session_dates_")) {
+        if (!mapped._session_date_parts) mapped._session_date_parts = {};
+        (mapped._session_date_parts as Record<string, string>)[dbCol] = val as string;
+      } else {
+        mapped[dbCol] = val;
+      }
     }
   });
+
+  // Merge individual session date columns into session_dates array
+  // Order: quest → basic → intermediate → advanced → special
+  if (mapped._session_date_parts) {
+    const parts = mapped._session_date_parts as Record<string, string>;
+    const dateOrder = ["session_dates_quest", "session_dates_basic", "session_dates_intermediate", "session_dates_advanced", "session_dates_special"];
+    const dates = dateOrder.map((k) => parts[k] || "").filter(Boolean);
+    if (dates.length > 0) {
+      mapped.session_dates = dates;
+    }
+    delete mapped._session_date_parts;
+  }
 
   // Validate required
   for (const field of REQUIRED_FIELDS) {
@@ -158,6 +185,7 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
   if (!mapped.total_amount) mapped.total_amount = 0;
   if (!mapped.invoice_status) mapped.invoice_status = "pending";
   if (!mapped.course_ids) mapped.course_ids = [];
+  if (!mapped.session_dates) mapped.session_dates = [];
   if (mapped.is_retrain === undefined) mapped.is_retrain = false;
 
   return { raw, mapped, errors, rowIndex };

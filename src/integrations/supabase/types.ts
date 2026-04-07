@@ -927,6 +927,7 @@ export type Database = {
           payment_method: string | null
           payment_status: string
           referrer: string | null
+          session_dates: string[]
           tax_id: string | null
           total_amount: number
         }
@@ -962,6 +963,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           referrer?: string | null
+          session_dates?: string[]
           tax_id?: string | null
           total_amount?: number
         }
@@ -997,6 +999,7 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string
           referrer?: string | null
+          session_dates?: string[]
           tax_id?: string | null
           total_amount?: number
         }

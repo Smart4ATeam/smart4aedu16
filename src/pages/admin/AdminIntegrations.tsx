@@ -159,6 +159,7 @@ const endpoints: ApiEndpoint[] = [
       { name: "persons", type: "object[]", required: true, desc: "報名人員陣列（1~3 人），每人需有 name，可選 phone、email" },
     ],
     optionalFields: [
+      { name: "session_dates", type: "string[]", desc: "每門課的上課日期陣列，與 course_codes 一一對應（如 [\"2025/12/20-12/21\", \"2026/1/17-1/18\"]）" },
       { name: "payment_status", type: "string", desc: "付款狀態（預設 pending）" },
       { name: "total_amount", type: "number", desc: "總金額（預設 0）" },
       { name: "discount_plan", type: "string", desc: "折扣方案" },
@@ -172,6 +173,7 @@ const endpoints: ApiEndpoint[] = [
     exampleBody: {
       order_no: "ORD20250401001",
       course_codes: ["beginner_01", "basic_01"],
+      session_dates: ["2025/12/20-12/21", "2026/1/17-1/18"],
       persons: [
         { name: "王小明", phone: "0912345678", email: "ming@example.com" },
         { name: "李小花", phone: "0987654321", email: "hua@example.com" },
@@ -200,7 +202,7 @@ const endpoints: ApiEndpoint[] = [
     method: "POST",
     path: "/api-reg-split",
     authType: "x-api-key (API_INTEGRATION_KEY)",
-    description: "付款確認後呼叫，根據 order_no 自動拆解：從訂單的 p1~p3 比對/建立 reg_members（比對順序：Email → 姓名+電話 → 新建），再為每人 × 每課程建立 reg_enrollments。自動帶入 session_id（該課程最早的排程梯次）。需訂單 payment_status=paid 才可拆解，且不可重複拆解。",
+    description: "付款確認後呼叫，根據 order_no 自動拆解：從訂單的 p1~p3 比對/建立 reg_members（比對順序：Email → 姓名+電話 → 新建），再為每人 × 每課程建立 reg_enrollments。上課日期（session_date）從訂單的 session_dates 陣列帶入。需訂單 payment_status=paid 才可拆解，且不可重複拆解。",
     requiredFields: [
       { name: "order_no", type: "string", required: true, desc: "訂單編號（對應 reg_orders.order_no）" },
     ],

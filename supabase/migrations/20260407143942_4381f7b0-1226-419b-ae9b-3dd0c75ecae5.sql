@@ -1,0 +1,1 @@
+ALTER TABLE public.reg_orders ADD COLUMN session_dates text[] NOT NULL DEFAULT '{}'::text[];

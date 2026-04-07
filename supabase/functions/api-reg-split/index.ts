@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
 
     // 5. Look up courses
     const courseIds: string[] = order.course_ids || [];
+    const sessionDates: string[] = order.session_dates || [];
     if (courseIds.length === 0) {
       return new Response(JSON.stringify({ error: "訂單中無課程資料" }), {
         status: 400,
@@ -119,24 +120,6 @@ Deno.serve(async (req) => {
     if (courseErr) throw courseErr;
 
     const courseMap = new Map(courses!.map((c: Record<string, unknown>) => [c.id, c]));
-
-    // 5b. Look up active sessions for each course
-    const { data: sessions } = await adminClient
-      .from("course_sessions")
-      .select("id, course_id")
-      .in("course_id", courseIds)
-      .in("status", ["scheduled", "active"])
-      .order("start_date", { ascending: true });
-
-    const sessionMap = new Map<string, string>();
-    if (sessions) {
-      for (const s of sessions) {
-        // Keep first (earliest) session per course
-        if (!sessionMap.has(s.course_id)) {
-          sessionMap.set(s.course_id, s.id);
-        }
-      }
-    }
 
     // 6. Find or create reg_members for each person
     const memberIds: string[] = [];
@@ -185,19 +168,23 @@ Deno.serve(async (req) => {
     // 7. Create reg_enrollments: each person × each course
     const enrollments: Record<string, unknown>[] = [];
     for (const memberId of memberIds) {
-      for (const courseId of courseIds) {
+      for (let ci = 0; ci < courseIds.length; ci++) {
+        const courseId = courseIds[ci];
         const course = courseMap.get(courseId);
+        const sessionDate = sessionDates[ci] || null;
         enrollments.push({
           order_id: order.id,
           member_id: memberId,
           course_id: courseId,
-          session_id: sessionMap.get(courseId) || null,
+          session_date: sessionDate,
           course_type: (course as Record<string, unknown>)?.category || null,
           status: "enrolled",
           payment_status: "paid",
           paid_at: order.paid_at || new Date().toISOString(),
           invoice_title: order.invoice_title || null,
           dealer_id: order.dealer_id || null,
+          is_retrain: order.is_retrain || false,
+          referrer: order.referrer || null,
         });
       }
     }
