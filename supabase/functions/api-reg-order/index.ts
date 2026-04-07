@@ -15,6 +15,7 @@ interface RequestBody {
   order_no: string;
   course_codes?: string[];
   course_names?: string[];
+  session_dates?: string[];
   persons: PersonInfo[];
   payment_status?: string;
   total_amount?: number;
