@@ -62,6 +62,8 @@ const COLUMN_MAP: Record<string, string> = {
   報名人3信箱: "p3_email",
   course_ids: "course_ids",
   課程ID: "course_ids",
+  course_codes: "course_codes",
+  課程代碼: "course_codes",
   is_retrain: "is_retrain",
   複訓: "is_retrain",
 };
@@ -120,9 +122,9 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
       let val: unknown = values[i].trim();
       if (dbCol === "total_amount") val = parseFloat(val as string) || 0;
       if (dbCol === "is_retrain") val = ["true", "1", "是", "yes"].includes((val as string).toLowerCase());
-      if (dbCol === "course_ids") {
-        // Accept comma-separated UUIDs within the field
-        val = (val as string).split(/[;|]/).map((s) => s.trim()).filter(Boolean);
+      if (dbCol === "course_ids" || dbCol === "course_codes") {
+        // Accept comma/semicolon/pipe-separated values
+        val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
       }
       mapped[dbCol] = val;
     }
@@ -182,9 +184,41 @@ export default function AdminImport() {
       let failed = 0;
       const errors: string[] = [];
 
+      // Collect all unique course_codes that need resolving
+      const allCodes = new Set<string>();
+      for (const r of validRows) {
+        const codes = r.mapped.course_codes as string[] | undefined;
+        if (codes?.length) codes.forEach((c) => allCodes.add(c));
+      }
+
+      // Resolve course_codes → course_ids
+      let codeToId: Record<string, string> = {};
+      if (allCodes.size > 0) {
+        const { data: courses, error: courseErr } = await supabase
+          .from("courses")
+          .select("id, course_code")
+          .in("course_code", Array.from(allCodes));
+        if (courseErr) throw courseErr;
+        codeToId = Object.fromEntries((courses || []).map((c) => [c.course_code, c.id]));
+        const missing = Array.from(allCodes).filter((c) => !codeToId[c]);
+        if (missing.length > 0) {
+          errors.push(`找不到課程代碼: ${missing.join(", ")}`);
+        }
+      }
+
       for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
         const batch = validRows.slice(i, i + BATCH_SIZE);
-        const inserts = batch.map((r) => r.mapped);
+        const inserts = batch.map((r) => {
+          const row = { ...r.mapped };
+          // Resolve course_codes to course_ids
+          if (row.course_codes) {
+            const codes = row.course_codes as string[];
+            const ids = codes.map((c) => codeToId[c]).filter(Boolean);
+            row.course_ids = [...((row.course_ids as string[] | undefined) || []), ...ids];
+            delete row.course_codes;
+          }
+          return row;
+        });
 
         const { error } = await supabase.from("reg_orders").insert(inserts as any);
         if (error) {
@@ -226,7 +260,7 @@ export default function AdminImport() {
       "discount_plan", "invoice_type", "invoice_title", "invoice_number", "invoice_status",
       "invoice_date", "tax_id", "dealer_id", "referrer", "notes",
       "p1_name", "p1_phone", "p1_email", "p2_name", "p2_phone", "p2_email",
-      "p3_name", "p3_phone", "p3_email", "course_ids", "is_retrain",
+      "p3_name", "p3_phone", "p3_email", "course_codes", "is_retrain",
     ];
     const csv = templateHeaders.join(",") + "\n";
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -239,7 +273,7 @@ export default function AdminImport() {
   };
 
   // Display columns for preview
-  const previewCols = ["order_no", "p1_name", "total_amount", "payment_status", "invoice_number", "notes"];
+  const previewCols = ["order_no", "p1_name", "total_amount", "payment_status", "course_codes", "notes"];
 
   return (
     <div className="space-y-6">
@@ -432,8 +466,9 @@ export default function AdminImport() {
           <p>2. 必填欄位：<code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>（訂單編號）</p>
           <p>3. 支援中英文欄位名稱（如 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">訂單編號</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code>）</p>
           <p>4. 付款狀態預設為 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">pending</code>，可填入 paid / pending / refunded</p>
-          <p>5. course_ids 欄位以 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">|</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">;</code> 分隔多個課程 UUID</p>
-          <p>6. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
+          <p>5. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_codes</code> 欄位填入課程代碼，多個課程以 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">,</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">;</code> 分隔，系統會自動轉換為課程 ID</p>
+          <p>6. 也可直接使用 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">course_ids</code> 欄位填入 UUID</p>
+          <p>7. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
         </div>
       </motion.div>
     </div>
