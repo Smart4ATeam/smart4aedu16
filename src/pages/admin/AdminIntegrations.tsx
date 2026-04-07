@@ -202,7 +202,7 @@ const endpoints: ApiEndpoint[] = [
     method: "POST",
     path: "/api-reg-split",
     authType: "x-api-key (API_INTEGRATION_KEY)",
-    description: "付款確認後呼叫，根據 order_no 自動拆解：從訂單的 p1~p3 比對/建立 reg_members（比對順序：Email → 姓名+電話 → 新建），再為每人 × 每課程建立 reg_enrollments。自動帶入 session_id（該課程最早的排程梯次）。需訂單 payment_status=paid 才可拆解，且不可重複拆解。",
+    description: "付款確認後呼叫，根據 order_no 自動拆解：從訂單的 p1~p3 比對/建立 reg_members（比對順序：Email → 姓名+電話 → 新建），再為每人 × 每課程建立 reg_enrollments。上課日期（session_date）從訂單的 session_dates 陣列帶入。需訂單 payment_status=paid 才可拆解，且不可重複拆解。",
     requiredFields: [
       { name: "order_no", type: "string", required: true, desc: "訂單編號（對應 reg_orders.order_no）" },
     ],
