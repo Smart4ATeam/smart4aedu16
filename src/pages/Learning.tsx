@@ -52,7 +52,7 @@ export default function Learning() {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("course_enrollments")
+        .from("reg_enrollments")
         .select("*, course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
         .eq("user_id", user!.id);
       if (error) throw error;
@@ -64,7 +64,7 @@ export default function Learning() {
   const { data: enrollmentCounts = {} } = useQuery({
     queryKey: ["enrollment_counts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("course_enrollments").select("session_id");
+      const { data, error } = await supabase.from("reg_enrollments").select("session_id");
       if (error) throw error;
       const counts: Record<string, number> = {};
       data?.forEach((e: { session_id: string }) => { counts[e.session_id] = (counts[e.session_id] || 0) + 1; });
@@ -90,7 +90,7 @@ export default function Learning() {
   // Enroll mutation
   const enrollMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const { error } = await supabase.from("course_enrollments").insert({
+      const { error } = await supabase.from("reg_enrollments").insert({
         user_id: user!.id,
         session_id: sessionId,
         status: "pending",
@@ -173,8 +173,8 @@ export default function Learning() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-foreground truncate">{course?.title}</h3>
-                      <Badge variant={enrollment.paid ? "default" : "outline"} className="text-xs shrink-0">
-                        {enrollment.paid ? "已繳費" : "待繳費"}
+                      <Badge variant={enrollment.payment_status === "paid" ? "default" : "outline"} className="text-xs shrink-0">
+                        {enrollment.payment_status === "paid" ? "已繳費" : "待繳費"}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -187,7 +187,7 @@ export default function Learning() {
                       {session?.title_suffix && <span>{session.title_suffix}</span>}
                     </div>
                   </div>
-                  {enrollment.paid && (
+                  {enrollment.payment_status === "paid" && (
                     <Button size="sm" onClick={() => navigate(`/learning/course/${course?.id}`)} className="shrink-0 gap-1">
                       查看內容 <ArrowRight className="w-3 h-3" />
                     </Button>

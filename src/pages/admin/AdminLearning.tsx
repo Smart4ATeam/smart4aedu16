@@ -73,7 +73,7 @@ export default function AdminLearning() {
   const { data: enrollments = [] } = useQuery({
     queryKey: ["admin_enrollments"],
     queryFn: async () => {
-      const { data } = await supabase.from("course_enrollments").select("*, course_sessions(title_suffix, courses(title)), profiles:user_id(display_name, email)").order("enrolled_at", { ascending: false });
+      const { data } = await supabase.from("reg_enrollments").select("*, course_sessions(title_suffix, courses(title)), profiles:user_id(display_name, email)").order("enrolled_at", { ascending: false });
       return data || [];
     },
   });
@@ -813,7 +813,7 @@ function InstructorsTab({ instructors, partners, queryClient }: { instructors: a
 function EnrollmentsTab({ enrollments, queryClient }: { enrollments: any[]; queryClient: any }) {
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("course_enrollments").update(updates).eq("id", id);
+      const { error } = await supabase.from("reg_enrollments").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("已更新"); queryClient.invalidateQueries({ queryKey: ["admin_enrollments"] }); },
