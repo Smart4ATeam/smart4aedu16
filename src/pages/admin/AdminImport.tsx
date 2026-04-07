@@ -11,6 +11,7 @@ import { Upload, FileText, CheckCircle, AlertTriangle, Download, Trash2, Eye } f
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import ImportEnrollments from "@/components/admin/ImportEnrollments";
+import ImportMembers from "@/components/admin/ImportMembers";
 
 // CSV column mapping: CSV header → reg_orders column
 const COLUMN_MAP: Record<string, string> = {
@@ -303,6 +304,7 @@ export default function AdminImport() {
         <TabsList>
           <TabsTrigger value="orders">訂單匯入</TabsTrigger>
           <TabsTrigger value="enrollments">報名明細匯入</TabsTrigger>
+          <TabsTrigger value="members">學員匯入</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="space-y-6 mt-4">
@@ -500,6 +502,10 @@ export default function AdminImport() {
 
         <TabsContent value="enrollments" className="mt-4">
           <ImportEnrollments />
+        </TabsContent>
+
+        <TabsContent value="members" className="mt-4">
+          <ImportMembers />
         </TabsContent>
       </Tabs>
     </div>
