@@ -142,11 +142,23 @@ Deno.serve(async (req) => {
     }));
     const courseIds = courses.map((c) => c.id);
 
+    // Validate session_dates length matches courses
+    const sessionDates = body.session_dates || [];
+    if (sessionDates.length > 0 && sessionDates.length !== courseIds.length) {
+      return new Response(JSON.stringify({
+        error: `session_dates 數量 (${sessionDates.length}) 必須與課程數量 (${courseIds.length}) 一致`,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Build order insert
     const orderInsert: Record<string, unknown> = {
       order_no: body.order_no,
       course_ids: courseIds,
       course_snapshot: courseSnapshot,
+      session_dates: sessionDates,
       payment_status: body.payment_status || "pending",
       total_amount: body.total_amount || 0,
       discount_plan: body.discount_plan || null,
