@@ -190,6 +190,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
           <TableHeader>
             <TableRow>
               <TableHead>課程名稱</TableHead>
+              <TableHead>課程代碼</TableHead>
               <TableHead>分類</TableHead>
               <TableHead>講師</TableHead>
               <TableHead>費用</TableHead>
