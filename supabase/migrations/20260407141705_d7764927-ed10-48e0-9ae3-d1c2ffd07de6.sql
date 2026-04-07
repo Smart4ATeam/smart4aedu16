@@ -1,0 +1,1 @@
+ALTER TABLE public.reg_enrollments ALTER COLUMN session_date TYPE text USING session_date::text;
