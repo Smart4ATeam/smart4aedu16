@@ -276,7 +276,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null, cover_url: form.cover_url || null, materials_url: form.materials_url || null })} disabled={!form.title}>
+            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null, cover_url: form.cover_url || null, materials_url: form.materials_url || null, course_code: form.course_code || null })} disabled={!form.title}>
               {editing ? "更新" : "建立"}
             </Button>
           </DialogFooter>
