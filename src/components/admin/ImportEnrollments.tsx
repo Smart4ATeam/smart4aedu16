@@ -70,11 +70,25 @@ function excelDateToISO(value: string): string {
   return value;
 }
 
-function excelDateToDate(value: string): string {
+function excelDateToDate(value: string): string | null {
+  // Handle invalid values like #N/A
+  if (!value || value.startsWith("#") || value.toLowerCase() === "n/a") {
+    return null;
+  }
+  // Excel serial date number
   const num = parseFloat(value);
   if (!isNaN(num) && num > 25000 && num < 60000) {
     const date = new Date((num - 25569) * 86400000);
     return date.toISOString().split("T")[0];
+  }
+  // Date range like "2025/05/17-05/18" or "2024/08/24-08/25" → take first date
+  const rangeMatch = value.match(/^(\d{4}\/\d{2}\/\d{2})-/);
+  if (rangeMatch) {
+    return rangeMatch[1].replace(/\//g, "-");
+  }
+  // Normal date string "2025/05/17" → convert slashes
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(value)) {
+    return value.replace(/\//g, "-");
   }
   return value;
 }
