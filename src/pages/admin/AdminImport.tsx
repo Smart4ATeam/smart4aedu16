@@ -496,6 +496,12 @@ export default function AdminImport() {
           <p>7. 匯入僅寫入訂單資料，如需拆解為學員與報名明細，請至報名管理頁面操作</p>
         </div>
       </motion.div>
+        </TabsContent>
+
+        <TabsContent value="enrollments" className="mt-4">
+          <ImportEnrollments />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
