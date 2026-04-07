@@ -157,70 +157,6 @@ export type Database = {
         }
         Relationships: []
       }
-      course_attendances: {
-        Row: {
-          attended: boolean
-          enrollment_id: string
-          id: string
-          session_date: string
-        }
-        Insert: {
-          attended?: boolean
-          enrollment_id: string
-          id?: string
-          session_date: string
-        }
-        Update: {
-          attended?: boolean
-          enrollment_id?: string
-          id?: string
-          session_date?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_attendances_enrollment_id_fkey"
-            columns: ["enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "course_enrollments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      course_enrollments: {
-        Row: {
-          enrolled_at: string
-          id: string
-          paid: boolean
-          session_id: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          enrolled_at?: string
-          id?: string
-          paid?: boolean
-          session_id: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          enrolled_at?: string
-          id?: string
-          paid?: boolean
-          session_id?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_enrollments_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "course_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_quizzes: {
         Row: {
           course_id: string
@@ -354,6 +290,7 @@ export type Database = {
       courses: {
         Row: {
           category: string
+          course_code: string | null
           cover_url: string | null
           created_at: string
           description: string | null
@@ -374,6 +311,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          course_code?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -394,6 +332,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          course_code?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -764,39 +703,6 @@ export type Database = {
           },
         ]
       }
-      reg_courses: {
-        Row: {
-          course_code: string
-          course_date: unknown
-          course_name: string
-          course_type: string
-          created_at: string
-          id: string
-          price: number
-          status: string
-        }
-        Insert: {
-          course_code: string
-          course_date?: unknown
-          course_name: string
-          course_type?: string
-          created_at?: string
-          id?: string
-          price?: number
-          status?: string
-        }
-        Update: {
-          course_code?: string
-          course_date?: unknown
-          course_name?: string
-          course_type?: string
-          created_at?: string
-          id?: string
-          price?: number
-          status?: string
-        }
-        Relationships: []
-      }
       reg_enrollments: {
         Row: {
           certificate: string | null
@@ -807,6 +713,7 @@ export type Database = {
           enrolled_at: string
           id: string
           invoice_title: string | null
+          is_retrain: boolean
           lovable_invite: string | null
           member_id: string | null
           notes: string | null
@@ -818,8 +725,11 @@ export type Database = {
           post_test: string | null
           pre_notification_sent: boolean
           referrer: string | null
+          session_date: string | null
+          session_id: string | null
           status: string
           test_score: number | null
+          user_id: string | null
         }
         Insert: {
           certificate?: string | null
@@ -830,6 +740,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           invoice_title?: string | null
+          is_retrain?: boolean
           lovable_invite?: string | null
           member_id?: string | null
           notes?: string | null
@@ -841,8 +752,11 @@ export type Database = {
           post_test?: string | null
           pre_notification_sent?: boolean
           referrer?: string | null
+          session_date?: string | null
+          session_id?: string | null
           status?: string
           test_score?: number | null
+          user_id?: string | null
         }
         Update: {
           certificate?: string | null
@@ -853,6 +767,7 @@ export type Database = {
           enrolled_at?: string
           id?: string
           invoice_title?: string | null
+          is_retrain?: boolean
           lovable_invite?: string | null
           member_id?: string | null
           notes?: string | null
@@ -864,15 +779,18 @@ export type Database = {
           post_test?: string | null
           pre_notification_sent?: boolean
           referrer?: string | null
+          session_date?: string | null
+          session_id?: string | null
           status?: string
           test_score?: number | null
+          user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "reg_enrollments_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "reg_courses"
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
           {
@@ -889,6 +807,13 @@ export type Database = {
             referencedRelation: "reg_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reg_enrollments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "course_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       reg_members: {
@@ -903,6 +828,7 @@ export type Database = {
           phone: string | null
           points: number
           referral_code: string | null
+          user_id: string | null
         }
         Insert: {
           course_level?: string | null
@@ -915,6 +841,7 @@ export type Database = {
           phone?: string | null
           points?: number
           referral_code?: string | null
+          user_id?: string | null
         }
         Update: {
           course_level?: string | null
@@ -927,6 +854,7 @@ export type Database = {
           phone?: string | null
           points?: number
           referral_code?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -974,6 +902,7 @@ export type Database = {
           dealer_id: string | null
           discount_plan: string | null
           id: string
+          invoice_date: string | null
           invoice_number: string | null
           invoice_reissued_at: string | null
           invoice_reissued_number: string | null
@@ -982,6 +911,7 @@ export type Database = {
           invoice_type: string | null
           invoice_void_at: string | null
           invoice_void_reason: string | null
+          is_retrain: boolean
           notes: string | null
           order_no: string
           p1_email: string | null
@@ -996,6 +926,8 @@ export type Database = {
           paid_at: string | null
           payment_method: string | null
           payment_status: string
+          referrer: string | null
+          tax_id: string | null
           total_amount: number
         }
         Insert: {
@@ -1005,6 +937,7 @@ export type Database = {
           dealer_id?: string | null
           discount_plan?: string | null
           id?: string
+          invoice_date?: string | null
           invoice_number?: string | null
           invoice_reissued_at?: string | null
           invoice_reissued_number?: string | null
@@ -1013,6 +946,7 @@ export type Database = {
           invoice_type?: string | null
           invoice_void_at?: string | null
           invoice_void_reason?: string | null
+          is_retrain?: boolean
           notes?: string | null
           order_no: string
           p1_email?: string | null
@@ -1027,6 +961,8 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_status?: string
+          referrer?: string | null
+          tax_id?: string | null
           total_amount?: number
         }
         Update: {
@@ -1036,6 +972,7 @@ export type Database = {
           dealer_id?: string | null
           discount_plan?: string | null
           id?: string
+          invoice_date?: string | null
           invoice_number?: string | null
           invoice_reissued_at?: string | null
           invoice_reissued_number?: string | null
@@ -1044,6 +981,7 @@ export type Database = {
           invoice_type?: string | null
           invoice_void_at?: string | null
           invoice_void_reason?: string | null
+          is_retrain?: boolean
           notes?: string | null
           order_no?: string
           p1_email?: string | null
@@ -1058,6 +996,8 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_status?: string
+          referrer?: string | null
+          tax_id?: string | null
           total_amount?: number
         }
         Relationships: []
