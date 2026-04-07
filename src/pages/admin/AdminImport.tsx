@@ -70,6 +70,17 @@ const COLUMN_MAP: Record<string, string> = {
 
 const REQUIRED_FIELDS = ["order_no"];
 
+const DATE_FIELDS = ["paid_at", "invoice_date", "invoice_void_at", "invoice_reissued_at"];
+
+function excelDateToISO(value: string): string {
+  const num = parseFloat(value);
+  if (!isNaN(num) && num > 25000 && num < 60000) {
+    const date = new Date((num - 25569) * 86400000);
+    return date.toISOString();
+  }
+  return value;
+}
+
 interface ParsedRow {
   raw: Record<string, string>;
   mapped: Record<string, unknown>;
@@ -126,6 +137,9 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
         // Accept comma/semicolon/pipe-separated values
         val = (val as string).split(/[;|,]/).map((s) => s.trim()).filter(Boolean);
       }
+      if (DATE_FIELDS.includes(dbCol)) {
+        val = excelDateToISO(val as string);
+      }
       mapped[dbCol] = val;
     }
   });
@@ -140,6 +154,7 @@ function mapRow(headers: string[], values: string[], rowIndex: number): ParsedRo
   if (!mapped.total_amount) mapped.total_amount = 0;
   if (!mapped.invoice_status) mapped.invoice_status = "pending";
   if (!mapped.course_ids) mapped.course_ids = [];
+  if (mapped.is_retrain === undefined) mapped.is_retrain = false;
 
   return { raw, mapped, errors, rowIndex };
 }
