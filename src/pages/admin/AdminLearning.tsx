@@ -202,6 +202,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
             {courses.map((c: any) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.title}</TableCell>
+                <TableCell className="text-sm text-muted-foreground font-mono">{c.course_code || <span className="text-muted-foreground/50">—</span>}</TableCell>
                 <TableCell><Badge className={`text-xs ${categoryColors[c.category] || ""}`}>{categoryLabels[c.category] || c.category}</Badge></TableCell>
                 <TableCell className="text-sm">{c.instructors?.name || "-"}</TableCell>
                 <TableCell className="text-sm">{c.price === 0 ? "免費" : `NT$ ${c.price}`}</TableCell>
