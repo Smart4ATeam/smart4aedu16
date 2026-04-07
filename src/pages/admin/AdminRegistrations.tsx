@@ -404,7 +404,7 @@ function EnrollmentsTab() {
               <TableHead className="w-16">出席</TableHead>
               <TableHead className="w-16">測驗</TableHead>
               <TableHead className="w-16">證書</TableHead>
-              <TableHead className="w-28">報名日期</TableHead>
+              <TableHead className="w-28">繳費日期</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -428,7 +428,7 @@ function EnrollmentsTab() {
                 <TableCell className="text-center">{e.checked_in ? "✅" : "—"}</TableCell>
                 <TableCell className="text-center text-xs">{e.test_score != null ? e.test_score : "—"}</TableCell>
                 <TableCell className="text-center">{e.certificate ? "✅" : "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDate(e.enrolled_at)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{e.paid_at ? formatDate(e.paid_at) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
