@@ -418,7 +418,7 @@ export default function AdminIntegrations() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Server className="w-4 h-4 text-primary" />
