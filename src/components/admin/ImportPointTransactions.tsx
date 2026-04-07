@@ -407,7 +407,7 @@ export default function ImportPointTransactions() {
           <p>2. 必填欄位：<code className="px-1.5 py-0.5 rounded bg-muted text-xs">member_no</code>（學員編號）、<code className="px-1.5 py-0.5 rounded bg-muted text-xs">points_delta</code>（異動點數）</p>
           <p>3. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">type</code> 預設為 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">manual</code>，可填入 earn / redeem / manual / adjustment</p>
           <p>4. <code className="px-1.5 py-0.5 rounded bg-muted text-xs">order_no</code> 為選填，系統會自動對應訂單 ID</p>
-          <p>5. 匯入後會自動觸發資料庫觸發器同步學員點數餘額</p>
+          <p>5. 支援中英文欄位名稱（如 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">學員編號</code> 或 <code className="px-1.5 py-0.5 rounded bg-muted text-xs">member_no</code>）</p>
         </div>
       </motion.div>
     </div>
