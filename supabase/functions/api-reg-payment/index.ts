@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyApiKey } from "../_shared/verify-api-key.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,10 +13,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate API key
     const apiKey = req.headers.get("x-api-key");
-    const expectedKey = Deno.env.get("API_INTEGRATION_KEY");
-    if (!apiKey || apiKey !== expectedKey) {
+    if (!(await verifyApiKey(apiKey))) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
