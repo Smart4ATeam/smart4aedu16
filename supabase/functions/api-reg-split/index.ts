@@ -112,13 +112,31 @@ Deno.serve(async (req) => {
     }
 
     const { data: courses, error: courseErr } = await adminClient
-      .from("reg_courses")
-      .select("id, course_code, course_type")
+      .from("courses")
+      .select("id, course_code, category")
       .in("id", courseIds);
 
     if (courseErr) throw courseErr;
 
-    const courseMap = new Map(courses!.map((c) => [c.id, c]));
+    const courseMap = new Map(courses!.map((c: Record<string, unknown>) => [c.id, c]));
+
+    // 5b. Look up active sessions for each course
+    const { data: sessions } = await adminClient
+      .from("course_sessions")
+      .select("id, course_id")
+      .in("course_id", courseIds)
+      .in("status", ["scheduled", "active"])
+      .order("start_date", { ascending: true });
+
+    const sessionMap = new Map<string, string>();
+    if (sessions) {
+      for (const s of sessions) {
+        // Keep first (earliest) session per course
+        if (!sessionMap.has(s.course_id)) {
+          sessionMap.set(s.course_id, s.id);
+        }
+      }
+    }
 
     // 6. Find or create reg_members for each person
     const memberIds: string[] = [];
