@@ -59,7 +59,7 @@ const REQUIRED_FIELDS = ["member_no", "course_code"];
 // Lookup fields that need resolving
 const LOOKUP_FIELDS = ["member_no", "member_name", "member_email", "order_no", "course_code"];
 
-const DATE_FIELDS = ["paid_at", "session_date", "enrolled_at"];
+const DATE_FIELDS = ["paid_at", "enrolled_at"];
 
 function excelDateToISO(value: string): string | null {
   if (!value || value.startsWith("#") || value.toLowerCase() === "n/a") {
