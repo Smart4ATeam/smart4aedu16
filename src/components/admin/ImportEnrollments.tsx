@@ -61,11 +61,18 @@ const LOOKUP_FIELDS = ["member_no", "member_name", "member_email", "order_no", "
 
 const DATE_FIELDS = ["paid_at", "session_date", "enrolled_at"];
 
-function excelDateToISO(value: string): string {
+function excelDateToISO(value: string): string | null {
+  if (!value || value.startsWith("#") || value.toLowerCase() === "n/a") {
+    return null;
+  }
   const num = parseFloat(value);
   if (!isNaN(num) && num > 25000 && num < 60000) {
     const date = new Date((num - 25569) * 86400000);
     return date.toISOString();
+  }
+  // Convert slash dates to ISO
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(value)) {
+    return value.replace(/\//g, "-");
   }
   return value;
 }
