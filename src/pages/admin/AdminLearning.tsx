@@ -818,7 +818,7 @@ function InstructorsTab({ instructors, partners, queryClient }: { instructors: a
 function EnrollmentsTab({ enrollments, queryClient }: { enrollments: any[]; queryClient: any }) {
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("reg_enrollments").update(updates).eq("id", id);
+      const { error } = await supabase.from("reg_enrollments").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("已更新"); queryClient.invalidateQueries({ queryKey: ["admin_enrollments"] }); },
