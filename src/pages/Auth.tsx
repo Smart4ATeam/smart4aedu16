@@ -236,53 +236,78 @@ export default function Auth() {
             {/* Activate mode fields */}
             {mode === "activate" &&
             <>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">
-                    學員編號 <span className="text-destructive">*</span>
-                  </label>
-                  <div className="relative">
-                    <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="例：STU-2026-001"
-                    className="pl-10 bg-muted border-border"
-                    required />
-                  
+                {/* Section 1: Google 啟用 */}
+                <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30">
+                  <p className="text-sm font-semibold text-foreground">方式一：使用 Google 帳號啟用</p>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      學員編號 <span className="text-destructive">*</span>
+                    </label>
+                    <div className="relative">
+                      <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="例：STU-2026-001"
+                      className="pl-10 bg-muted border-border"
+                      required />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      請輸入報名時收到的學員編號
+                    </p>
                   </div>
+                  <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 gap-2 font-medium"
+                  onClick={handleGoogleActivate}>
+                    <GoogleIcon />
+                    使用 Google 帳號啟用
+                  </Button>
                   <p className="text-[11px] text-muted-foreground">
-                    請輸入報名時收到的學員編號
+                    請使用與報名時相同的 Google 帳號登入
                   </p>
                 </div>
 
-                {/* Google activate button */}
-                <Button
-                type="button"
-                variant="outline"
-                className="w-full h-11 gap-2 font-medium"
-                onClick={handleGoogleActivate}>
-                
-                  <GoogleIcon />
-                  使用 Google 帳號啟用
-                </Button>
-
+                {/* Divider */}
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">或使用 Email 啟用</span>
+                  <span className="text-xs text-muted-foreground">或</span>
                   <Separator className="flex-1" />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">電子信箱</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="pl-10 bg-muted border-border" />
-                  
+                {/* Section 2: Email 啟用 */}
+                <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30">
+                  <p className="text-sm font-semibold text-foreground">方式二：使用 Email 啟用</p>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      學員編號 <span className="text-destructive">*</span>
+                    </label>
+                    <div className="relative">
+                      <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="例：STU-2026-001"
+                      className="pl-10 bg-muted border-border" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      電子信箱 <span className="text-destructive">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="pl-10 bg-muted border-border" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      請填寫與報名時相同的電子信箱，否則無法啟用
+                    </p>
                   </div>
                 </div>
               </>
