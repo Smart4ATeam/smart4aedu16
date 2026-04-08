@@ -395,7 +395,9 @@ const AdminContent = () => {
       const response = await fetch("/templates/resources-import-template.csv");
       if (!response.ok) throw new Error("下載失敗");
 
-      const blob = await response.blob();
+      const text = await response.text();
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + text], { type: "text/csv;charset=utf-8" });
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
