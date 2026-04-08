@@ -551,6 +551,33 @@ const AdminContent = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>編輯資源</DialogTitle><DialogDescription>修改資源資訊後儲存</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="資源名稱" value={editRes.title} onChange={(e) => setEditRes({ ...editRes, title: e.target.value })} />
+            <Textarea placeholder="說明" value={editRes.description} onChange={(e) => setEditRes({ ...editRes, description: e.target.value })} />
+            <Select value={editRes.category} onValueChange={(v) => setEditRes({ ...editRes, category: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{categoryOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <div className="flex gap-3">
+              <Input placeholder="作者" value={editRes.author} onChange={(e) => setEditRes({ ...editRes, author: e.target.value })} className="flex-1" />
+              <Input placeholder="版本" value={editRes.version} onChange={(e) => setEditRes({ ...editRes, version: e.target.value })} className="w-28" />
+            </div>
+            <Input placeholder="資源連結（下載或申請連結）" value={editRes.download_url} onChange={(e) => setEditRes({ ...editRes, download_url: e.target.value })} />
+            <DynamicFields
+              res={editRes}
+              onChange={(field, value) => setEditRes((prev) => ({ ...prev, [field]: value }))}
+              subCategories={subCategories} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>取消</Button>
+            <Button onClick={handleUpdate}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Batch dialog */}
       <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
