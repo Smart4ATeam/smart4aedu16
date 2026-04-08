@@ -206,13 +206,8 @@ function DynamicFields({ res, onChange, subCategories
         </div>
       }
 
-      {/* Extensions: trial_url */}
-      {res.category === "extensions" &&
-      <div>
-          <Label className="text-xs">試用連結</Label>
-          <Input className="h-8 text-xs mt-1" placeholder="https://..." value={res.trial_url} onChange={(e) => onChange("trial_url", e.target.value)} />
-        </div>
-      }
+
+
 
       {/* APP ID & Trial toggle for extensions & templates */}
       {(res.category === "extensions" || res.category === "templates") &&
@@ -309,7 +304,7 @@ const AdminContent = () => {
     sub_category: r.sub_category || null,
     tags: r.tags ? r.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     hot_rank: r.hot_rank ? parseInt(r.hot_rank) : null,
-    trial_url: r.trial_url.trim() || null,
+    flow_count: r.flow_count ? parseInt(r.flow_count) : null,
     flow_count: r.flow_count ? parseInt(r.flow_count) : null,
     usage_count: r.usage_count ? parseInt(r.usage_count) : null,
     industry_tag: r.industry_tag.trim() || null,

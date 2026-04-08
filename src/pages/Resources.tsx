@@ -208,16 +208,7 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>詳細介紹</button>
         )}
-        {r.trial_url && (
-          <a
-            href={r.trial_url}
-            target="_blank"
-            rel="noreferrer"
-            className="bg-secondary text-secondary-foreground py-2 rounded-lg text-xs font-bold hover:opacity-90 transition text-center flex items-center justify-center gap-1.5"
-          >
-            <Tag className="w-3.5 h-3.5" /> 領取試用
-          </a>
-        )}
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
         <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
       </div>
     </div>
