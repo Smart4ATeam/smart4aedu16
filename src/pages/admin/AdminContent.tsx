@@ -32,7 +32,7 @@ type SubCategory = {
 type NewResource = {
   title: string;description: string;category: string;difficulty: string;
   author: string;version: string;download_url: string;thumbnail_url: string;
-  detail_url: string;sub_category: string;tags: string;hot_rank: string;trial_url: string;
+  detail_url: string;sub_category: string;tags: string;hot_rank: string;
   flow_count: string;usage_count: string;industry_tag: string;
   duration: string;video_type: string;is_hot: boolean;sort_order: string;
   app_id: string;trial_enabled: boolean;
@@ -41,7 +41,7 @@ type NewResource = {
 const emptyResource = (): NewResource => ({
   title: "", description: "", category: "plugins", difficulty: "初級",
   author: "", version: "", download_url: "", thumbnail_url: "",
-  detail_url: "", sub_category: "", tags: "", hot_rank: "", trial_url: "",
+  detail_url: "", sub_category: "", tags: "", hot_rank: "",
   flow_count: "", usage_count: "", industry_tag: "",
   duration: "", video_type: "", is_hot: false, sort_order: "",
   app_id: "", trial_enabled: false,
@@ -497,7 +497,7 @@ const AdminContent = () => {
             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><FileSpreadsheet className="w-4 h-4" /> 匯入 CSV</Button>
             <Button type="button" variant="outline" size="sm" onClick={addBatchRow} className="gap-1.5"><Plus className="w-4 h-4" /> 新增一列</Button>
             <Button type="button" variant="outline" size="sm" onClick={handleTemplateDownload} className="gap-1.5"><Download className="w-4 h-4" /> 下載範本</Button>
-            <p className="text-xs text-muted-foreground ml-auto self-center">支援新欄位：tags, sub_category, trial_url, duration 等</p>
+            <p className="text-xs text-muted-foreground ml-auto self-center">支援新欄位：tags, sub_category, duration, app_id, trial_enabled 等</p>
           </div>
           <div className="overflow-auto flex-1 border rounded-md">
             <Table>
