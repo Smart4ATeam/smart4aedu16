@@ -392,7 +392,7 @@ function OrdersTab() {
                     <p className="text-xs font-medium mb-1">報名課程</p>
                     {courses.length > 0 ? courses.map((c: any, i: number) => (
                       <div key={i} className="text-xs text-muted-foreground flex justify-between py-0.5">
-                        <span>{c.title || c.course_code || `課程 ${i + 1}`}</span>
+                        <span>{c.course_name || c.title || c.course_code || `課程 ${i + 1}`}</span>
                         <span className="flex gap-3">
                           {dates[i] && <span>📅 {dates[i]}</span>}
                           {c.price != null && <span>NT${Number(c.price).toLocaleString()}</span>}
