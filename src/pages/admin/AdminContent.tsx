@@ -301,6 +301,9 @@ const AdminContent = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [showSubCatDialog, setShowSubCatDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRes, setEditRes] = useState<NewResource>(emptyResource());
   const [newRes, setNewRes] = useState<NewResource>(emptyResource());
   const [batchRows, setBatchRows] = useState<NewResource[]>([emptyResource(), emptyResource(), emptyResource()]);
   const [batchUploading, setBatchUploading] = useState(false);
