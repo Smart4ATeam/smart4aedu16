@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ClipboardList, Search, FileText, Eye, Pencil, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight,
+  ClipboardList, Search, FileText, Eye, Pencil, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, XCircle,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -417,6 +417,8 @@ function EnrollmentsTab() {
   const [editingEnroll, setEditingEnroll] = useState<RegEnrollment | null>(null);
   const [editSessionDate, setEditSessionDate] = useState("");
   const [editReason, setEditReason] = useState("");
+  const [cancellingEnroll, setCancellingEnroll] = useState<RegEnrollment | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -461,7 +463,26 @@ function EnrollmentsTab() {
         reason: editReason, operated_by: user?.id,
       } as any);
     },
-    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); setEditingEnroll(null); },
+    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] }); setEditingEnroll(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!cancellingEnroll) throw new Error("無資料");
+      if (!cancelReason.trim()) throw new Error("請填寫取消原因");
+      const { error } = await supabase.from("reg_enrollments" as any)
+        .update({ status: "cancelled" } as any)
+        .eq("id", cancellingEnroll.id);
+      if (error) throw error;
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "enrollment", entity_id: cancellingEnroll.id, action: "cancel",
+        old_value: { status: cancellingEnroll.status, payment_status: cancellingEnroll.payment_status },
+        new_value: { status: "cancelled" },
+        reason: cancelReason, operated_by: user?.id,
+      } as any);
+    },
+    onSuccess: () => { toast.success("已取消報名"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] }); queryClient.invalidateQueries({ queryKey: ["admin_enrollment_count"] }); setCancellingEnroll(null); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -469,6 +490,11 @@ function EnrollmentsTab() {
     setEditingEnroll(e);
     setEditSessionDate(e.session_date || "");
     setEditReason("");
+  };
+
+  const openCancel = (e: RegEnrollment) => {
+    setCancellingEnroll(e);
+    setCancelReason("");
   };
 
   const filtered = enrollments.filter(e => {
@@ -544,13 +570,14 @@ function EnrollmentsTab() {
               <TableHead className="w-16 whitespace-nowrap text-xs">測驗</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">證書</TableHead>
               <SortableHead label="繳費日期" sortKey="paid_at" sort={sort} onSort={onSort} className="w-28" />
+              <TableHead className="w-16 whitespace-nowrap text-xs">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : paged.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
@@ -575,6 +602,13 @@ function EnrollmentsTab() {
                 <TableCell className="text-center text-xs">{e.test_score != null ? e.test_score : "—"}</TableCell>
                 <TableCell className="text-center">{e.certificate ? "✅" : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{e.paid_at ? formatDate(e.paid_at) : "—"}</TableCell>
+                <TableCell>
+                  {e.status !== "cancelled" && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancel(e)} title="取消報名">
+                      <XCircle className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -604,6 +638,35 @@ function EnrollmentsTab() {
             <Button size="sm" onClick={() => sessionDateMutation.mutate()} disabled={sessionDateMutation.isPending || !editReason.trim()}>
               儲存變更
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Enrollment Dialog */}
+      <Dialog open={!!cancellingEnroll} onOpenChange={v => { if (!v) setCancellingEnroll(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">取消報名</DialogTitle>
+            <DialogDescription>
+              確定要取消 {(cancellingEnroll?.reg_members as any)?.name || "—"} 的報名嗎？
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md bg-destructive/10 p-3 text-sm space-y-1">
+              <div><span className="text-muted-foreground">課程：</span>{(cancellingEnroll?.courses as any)?.title || "—"}</div>
+              <div><span className="text-muted-foreground">上課日期：</span>{cancellingEnroll?.session_date || "—"}</div>
+              <div><span className="text-muted-foreground">付款狀態：</span>{cancellingEnroll?.payment_status === "paid" ? "已付款" : "未付款"}</div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">取消原因（必填）</label>
+              <Textarea placeholder="例：學員申請退費取消" value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="h-16" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setCancellingEnroll(null)}>返回</Button>
+              <Button variant="destructive" size="sm" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending || !cancelReason.trim()}>
+                確認取消報名
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
