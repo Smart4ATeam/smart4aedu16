@@ -253,13 +253,30 @@ export default function ImportPointTransactions() {
   const downloadTemplate = () => {
     const templateHeaders = ["member_no", "points_delta", "type", "description", "order_no", "created_at"];
     const csv = templateHeaders.join(",") + "\n";
+    downloadCSV(csv, "point-transactions-import-template.csv");
+  };
+
+  const downloadCSV = (csv: string, filename: string) => {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "point-transactions-import-template.csv";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadFailedRows = () => {
+    if (!importResult?.failedRows.length) return;
+    const cols = ["member_no", "points_delta", "type", "description", "order_no", "created_at", "失敗原因"];
+    const lines = importResult.failedRows.map((r) => {
+      const vals = ["member_no", "points_delta", "type", "description", "order_no", "created_at"].map(
+        (c) => `"${String(r.mapped[c] ?? "").replace(/"/g, '""')}"`
+      );
+      vals.push(`"${r.errors.join("; ").replace(/"/g, '""')}"`);
+      return vals.join(",");
+    });
+    downloadCSV(cols.join(",") + "\n" + lines.join("\n"), "point-transactions-failed.csv");
   };
 
   return (
