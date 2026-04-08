@@ -414,9 +414,17 @@ export default function ImportPointTransactions() {
               {importResult.errors.map((e, i) => <p key={i}>{e}</p>)}
             </div>
           )}
-          <Button variant="outline" className="mt-4" onClick={handleClear}>
-            匯入新檔案
-          </Button>
+          {importResult.failedRows.length > 0 && (
+            <Button variant="destructive" size="sm" className="mt-4 gap-2" onClick={downloadFailedRows}>
+              <Download className="w-4 h-4" />
+              下載失敗資料 CSV（{importResult.failedRows.length} 筆）
+            </Button>
+          )}
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" onClick={handleClear}>
+              匯入新檔案
+            </Button>
+          </div>
         </motion.div>
       )}
 
