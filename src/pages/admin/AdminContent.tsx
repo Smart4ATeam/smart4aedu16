@@ -402,7 +402,9 @@ const AdminContent = () => {
           video_type: get(col(["video_type", "影片類型"])),
           thumbnail_url: get(col(["thumbnail_url", "縮圖"])),
           is_hot: get(col(["is_hot", "熱門"])) === "true",
-          sort_order: get(col(["sort_order", "排序"]))
+          sort_order: get(col(["sort_order", "排序"])),
+          app_id: get(col(["app_id", "應用編號"])),
+          trial_enabled: get(col(["trial_enabled", "開放試用"])) === "true",
         };
       }).filter((r) => r.title);
 

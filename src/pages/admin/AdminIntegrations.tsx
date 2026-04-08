@@ -296,6 +296,41 @@ const endpoints: ApiEndpoint[] = [
       payment_status: "paid",
     },
   },
+  {
+    id: "api-resource-trial-callback",
+    name: "試用金鑰回傳",
+    icon: <Shield className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-resource-trial-callback",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "外部系統（Webhook）回傳試用金鑰。學員領用資源後，系統會發送 Webhook 到設定的 URL，外部系統處理完成後呼叫此端點回傳 API Key。",
+    requiredFields: [
+      { name: "trial_id", type: "string", required: true, desc: "領用記錄 ID（由 Webhook payload 中的 trial_id 取得）" },
+      { name: "api_key", type: "string", required: true, desc: "產生的 API Key" },
+    ],
+    optionalFields: [],
+    exampleBody: {
+      trial_id: "uuid-xxx",
+      api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+    },
+    exampleResponse: {
+      success: true,
+      data: { trial_id: "uuid-xxx", message: "API Key 已更新" },
+    },
+    extraExamples: [
+      {
+        title: "Webhook 發送的 Payload 格式（供接收端參考）",
+        body: {
+          organization_id: "org-123456",
+          app_id: "richmenu-yrfqmv",
+          member_no: "SA26040001",
+          category: "extensions",
+          resource_title: "Rich Menu 管理套件",
+          trial_id: "uuid-xxx",
+        },
+      },
+    ],
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {
