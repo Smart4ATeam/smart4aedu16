@@ -12,6 +12,7 @@ import {
   Gem,
   GraduationCap,
   BookOpen,
+  Coins,
   Settings,
   LogOut,
   ShieldCheck,
@@ -27,6 +28,7 @@ const navItems = [
   { title: "行事曆", url: "/calendar", icon: CalendarDays },
   { title: "資源中心", url: "/resources", icon: Gem },
   { title: "訊息中心", url: "/messages", icon: GraduationCap },
+  { title: "我的點數", url: "/points", icon: Coins },
 ];
 
 const bottomNavItems = [
