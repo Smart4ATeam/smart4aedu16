@@ -1,0 +1,1 @@
+UPDATE public.reg_members SET phone = '0' || phone WHERE phone ~ '^9[0-9]{8}$';
