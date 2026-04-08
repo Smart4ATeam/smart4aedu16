@@ -310,8 +310,14 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           counts[e.session_id] = (counts[e.session_id] || 0) + 1;
         }
       });
-      // Also build course_id + session_date based counts for enrollments without session_id
-      const dateKey = (courseId: string, sessionDate: string) => `${courseId}::${sessionDate}`;
+      // Normalize date string: "2026/4/16" -> "2026/04/16", etc.
+      const normDate = (d: string) => {
+        const parts = d.split(/[/-]/);
+        if (parts.length >= 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
+        return d;
+      };
+      // Build course_id + normalized session_date based counts for enrollments without session_id
+      const dateKey = (courseId: string, sessionDate: string) => `${courseId}::${normDate(sessionDate)}`;
       const dateCounts: Record<string, number> = {};
       (data || []).forEach((e: any) => {
         if (!e.session_id && e.course_id && e.session_date) {
@@ -319,18 +325,19 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           dateCounts[key] = (dateCounts[key] || 0) + 1;
         }
       });
-      return { byId: counts, byDate: dateCounts };
+      return { byId: counts, byDate: dateCounts, normDate };
     },
   });
 
   const getEnrollCount = (session: any) => {
     const byId = (enrollmentCounts as any)?.byId || {};
     const byDate = (enrollmentCounts as any)?.byDate || {};
+    const normDate = (enrollmentCounts as any)?.normDate || ((d: string) => d);
     let count = byId[session.id] || 0;
     // Also match by course_id + date text
     if (session.course_id && session.start_date) {
-      const sd = session.start_date.replace(/-/g, "/");
-      const ed = session.end_date ? session.end_date.replace(/-/g, "/") : null;
+      const sd = normDate(session.start_date.replace(/-/g, "/"));
+      const ed = session.end_date ? normDate(session.end_date.replace(/-/g, "/")) : null;
       const dateStr = ed && ed !== sd ? `${sd}-${ed.slice(5)}` : sd;
       const key = `${session.course_id}::${dateStr}`;
       count += byDate[key] || 0;
