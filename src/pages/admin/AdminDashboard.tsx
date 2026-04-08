@@ -34,20 +34,23 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch all profiles (admin can see all via RLS? We need to check)
-      // Admin has 'ALL' on some tables but profiles only allow own view
-      // We'll fetch what we can - for a real app, use an edge function
-      const [profilesRes, tasksRes, revenueRes] = await Promise.all([
-        supabase.from("profiles").select("display_name, learning_days, total_points, total_revenue, total_badges"),
+      const [profilesRes, rolesRes, tasksRes, revenueRes] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, learning_days, total_points, total_revenue, total_badges"),
+        supabase.from("user_roles").select("user_id, role"),
         supabase.from("tasks").select("id, created_at"),
         supabase.from("revenue_records").select("amount, recorded_at"),
       ]);
 
       if (profilesRes.data) {
-        const profiles = profilesRes.data;
-        setTotalStudents(profiles.length);
-        setActiveStudents(profiles.filter(p => p.learning_days > 0).length);
-        setStudents(profiles.map(p => ({
+        const adminIds = new Set(
+          (rolesRes.data || [])
+            .filter(r => r.role === "admin" || r.role === "moderator")
+            .map(r => r.user_id)
+        );
+        const studentProfiles = profilesRes.data.filter(p => !adminIds.has(p.id));
+        setTotalStudents(studentProfiles.length);
+        setActiveStudents(studentProfiles.filter(p => p.learning_days > 0).length);
+        setStudents(studentProfiles.map(p => ({
           display_name: p.display_name,
           learning_days: p.learning_days,
           total_points: p.total_points,
