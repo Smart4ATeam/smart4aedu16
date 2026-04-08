@@ -1,46 +1,37 @@
 
 
-## Plan: Registration System UI Enhancements (4 Issues)
+## Plan: API 文件強化 - 複訓範例 + 完整欄位選項
 
-### Issue 1: Reg Members Tab - Edit, Courses, Phone Fix
-**Problem**: Members list is read-only, doesn't show courses taken, and phone numbers are missing leading zeros.
+### 修改檔案
+`src/pages/admin/AdminIntegrations.tsx`
 
-**Changes in `src/pages/admin/AdminStudents.tsx`**:
-- Add an edit dialog for reg_members (name, phone, email, notes)
-- Query `reg_enrollments` for each member to show their enrolled courses
-- Add a member detail dialog showing: editable fields + course list
-- Phone display: no code change needed for display, but add a note about data quality (the missing `0` is a data issue from import, not a display bug)
+### 變更內容
 
-### Issue 2: Order Detail - Missing P2/P3 Info & Course List
-**Problem**: The `RegOrder` type is missing `p2_phone`, `p2_email`, `p3_phone`, `p3_email`. The order detail dialog doesn't show courses.
+**1. 擴展 `ApiEndpoint` 介面**
+- 新增 `extraExamples?: { title: string; body: Record<string, unknown> }[]` 欄位，用於支援多個 cURL 範例區塊
 
-**Changes in `src/components/admin/RegistrationTabs.tsx`**:
-- Add missing fields to `RegOrder` type: `p2_phone`, `p2_email`, `p3_phone`, `p3_email`, `session_dates`, `is_retrain`, `referrer`, `person_count`, `tax_id`
-- Update order detail dialog to show all persons' phone and email
-- Add a "報名課程" section using `course_snapshot` data to list courses with prices and session dates
+**2. api-reg-order：新增複訓訂單 cURL 範例**
+- 在現有 `exampleBody` 之外，加入 `extraExamples` 陣列，包含一個「複訓訂單範例」：
+  - `is_retrain: true`
+  - 使用標準課程代碼
+  - 單人報名、含 `referrer`、`notes` 等欄位
+- 選填欄位說明補充可選值：
+  - `payment_method` 加上「信用卡 / 匯款 / 現金 / Line Pay」
+  - `invoice_type` 加上「二聯式 / 三聯式 / 電子發票 / 免開發票」
+  - `is_retrain` 補充「設為 true 即為複訓，使用相同課程代碼即可」
 
-### Issue 3: Enrollment List - Date Filter, Email/Phone, Notes
-**Problem**: No session date filter, no email/phone columns, no notes column.
+**3. api-reg-payment：補充完整欄位範例**
+- `exampleBody` 加入 `paid_at`、`invoice_type` 欄位
+- 選填欄位 `payment_method` desc 補充「信用卡 / 匯款 / 現金 / Line Pay」
+- 選填欄位 `invoice_type` desc 補充「二聯式 / 三聯式 / 電子發票 / 免開發票」
 
-**Changes in `src/components/admin/RegistrationTabs.tsx`**:
-- Add a session date dropdown filter (extract unique dates from enrollments)
-- Add Email and Phone columns (from `reg_members` join data, already fetched)
-- Add Notes column showing `e.notes`
-- Update table column count accordingly
+**4. api-reg-split：新增錯誤回應範例**
+- 加入 `extraExamples` 包含常見錯誤情境：未付款、已拆解過
 
-### Issue 4: Reg Members Phone Data Fix
-**Problem**: Many phone numbers are missing the leading `0` (e.g., `912345678` instead of `0912345678`).
+**5. EndpointCard 元件更新**
+- 在現有 cURL 範例區塊之後，渲染 `extraExamples` 陣列中每個額外範例的 cURL 區塊（含標題）
 
-**Action**: Run a SQL update to prepend `0` to 9-digit phone numbers in `reg_members` that look like mobile numbers (starting with `9`). This is a data fix via the insert tool.
-
----
-
-### Technical Details
-
-**Files to modify**:
-1. `src/components/admin/RegistrationTabs.tsx` - OrdersTab (type + detail dialog + course list), EnrollmentsTab (date filter + new columns)
-2. `src/pages/admin/AdminStudents.tsx` - RegMembersTab (edit dialog + course history)
-3. Database data fix for phone numbers
-
-**Estimated scope**: ~4 focused changes across 2 files + 1 data fix.
+### 技術細節
+- 僅修改一個檔案
+- 不影響任何 API 邏輯，純 UI 文件更新
 
