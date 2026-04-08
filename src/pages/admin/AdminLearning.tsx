@@ -310,11 +310,20 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           counts[e.session_id] = (counts[e.session_id] || 0) + 1;
         }
       });
-      // Normalize date string: "2026/4/16" -> "2026/04/16", etc.
-      const normDate = (d: string) => {
-        const parts = d.split(/[/-]/);
-        if (parts.length >= 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
+      // Normalize a single date segment: "2026/4/16" -> "2026/04/16"
+      const normDatePart = (d: string) => {
+        const parts = d.split("/");
+        if (parts.length === 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
+        if (parts.length === 2) return `${parts[0].padStart(2, "0")}/${parts[1].padStart(2, "0")}`;
         return d;
+      };
+      // Normalize full session_date which may contain ranges like "2026/05/09-05/10"
+      const normDate = (d: string) => {
+        const dashIdx = d.indexOf("-");
+        if (dashIdx > 0) {
+          return normDatePart(d.slice(0, dashIdx)) + "-" + normDatePart(d.slice(dashIdx + 1));
+        }
+        return normDatePart(d);
       };
       // Build course_id + normalized session_date based counts for enrollments without session_id
       const dateKey = (courseId: string, sessionDate: string) => `${courseId}::${normDate(sessionDate)}`;
