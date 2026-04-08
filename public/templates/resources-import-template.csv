@@ -1,5 +1,5 @@
-title,description,category,author,version,download_url,detail_url,tags,sub_category,difficulty,hot_rank,is_hot,sort_order,trial_url,flow_count,usage_count,industry_tag,duration,video_type,thumbnail_url,app_id,trial_enabled
-Make.com 快速入門插件,一鍵安裝即可開始使用 Make.com,plugins,官方團隊,1.0.0,https://example.com/download,,Make.com,,,,,0,,,,,,,,plugin-abc123,false
-LINE Bot 開發套件,快速建立 LINE Bot 的完整套件,extensions,社群開發者,2.1.0,https://example.com/download,,"LINE,Bot,聊天機器人",熱門套件,初級,1,true,1,https://example.com/trial,,,,,,,linebot-yrfqmv,true
-電商自動化範本,適用於電商場景的自動化流程範本,templates,官方團隊,,https://example.com/download,,"電商,自動化",電商應用,初級,,false,2,,,5,120,電商專用,,,ecommerce-tpl01,true
-Make.com 基礎教學,從零開始學習 Make.com,videos,講師A,,https://youtube.com/watch?v=xxx,,,初級,,false,0,,,,,12:30,基礎教學,,video-mk001,false
+title,description,category,author,version,download_url,detail_url,tags,sub_category,difficulty,hot_rank,is_hot,sort_order,flow_count,usage_count,industry_tag,duration,video_type,thumbnail_url,app_id,trial_enabled
+Make.com 快速入門插件,一鍵安裝即可開始使用 Make.com,plugins,官方團隊,1.0.0,https://example.com/download,,Make.com,,,,,0,,,,,,,,false
+LINE Bot 開發套件,快速建立 LINE Bot 的完整套件,extensions,社群開發者,2.1.0,https://example.com/download,,"LINE,Bot,聊天機器人",熱門套件,初級,1,true,1,,,,,,,linebot-yrfqmv,true
+電商自動化範本,適用於電商場景的自動化流程範本,templates,官方團隊,,https://example.com/download,,"電商,自動化",電商應用,初級,,false,2,5,120,電商專用,,,,ecommerce-tpl01,true
+Make.com 基礎教學,從零開始學習 Make.com,videos,講師A,,https://youtube.com/watch?v=xxx,,,初級,,false,0,,,,,12:30,基礎教學,,false
