@@ -35,6 +35,7 @@ type NewResource = {
   detail_url: string;sub_category: string;tags: string;hot_rank: string;trial_url: string;
   flow_count: string;usage_count: string;industry_tag: string;
   duration: string;video_type: string;is_hot: boolean;sort_order: string;
+  app_id: string;trial_enabled: boolean;
 };
 
 const emptyResource = (): NewResource => ({
@@ -42,7 +43,8 @@ const emptyResource = (): NewResource => ({
   author: "", version: "", download_url: "", thumbnail_url: "",
   detail_url: "", sub_category: "", tags: "", hot_rank: "", trial_url: "",
   flow_count: "", usage_count: "", industry_tag: "",
-  duration: "", video_type: "", is_hot: false, sort_order: ""
+  duration: "", video_type: "", is_hot: false, sort_order: "",
+  app_id: "", trial_enabled: false,
 });
 
 const categoryOptions = [
@@ -212,6 +214,26 @@ function DynamicFields({ res, onChange, subCategories
         </div>
       }
 
+      {/* APP ID & Trial toggle for extensions & templates */}
+      {(res.category === "extensions" || res.category === "templates") &&
+      <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <Label className="text-xs">APP ID（應用編號）</Label>
+            <Input className="h-8 text-xs mt-1" placeholder="richmenu-yrfqmv" value={res.app_id} onChange={(e) => onChange("app_id", e.target.value)} />
+          </div>
+          <div className="flex items-center gap-2 pb-1">
+            <input
+              type="checkbox"
+              id="trial_enabled"
+              checked={res.trial_enabled}
+              onChange={(e) => onChange("trial_enabled", e.target.checked)}
+              className="rounded border-border"
+            />
+            <Label htmlFor="trial_enabled" className="text-xs cursor-pointer">🧪 開放試用</Label>
+          </div>
+        </div>
+      }
+
       {/* Templates: flow_count, usage_count, industry_tag */}
       {res.category === "templates" &&
       <div className="flex gap-3">
@@ -294,7 +316,9 @@ const AdminContent = () => {
     duration: r.duration.trim() || null,
     video_type: r.video_type.trim() || null,
     is_hot: r.is_hot,
-    sort_order: r.sort_order ? parseInt(r.sort_order) : 0
+    sort_order: r.sort_order ? parseInt(r.sort_order) : 0,
+    app_id: r.app_id?.trim() || null,
+    trial_enabled: r.trial_enabled || false,
   });
 
   const handleAdd = async () => {
@@ -378,7 +402,9 @@ const AdminContent = () => {
           video_type: get(col(["video_type", "影片類型"])),
           thumbnail_url: get(col(["thumbnail_url", "縮圖"])),
           is_hot: get(col(["is_hot", "熱門"])) === "true",
-          sort_order: get(col(["sort_order", "排序"]))
+          sort_order: get(col(["sort_order", "排序"])),
+          app_id: get(col(["app_id", "應用編號"])),
+          trial_enabled: get(col(["trial_enabled", "開放試用"])) === "true",
         };
       }).filter((r) => r.title);
 
@@ -530,6 +556,7 @@ const AdminContent = () => {
               <TableHead>分類</TableHead>
               <TableHead>作者</TableHead>
               <TableHead>版本</TableHead>
+              <TableHead>試用</TableHead>
               <TableHead>評分</TableHead>
               <TableHead>資源連結</TableHead>
               <TableHead>操作</TableHead>
@@ -542,6 +569,9 @@ const AdminContent = () => {
                 <TableCell><Badge variant="outline">{categoryLabel[r.category] || r.category}</Badge></TableCell>
                 <TableCell className="text-xs text-muted-foreground">{r.author || "—"}</TableCell>
                 <TableCell><Badge variant="secondary" className="text-[10px]">v{r.version || "—"}</Badge></TableCell>
+                <TableCell>
+                  {r.trial_enabled ? <Badge className="text-[10px]">🧪 開放</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1 text-xs"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</div>
                 </TableCell>
@@ -556,7 +586,7 @@ const AdminContent = () => {
               </TableRow>
             )}
             {resources.length === 0 &&
-            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">尚無資源</TableCell></TableRow>
+            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無資源</TableCell></TableRow>
             }
           </TableBody>
         </Table>

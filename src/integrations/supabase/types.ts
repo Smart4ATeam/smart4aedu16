@@ -1080,8 +1080,56 @@ export type Database = {
         }
         Relationships: []
       }
+      resource_trials: {
+        Row: {
+          api_key: string | null
+          app_id: string
+          created_at: string
+          id: string
+          member_no: string | null
+          organization_id: string
+          resource_category: string
+          resource_id: string
+          user_id: string
+          webhook_status: string
+        }
+        Insert: {
+          api_key?: string | null
+          app_id: string
+          created_at?: string
+          id?: string
+          member_no?: string | null
+          organization_id: string
+          resource_category: string
+          resource_id: string
+          user_id: string
+          webhook_status?: string
+        }
+        Update: {
+          api_key?: string | null
+          app_id?: string
+          created_at?: string
+          id?: string
+          member_no?: string | null
+          organization_id?: string
+          resource_category?: string
+          resource_id?: string
+          user_id?: string
+          webhook_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_trials_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
+          app_id: string | null
           author: string | null
           category: string
           created_at: string
@@ -1104,12 +1152,14 @@ export type Database = {
           tags: string[]
           thumbnail_url: string | null
           title: string
+          trial_enabled: boolean
           trial_url: string | null
           usage_count: number | null
           version: string | null
           video_type: string | null
         }
         Insert: {
+          app_id?: string | null
           author?: string | null
           category?: string
           created_at?: string
@@ -1132,12 +1182,14 @@ export type Database = {
           tags?: string[]
           thumbnail_url?: string | null
           title: string
+          trial_enabled?: boolean
           trial_url?: string | null
           usage_count?: number | null
           version?: string | null
           video_type?: string | null
         }
         Update: {
+          app_id?: string | null
           author?: string | null
           category?: string
           created_at?: string
@@ -1160,6 +1212,7 @@ export type Database = {
           tags?: string[]
           thumbnail_url?: string | null
           title?: string
+          trial_enabled?: boolean
           trial_url?: string | null
           usage_count?: number | null
           version?: string | null
