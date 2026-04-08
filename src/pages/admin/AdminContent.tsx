@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -301,6 +301,9 @@ const AdminContent = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [showSubCatDialog, setShowSubCatDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRes, setEditRes] = useState<NewResource>(emptyResource());
   const [newRes, setNewRes] = useState<NewResource>(emptyResource());
   const [batchRows, setBatchRows] = useState<NewResource[]>([emptyResource(), emptyResource(), emptyResource()]);
   const [batchUploading, setBatchUploading] = useState(false);
@@ -358,6 +361,45 @@ const AdminContent = () => {
     if (error) {toast.error("刪除失敗：" + error.message);return;}
     toast.success("已刪除");
     setResources(resources.filter((r) => r.id !== id));
+  };
+
+  const openEdit = (r: Resource) => {
+    setEditingId(r.id);
+    setEditRes({
+      title: r.title || "",
+      description: r.description || "",
+      category: r.category || "plugins",
+      difficulty: r.difficulty || "初級",
+      author: r.author || "",
+      version: r.version || "",
+      download_url: r.download_url || "",
+      thumbnail_url: r.thumbnail_url || "",
+      detail_url: r.detail_url || "",
+      sub_category: r.sub_category || "",
+      tags: (r.tags || []).join(", "),
+      hot_rank: r.hot_rank != null ? String(r.hot_rank) : "",
+      flow_count: r.flow_count != null ? String(r.flow_count) : "",
+      usage_count: r.usage_count != null ? String(r.usage_count) : "",
+      industry_tag: r.industry_tag || "",
+      duration: r.duration || "",
+      video_type: r.video_type || "",
+      is_hot: r.is_hot || false,
+      sort_order: r.sort_order != null ? String(r.sort_order) : "",
+      app_id: r.app_id || "",
+      trial_enabled: r.trial_enabled || false,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || !editRes.title) return;
+    const payload = buildInsertPayload(editRes);
+    const { error } = await supabase.from("resources").update(payload as any).eq("id", editingId);
+    if (error) {toast.error("更新失敗：" + error.message);return;}
+    toast.success("資源已更新");
+    setShowEditDialog(false);
+    setEditingId(null);
+    fetchAll();
   };
 
   /* ─── Batch ─── */
@@ -509,6 +551,33 @@ const AdminContent = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>編輯資源</DialogTitle><DialogDescription>修改資源資訊後儲存</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <Input placeholder="資源名稱" value={editRes.title} onChange={(e) => setEditRes({ ...editRes, title: e.target.value })} />
+            <Textarea placeholder="說明" value={editRes.description} onChange={(e) => setEditRes({ ...editRes, description: e.target.value })} />
+            <Select value={editRes.category} onValueChange={(v) => setEditRes({ ...editRes, category: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{categoryOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <div className="flex gap-3">
+              <Input placeholder="作者" value={editRes.author} onChange={(e) => setEditRes({ ...editRes, author: e.target.value })} className="flex-1" />
+              <Input placeholder="版本" value={editRes.version} onChange={(e) => setEditRes({ ...editRes, version: e.target.value })} className="w-28" />
+            </div>
+            <Input placeholder="資源連結（下載或申請連結）" value={editRes.download_url} onChange={(e) => setEditRes({ ...editRes, download_url: e.target.value })} />
+            <DynamicFields
+              res={editRes}
+              onChange={(field, value) => setEditRes((prev) => ({ ...prev, [field]: value }))}
+              subCategories={subCategories} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>取消</Button>
+            <Button onClick={handleUpdate}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Batch dialog */}
       <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -601,7 +670,8 @@ const AdminContent = () => {
                 <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
                 "—"}
                 </TableCell>
-                <TableCell>
+                <TableCell className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </TableCell>
               </TableRow>
