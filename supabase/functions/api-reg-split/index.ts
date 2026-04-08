@@ -165,13 +165,28 @@ Deno.serve(async (req) => {
       memberIds.push(memberId);
     }
 
+    // Helper: normalize date strings to zero-padded format
+    // "2026/4/16" -> "2026/04/16", "2026/1/17-1/18" -> "2026/01/17-01/18"
+    const normDatePart = (d: string) => {
+      const parts = d.split("/");
+      if (parts.length === 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
+      if (parts.length === 2) return `${parts[0].padStart(2, "0")}/${parts[1].padStart(2, "0")}`;
+      return d;
+    };
+    const normDate = (d: string | null): string | null => {
+      if (!d) return null;
+      const dashIdx = d.indexOf("-");
+      if (dashIdx > 0) return normDatePart(d.slice(0, dashIdx)) + "-" + normDatePart(d.slice(dashIdx + 1));
+      return normDatePart(d);
+    };
+
     // 7. Create reg_enrollments: each person × each course
     const enrollments: Record<string, unknown>[] = [];
     for (const memberId of memberIds) {
       for (let ci = 0; ci < courseIds.length; ci++) {
         const courseId = courseIds[ci];
         const course = courseMap.get(courseId);
-        const sessionDate = sessionDates[ci] || null;
+        const sessionDate = normDate(sessionDates[ci] || null);
         enrollments.push({
           order_id: order.id,
           member_id: memberId,
