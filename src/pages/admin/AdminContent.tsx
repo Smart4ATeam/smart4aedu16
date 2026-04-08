@@ -363,6 +363,45 @@ const AdminContent = () => {
     setResources(resources.filter((r) => r.id !== id));
   };
 
+  const openEdit = (r: Resource) => {
+    setEditingId(r.id);
+    setEditRes({
+      title: r.title || "",
+      description: r.description || "",
+      category: r.category || "plugins",
+      difficulty: r.difficulty || "初級",
+      author: r.author || "",
+      version: r.version || "",
+      download_url: r.download_url || "",
+      thumbnail_url: r.thumbnail_url || "",
+      detail_url: r.detail_url || "",
+      sub_category: r.sub_category || "",
+      tags: (r.tags || []).join(", "),
+      hot_rank: r.hot_rank != null ? String(r.hot_rank) : "",
+      flow_count: r.flow_count != null ? String(r.flow_count) : "",
+      usage_count: r.usage_count != null ? String(r.usage_count) : "",
+      industry_tag: r.industry_tag || "",
+      duration: r.duration || "",
+      video_type: r.video_type || "",
+      is_hot: r.is_hot || false,
+      sort_order: r.sort_order != null ? String(r.sort_order) : "",
+      app_id: r.app_id || "",
+      trial_enabled: r.trial_enabled || false,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || !editRes.title) return;
+    const payload = buildInsertPayload(editRes);
+    const { error } = await supabase.from("resources").update(payload as any).eq("id", editingId);
+    if (error) {toast.error("更新失敗：" + error.message);return;}
+    toast.success("資源已更新");
+    setShowEditDialog(false);
+    setEditingId(null);
+    fetchAll();
+  };
+
   /* ─── Batch ─── */
 
   const updateBatchRow = (i: number, field: keyof NewResource, value: string) => {
