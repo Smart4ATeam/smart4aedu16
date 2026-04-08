@@ -45,7 +45,7 @@ type RegEnrollment = {
   post_survey: string | null; post_test: string | null; test_score: number | null;
   certificate: string | null; pre_notification_sent: boolean;
   points_awarded: number; lovable_invite: string | null; notes: string | null;
-  enrolled_at: string; session_date: string | null;
+  enrolled_at: string; session_date: string | null; is_retrain: boolean;
   reg_members?: { id: string; member_no: string | null; name: string; phone: string | null; email: string | null } | null;
   courses?: { id: string; course_code: string | null; title: string; category: string } | null;
 };
