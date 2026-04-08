@@ -570,13 +570,14 @@ function EnrollmentsTab() {
               <TableHead className="w-16 whitespace-nowrap text-xs">測驗</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">證書</TableHead>
               <SortableHead label="繳費日期" sortKey="paid_at" sort={sort} onSort={onSort} className="w-28" />
+              <TableHead className="w-16 whitespace-nowrap text-xs">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : paged.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
@@ -601,6 +602,13 @@ function EnrollmentsTab() {
                 <TableCell className="text-center text-xs">{e.test_score != null ? e.test_score : "—"}</TableCell>
                 <TableCell className="text-center">{e.certificate ? "✅" : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{e.paid_at ? formatDate(e.paid_at) : "—"}</TableCell>
+                <TableCell>
+                  {e.status !== "cancelled" && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancel(e)} title="取消報名">
+                      <XCircle className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
