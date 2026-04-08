@@ -670,7 +670,8 @@ const AdminContent = () => {
                 <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
                 "—"}
                 </TableCell>
-                <TableCell>
+                <TableCell className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </TableCell>
               </TableRow>
