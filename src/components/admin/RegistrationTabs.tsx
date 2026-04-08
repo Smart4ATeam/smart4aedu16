@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ClipboardList, Search, CreditCard, FileText,
-  Eye,
+  ClipboardList, Search, FileText, Eye,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -88,19 +86,13 @@ function formatDate(d: string | null) {
 }
 
 // ═══════════════════════════════════════
-// Main Page
+// Main exported component
 // ═══════════════════════════════════════
-export default function AdminRegistrations() {
+export function RegistrationTabs() {
   const [mainTab, setMainTab] = useState("orders");
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        icon={<ClipboardList className="w-6 h-6" />}
-        title="報名管理"
-        description="管理課程報名訂單與報名明細"
-      />
-
+    <div className="space-y-4">
       <Tabs value={mainTab} onValueChange={setMainTab}>
         <TabsList className="grid grid-cols-2 w-full max-w-xs">
           <TabsTrigger value="orders" className="gap-1.5 text-xs"><FileText className="w-3.5 h-3.5" />訂單</TabsTrigger>
@@ -123,7 +115,6 @@ function OrdersTab() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Invoice edit state
   const [editInvoiceStatus, setEditInvoiceStatus] = useState("");
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
   const [editReason, setEditReason] = useState("");
@@ -328,7 +319,7 @@ function OrdersTab() {
 }
 
 // ═══════════════════════════════════════
-// Enrollments Tab (with dynamic course sub-tabs)
+// Enrollments Tab
 // ═══════════════════════════════════════
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
