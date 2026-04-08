@@ -305,7 +305,6 @@ const AdminContent = () => {
     tags: r.tags ? r.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     hot_rank: r.hot_rank ? parseInt(r.hot_rank) : null,
     flow_count: r.flow_count ? parseInt(r.flow_count) : null,
-    flow_count: r.flow_count ? parseInt(r.flow_count) : null,
     usage_count: r.usage_count ? parseInt(r.usage_count) : null,
     industry_tag: r.industry_tag.trim() || null,
     duration: r.duration.trim() || null,
