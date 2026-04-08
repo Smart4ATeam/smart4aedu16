@@ -20,6 +20,7 @@ interface ApiEndpoint {
   optionalFields: { name: string; type: string; desc: string }[];
   exampleBody: Record<string, unknown>;
   exampleResponse: Record<string, unknown>;
+  extraExamples?: { title: string; body: Record<string, unknown> }[];
 }
 
 const endpoints: ApiEndpoint[] = [
@@ -162,7 +163,7 @@ const endpoints: ApiEndpoint[] = [
     optionalFields: [
       { name: "session_dates", type: "string[]", desc: "每門課的上課日期陣列，與 course_codes 一一對應（自動補零，如 2026/4/16 → 2026/04/16）" },
       { name: "payment_status", type: "string", desc: "付款狀態（預設 pending）" },
-      { name: "payment_method", type: "string", desc: "付款方式（如「信用卡」、「匯款」、「現金」）" },
+      { name: "payment_method", type: "string", desc: "付款方式：信用卡 / 匯款 / 現金 / Line Pay" },
       { name: "total_amount", type: "number", desc: "總金額（預設 0）" },
       { name: "person_count", type: "number", desc: "訂單報名人數（預設為 persons 陣列長度）" },
       { name: "tax_id", type: "string", desc: "統一編號" },
@@ -171,7 +172,7 @@ const endpoints: ApiEndpoint[] = [
       { name: "invoice_title", type: "string", desc: "發票抬頭" },
       { name: "dealer_id", type: "string", desc: "經銷商 ID" },
       { name: "notes", type: "string", desc: "備註" },
-      { name: "is_retrain", type: "boolean", desc: "是否為複訓（預設 false）" },
+      { name: "is_retrain", type: "boolean", desc: "是否為複訓（預設 false）。設為 true 即為複訓，使用相同課程代碼即可" },
       { name: "referrer", type: "string", desc: "推薦人" },
     ],
     exampleBody: {
@@ -203,6 +204,26 @@ const endpoints: ApiEndpoint[] = [
         message: "訂單已建立，待付款後呼叫 api-reg-split 拆解",
       },
     },
+    extraExamples: [
+      {
+        title: "複訓訂單範例（is_retrain = true）",
+        body: {
+          order_no: "ORD20250402001",
+          course_codes: ["beginner_01"],
+          session_dates: ["2026/5/10-5/11"],
+          persons: [
+            { name: "張大偉", phone: "0922333444", email: "david@example.com" },
+          ],
+          payment_method: "匯款",
+          total_amount: 3000,
+          person_count: 1,
+          invoice_type: "二聯式",
+          is_retrain: true,
+          referrer: "林老師",
+          notes: "複訓學員，曾於 2025/03 完課",
+        },
+      },
+    ],
   },
   {
     id: "api-reg-split",
@@ -229,6 +250,16 @@ const endpoints: ApiEndpoint[] = [
         message: "訂單拆解完成，學員與報名明細已建立",
       },
     },
+    extraExamples: [
+      {
+        title: "錯誤回應：訂單尚未付款",
+        body: { error: "訂單尚未付款，請先呼叫 api-reg-payment 更新為 paid" },
+      },
+      {
+        title: "錯誤回應：訂單已拆解過",
+        body: { error: "此訂單已拆解過，不可重複拆解" },
+      },
+    ],
   },
   {
     id: "api-reg-payment",
@@ -243,18 +274,20 @@ const endpoints: ApiEndpoint[] = [
       { name: "payment_status", type: "string", required: true, desc: "付款狀態：paid / pending" },
     ],
     optionalFields: [
-      { name: "payment_method", type: "string", desc: "付款方式（如 credit_card、bank_transfer）" },
+      { name: "payment_method", type: "string", desc: "付款方式：信用卡 / 匯款 / 現金 / Line Pay" },
       { name: "paid_at", type: "string", desc: "付款時間（ISO 8601，預設為當前時間）" },
       { name: "invoice_number", type: "string", desc: "發票號碼" },
       { name: "invoice_title", type: "string", desc: "發票抬頭" },
-      { name: "invoice_type", type: "string", desc: "發票類型" },
+      { name: "invoice_type", type: "string", desc: "發票類型：二聯式 / 三聯式 / 電子發票 / 免開發票" },
     ],
     exampleBody: {
       order_no: "ORD20250401001",
       payment_status: "paid",
-      payment_method: "credit_card",
+      payment_method: "信用卡",
+      paid_at: "2025-04-08T14:30:00Z",
       invoice_number: "AB12345678",
-      invoice_title: "公司名稱",
+      invoice_title: "某某有限公司",
+      invoice_type: "三聯式",
     },
     exampleResponse: {
       success: true,
@@ -404,6 +437,23 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
             <p className="text-xs font-medium text-foreground mb-1">cURL 範例</p>
             <CodeBlock code={curlExample} />
           </div>
+
+          {/* Extra Examples */}
+          {endpoint.extraExamples && endpoint.extraExamples.length > 0 && (
+            endpoint.extraExamples.map((ex, idx) => (
+              <div key={idx}>
+                <p className="text-xs font-medium text-foreground mb-1">{ex.title}</p>
+                <CodeBlock
+                  code={
+                    ex.title.startsWith("錯誤回應")
+                      ? JSON.stringify(ex.body, null, 2)
+                      : `curl -X ${endpoint.method} "${fullUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: <YOUR_API_KEY>" \\\n  -d '${JSON.stringify(ex.body, null, 2)}'`
+                  }
+                  language={ex.title.startsWith("錯誤回應") ? "json" : "bash"}
+                />
+              </div>
+            ))
+          )}
 
           {/* Response Example */}
           <div>
