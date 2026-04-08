@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ClipboardList, Search, FileText, Eye,
+  ClipboardList, Search, FileText, Eye, Pencil,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -324,6 +324,11 @@ function OrdersTab() {
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [search, setSearch] = useState("");
+  const [editingEnroll, setEditingEnroll] = useState<RegEnrollment | null>(null);
+  const [editSessionDate, setEditSessionDate] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: regCourses = [] } = useQuery({
     queryKey: ["reg-courses-list"],
@@ -350,6 +355,31 @@ function EnrollmentsTab() {
       return (data || []) as unknown as RegEnrollment[];
     },
   });
+
+  const sessionDateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingEnroll) throw new Error("無資料");
+      if (!editReason.trim()) throw new Error("請填寫變更原因");
+      const { error } = await supabase.from("reg_enrollments" as any)
+        .update({ session_date: editSessionDate || null } as any)
+        .eq("id", editingEnroll.id);
+      if (error) throw error;
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "enrollment", entity_id: editingEnroll.id, action: "update_session_date",
+        old_value: { session_date: editingEnroll.session_date },
+        new_value: { session_date: editSessionDate || null },
+        reason: editReason, operated_by: user?.id,
+      } as any);
+    },
+    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); setEditingEnroll(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openEditDate = (e: RegEnrollment) => {
+    setEditingEnroll(e);
+    setEditSessionDate(e.session_date || "");
+    setEditReason("");
+  };
 
   const filtered = enrollments.filter(e => {
     if (selectedCourse !== "all" && e.course_id !== selectedCourse) return false;
@@ -413,7 +443,14 @@ function EnrollmentsTab() {
                   <div className="text-sm">{(e.courses as any)?.title || "—"}</div>
                   <div className="text-xs text-muted-foreground">{categoryLabels[e.course_type || ""] || e.course_type}</div>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{e.session_date || "—"}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">{e.session_date || "—"}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditDate(e)}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </TableCell>
                 <TableCell>{statusBadge(e.status)}</TableCell>
                 <TableCell>{e.payment_status ? paymentBadge(e.payment_status) : "—"}</TableCell>
                 <TableCell className="text-center">{e.checked_in ? "✅" : "—"}</TableCell>
@@ -425,6 +462,31 @@ function EnrollmentsTab() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Session Date Dialog */}
+      <Dialog open={!!editingEnroll} onOpenChange={v => { if (!v) setEditingEnroll(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>修改上課日期</DialogTitle>
+            <DialogDescription>
+              學員：{(editingEnroll?.reg_members as any)?.name || "—"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">上課日期</label>
+              <Input value={editSessionDate} onChange={e => setEditSessionDate(e.target.value)} placeholder="例：2025/05/17-05/18" className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">變更原因（必填）</label>
+              <Textarea placeholder="例：轉班至 6 月梯次" value={editReason} onChange={e => setEditReason(e.target.value)} className="h-16" />
+            </div>
+            <Button size="sm" onClick={() => sessionDateMutation.mutate()} disabled={sessionDateMutation.isPending || !editReason.trim()}>
+              儲存變更
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
