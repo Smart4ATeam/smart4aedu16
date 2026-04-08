@@ -414,7 +414,7 @@ export default function ImportPointTransactions() {
               {importResult.errors.map((e, i) => <p key={i}>{e}</p>)}
             </div>
           )}
-          {importResult.failedRows.length > 0 && (
+          {(importResult.failedRows?.length ?? 0) > 0 && (
             <Button variant="destructive" size="sm" className="mt-4 gap-2" onClick={downloadFailedRows}>
               <Download className="w-4 h-4" />
               下載失敗資料 CSV（{importResult.failedRows.length} 筆）
