@@ -294,6 +294,49 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const [editing, setEditing] = useState<any>(null);
   const [filterCourse, setFilterCourse] = useState<string>("all");
   const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
+
+  // Query enrollment counts per session
+  const { data: enrollmentCounts = {} } = useQuery({
+    queryKey: ["admin_session_enrollment_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reg_enrollments")
+        .select("session_id, course_id, session_date")
+        .neq("status", "cancelled");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((e: any) => {
+        if (e.session_id) {
+          counts[e.session_id] = (counts[e.session_id] || 0) + 1;
+        }
+      });
+      // Also build course_id + session_date based counts for enrollments without session_id
+      const dateKey = (courseId: string, sessionDate: string) => `${courseId}::${sessionDate}`;
+      const dateCounts: Record<string, number> = {};
+      (data || []).forEach((e: any) => {
+        if (!e.session_id && e.course_id && e.session_date) {
+          const key = dateKey(e.course_id, e.session_date);
+          dateCounts[key] = (dateCounts[key] || 0) + 1;
+        }
+      });
+      return { byId: counts, byDate: dateCounts };
+    },
+  });
+
+  const getEnrollCount = (session: any) => {
+    const byId = (enrollmentCounts as any)?.byId || {};
+    const byDate = (enrollmentCounts as any)?.byDate || {};
+    let count = byId[session.id] || 0;
+    // Also match by course_id + date text
+    if (session.course_id && session.start_date) {
+      const sd = session.start_date.replace(/-/g, "/");
+      const ed = session.end_date ? session.end_date.replace(/-/g, "/") : null;
+      const dateStr = ed && ed !== sd ? `${sd}-${ed.slice(5)}` : sd;
+      const key = `${session.course_id}::${dateStr}`;
+      count += byDate[key] || 0;
+    }
+    return count;
+  };
   const [form, setForm] = useState(defaultForm);
 
   // Batch form state
@@ -445,6 +488,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <TableHead>開課日</TableHead>
               <TableHead>結束日</TableHead>
               <TableHead>地點</TableHead>
+              <TableHead>已報名</TableHead>
               <TableHead>人數上限</TableHead>
               <TableHead>費用覆寫</TableHead>
               <TableHead>狀態</TableHead>
@@ -459,6 +503,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                 <TableCell className="text-sm font-mono">{formatDate(s.start_date)}</TableCell>
                 <TableCell className="text-sm font-mono">{formatDate(s.end_date)}</TableCell>
                 <TableCell className="text-sm">{s.location || "-"}</TableCell>
+                <TableCell className="text-sm font-medium">{getEnrollCount(s)}</TableCell>
                 <TableCell className="text-sm">{s.max_students || "不限"}</TableCell>
                 <TableCell className="text-sm">{s.price ? `NT$ ${s.price}` : "-"}</TableCell>
                 <TableCell><Badge variant={statusColors[s.status] as any}>{statusLabels[s.status] || s.status}</Badge></TableCell>
@@ -477,7 +522,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               </TableRow>
             ))}
             {sorted.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
