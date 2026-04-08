@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus } from "lucide-react";
+import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus, Pencil, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,12 @@ type RegPointTx = {
   id: string; member_id: string; order_id: string | null;
   points_delta: number; type: string; description: string | null; created_at: string;
   reg_members?: { name: string; member_no: string | null } | null;
+};
+
+type MemberEnrollment = {
+  id: string; course_id: string | null; session_date: string | null; status: string;
+  payment_status: string | null; enrolled_at: string;
+  courses?: { title: string; course_code: string | null } | null;
 };
 
 function formatDate(d: string | null) {
@@ -398,11 +404,15 @@ function ManagementTeamTab({
 // ═══════════════════════════════════════
 function RegMembersTab() {
   const [search, setSearch] = useState("");
+  const [editingMember, setEditingMember] = useState<RegMember | null>(null);
+  const [editFields, setEditFields] = useState({ name: "", phone: "", email: "", notes: "" });
+  const [detailMember, setDetailMember] = useState<RegMember | null>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["reg-members-paid"],
     queryFn: async () => {
-      // Get paid enrollment member_ids first, then fetch members
       const { data: paidEnrollments } = await (supabase as any)
         .from("reg_enrollments")
         .select("member_id")
@@ -419,11 +429,62 @@ function RegMembersTab() {
     },
   });
 
+  // Fetch enrollments for detail member
+  const { data: memberEnrollments = [] } = useQuery({
+    queryKey: ["reg-member-enrollments", detailMember?.id],
+    enabled: !!detailMember,
+    queryFn: async () => {
+      if (!detailMember) return [];
+      const { data, error } = await (supabase as any)
+        .from("reg_enrollments")
+        .select("id, course_id, session_date, status, payment_status, enrolled_at, courses(title, course_code)")
+        .eq("member_id", detailMember.id)
+        .order("enrolled_at", { ascending: false });
+      if (error) return [];
+      return (data || []) as MemberEnrollment[];
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingMember) throw new Error("無資料");
+      const { error } = await (supabase as any).from("reg_members").update({
+        name: editFields.name,
+        phone: editFields.phone || null,
+        email: editFields.email || null,
+        notes: editFields.notes || null,
+      }).eq("id", editingMember.id);
+      if (error) throw error;
+      await (supabase as any).from("reg_operation_logs").insert({
+        entity_type: "member", entity_id: editingMember.id, action: "update_member",
+        old_value: { name: editingMember.name, phone: editingMember.phone, email: editingMember.email, notes: editingMember.notes },
+        new_value: { name: editFields.name, phone: editFields.phone, email: editFields.email, notes: editFields.notes },
+        reason: "管理員修改學員資料", operated_by: user?.id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("學員資料已更新");
+      queryClient.invalidateQueries({ queryKey: ["reg-members-paid"] });
+      setEditingMember(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openEdit = (m: RegMember) => {
+    setEditingMember(m);
+    setEditFields({ name: m.name, phone: m.phone || "", email: m.email || "", notes: m.notes || "" });
+  };
+
   const filtered = members.filter(m => {
     if (!search) return true;
     const s = search.toLowerCase();
     return m.name?.toLowerCase().includes(s) || m.member_no?.toLowerCase().includes(s) || m.email?.toLowerCase().includes(s) || m.phone?.includes(s);
   });
+
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = { enrolled: "已報名", completed: "已完課", cancelled: "已取消", attended: "已出席" };
+    return map[s] || s;
+  };
 
   return (
     <div className="space-y-4 mt-4">
@@ -445,13 +506,14 @@ function RegMembersTab() {
               <TableHead>信箱</TableHead>
               <TableHead className="w-20">點數</TableHead>
               <TableHead className="w-28">建立日期</TableHead>
+              <TableHead className="w-24">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
             ) : filtered.map(m => (
               <TableRow key={m.id}>
                 <TableCell className="font-mono text-xs">{m.member_no || "—"}</TableCell>
@@ -460,11 +522,97 @@ function RegMembersTab() {
                 <TableCell className="text-sm text-muted-foreground">{m.email || "—"}</TableCell>
                 <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailMember(m)} title="查看詳情">
+                      <Eye className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)} title="編輯資料">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {/* Member Detail Dialog */}
+      <Dialog open={!!detailMember} onOpenChange={v => { if (!v) setDetailMember(null); }}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>學員詳情</DialogTitle>
+            <DialogDescription>{detailMember?.member_no} — {detailMember?.name}</DialogDescription>
+          </DialogHeader>
+          {detailMember && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-muted-foreground">電話：</span>{detailMember.phone || "—"}</div>
+                <div><span className="text-muted-foreground">信箱：</span>{detailMember.email || "—"}</div>
+                <div><span className="text-muted-foreground">點數：</span>{detailMember.points}</div>
+                <div><span className="text-muted-foreground">課程等級：</span>{detailMember.course_level || "—"}</div>
+              </div>
+              {detailMember.notes && (
+                <div><span className="text-muted-foreground">備註：</span>{detailMember.notes}</div>
+              )}
+
+              <div className="border-t border-border pt-3">
+                <p className="text-xs font-medium mb-2">上過的課程</p>
+                {memberEnrollments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">無課程紀錄</p>
+                ) : (
+                  <div className="space-y-1">
+                    {memberEnrollments.map((en) => (
+                      <div key={en.id} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                        <div>
+                          <span className="font-medium">{(en.courses as any)?.title || "—"}</span>
+                          {en.session_date && <span className="text-muted-foreground ml-2">📅 {en.session_date}</span>}
+                        </div>
+                        <Badge variant={en.status === "cancelled" ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
+                          {statusLabel(en.status)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={!!editingMember} onOpenChange={v => { if (!v) setEditingMember(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>編輯學員資料</DialogTitle>
+            <DialogDescription>{editingMember?.member_no} — {editingMember?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">姓名</label>
+              <Input value={editFields.name} onChange={e => setEditFields(f => ({ ...f, name: e.target.value }))} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">電話</label>
+              <Input value={editFields.phone} onChange={e => setEditFields(f => ({ ...f, phone: e.target.value }))} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">信箱</label>
+              <Input value={editFields.email} onChange={e => setEditFields(f => ({ ...f, email: e.target.value }))} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">備註</label>
+              <Textarea value={editFields.notes} onChange={e => setEditFields(f => ({ ...f, notes: e.target.value }))} className="h-16" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingMember(null)}>取消</Button>
+            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editFields.name.trim()}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

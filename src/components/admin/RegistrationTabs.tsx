@@ -24,13 +24,17 @@ import { categoryLabels } from "@/lib/category-colors";
 type RegOrder = {
   id: string; order_no: string; course_ids: string[]; course_snapshot: any;
   p1_name: string | null; p1_phone: string | null; p1_email: string | null;
-  p2_name: string | null; p3_name: string | null;
+  p2_name: string | null; p2_phone: string | null; p2_email: string | null;
+  p3_name: string | null; p3_phone: string | null; p3_email: string | null;
   payment_status: string; paid_at: string | null; payment_method: string | null;
   total_amount: number; discount_plan: string | null;
   invoice_type: string | null; invoice_title: string | null; invoice_number: string | null;
   invoice_status: string; invoice_void_reason: string | null; invoice_void_at: string | null;
   invoice_reissued_number: string | null; invoice_reissued_at: string | null;
+  invoice_date: string | null;
   dealer_id: string | null; notes: string | null; created_at: string;
+  session_dates: string[]; is_retrain: boolean; referrer: string | null;
+  person_count: number; tax_id: string | null;
 };
 
 type RegEnrollment = {
@@ -264,6 +268,15 @@ function OrdersTab() {
     editInvoiceNumber !== (selectedOrder.invoice_number || "")
   );
 
+  // Parse course_snapshot for order detail
+  const getOrderCourses = (order: RegOrder) => {
+    const snap = order.course_snapshot;
+    if (!snap) return [];
+    if (Array.isArray(snap)) return snap;
+    if (typeof snap === "object") return Object.values(snap);
+    return [];
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -333,7 +346,7 @@ function OrdersTab() {
 
       {/* Order Detail + Invoice Edit Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={v => { if (!v) setSelectedOrder(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>訂單詳情</DialogTitle>
             <DialogDescription>{selectedOrder?.order_no}</DialogDescription>
@@ -347,18 +360,50 @@ function OrdersTab() {
                 <div><span className="text-muted-foreground">付款狀態：</span>{paymentBadge(selectedOrder.payment_status)}</div>
                 <div><span className="text-muted-foreground">經銷商：</span>{selectedOrder.dealer_id || "—"}</div>
                 <div><span className="text-muted-foreground">發票抬頭：</span>{selectedOrder.invoice_title || "—"}</div>
+                <div><span className="text-muted-foreground">統一編號：</span>{selectedOrder.tax_id || "—"}</div>
+                <div><span className="text-muted-foreground">報名人數：</span>{selectedOrder.person_count || "—"}</div>
+                <div><span className="text-muted-foreground">推薦人：</span>{selectedOrder.referrer || "—"}</div>
+                <div><span className="text-muted-foreground">複訓：</span>{selectedOrder.is_retrain ? "是" : "否"}</div>
               </div>
 
+              {/* 報名人員 - 完整顯示所有人的聯絡資訊 */}
               <div className="border-t border-border pt-2">
                 <p className="text-xs font-medium mb-1">報名人員</p>
                 {[
                   { name: selectedOrder.p1_name, phone: selectedOrder.p1_phone, email: selectedOrder.p1_email },
-                  { name: selectedOrder.p2_name },
-                  { name: selectedOrder.p3_name },
+                  { name: selectedOrder.p2_name, phone: selectedOrder.p2_phone, email: selectedOrder.p2_email },
+                  { name: selectedOrder.p3_name, phone: selectedOrder.p3_phone, email: selectedOrder.p3_email },
                 ].filter(p => p.name).map((p, i) => (
-                  <div key={i} className="text-xs text-muted-foreground">P{i + 1}: {p.name} {('phone' in p && p.phone) ? `/ ${p.phone}` : ""} {('email' in p && p.email) ? `/ ${p.email}` : ""}</div>
+                  <div key={i} className="text-xs text-muted-foreground">
+                    P{i + 1}: {p.name}
+                    {p.phone ? ` / ${p.phone}` : ""}
+                    {p.email ? ` / ${p.email}` : ""}
+                  </div>
                 ))}
               </div>
+
+              {/* 報名課程 */}
+              {(() => {
+                const courses = getOrderCourses(selectedOrder);
+                const dates = selectedOrder.session_dates || [];
+                if (courses.length === 0 && dates.length === 0) return null;
+                return (
+                  <div className="border-t border-border pt-2">
+                    <p className="text-xs font-medium mb-1">報名課程</p>
+                    {courses.length > 0 ? courses.map((c: any, i: number) => (
+                      <div key={i} className="text-xs text-muted-foreground flex justify-between py-0.5">
+                        <span>{c.title || c.course_code || `課程 ${i + 1}`}</span>
+                        <span className="flex gap-3">
+                          {dates[i] && <span>📅 {dates[i]}</span>}
+                          {c.price != null && <span>NT${Number(c.price).toLocaleString()}</span>}
+                        </span>
+                      </div>
+                    )) : dates.map((d: string, i: number) => (
+                      <div key={i} className="text-xs text-muted-foreground py-0.5">📅 {d}</div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {selectedOrder.notes && (
                 <div className="border-t border-border pt-2">
@@ -410,6 +455,7 @@ function OrdersTab() {
 // ═══════════════════════════════════════
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
+  const [selectedDate, setSelectedDate] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState>({ key: "", dir: null });
   const [page, setPage] = useState(1);
@@ -447,6 +493,13 @@ function EnrollmentsTab() {
       return (data || []) as unknown as RegEnrollment[];
     },
   });
+
+  // Extract unique session dates for filter
+  const uniqueDates = useMemo(() => {
+    const dates = new Set<string>();
+    enrollments.forEach(e => { if (e.session_date) dates.add(e.session_date); });
+    return [...dates].sort();
+  }, [enrollments]);
 
   const sessionDateMutation = useMutation({
     mutationFn: async () => {
@@ -499,12 +552,15 @@ function EnrollmentsTab() {
 
   const filtered = enrollments.filter(e => {
     if (selectedCourse !== "all" && e.course_id !== selectedCourse) return false;
+    if (selectedDate !== "all" && e.session_date !== selectedDate) return false;
     if (search) {
       const s = search.toLowerCase();
       const memberName = (e.reg_members as any)?.name?.toLowerCase() || "";
       const memberNo = (e.reg_members as any)?.member_no?.toLowerCase() || "";
       const courseName = (e.courses as any)?.title?.toLowerCase() || "";
-      if (!memberName.includes(s) && !memberNo.includes(s) && !courseName.includes(s)) return false;
+      const memberEmail = (e.reg_members as any)?.email?.toLowerCase() || "";
+      const memberPhone = (e.reg_members as any)?.phone || "";
+      if (!memberName.includes(s) && !memberNo.includes(s) && !courseName.includes(s) && !memberEmail.includes(s) && !memberPhone.includes(s)) return false;
     }
     return true;
   });
@@ -549,19 +605,32 @@ function EnrollmentsTab() {
             ))}
           </TabsList>
         </Tabs>
+        <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); setPage(1); }}>
+          <SelectTrigger className="h-8 w-44 text-xs">
+            <SelectValue placeholder="篩選上課日期" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部日期</SelectItem>
+            {uniqueDates.map(d => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="搜尋學員、課程..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9" />
+          <Input placeholder="搜尋學員、課程、信箱、電話..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9" />
         </div>
         <PageSizeSelector pageSize={pageSize} setPageSize={n => { setPageSize(n); setPage(1); }} />
         <Badge variant="outline">{filtered.length} 筆</Badge>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card overflow-x-auto">
         <Table>
           <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow>
               <SortableHead label="學員" sortKey="member_name" sort={sort} onSort={onSort} />
+              <TableHead className="whitespace-nowrap text-xs">電話</TableHead>
+              <TableHead className="whitespace-nowrap text-xs">信箱</TableHead>
               <SortableHead label="課程" sortKey="course_title" sort={sort} onSort={onSort} />
               <SortableHead label="上課日期" sortKey="session_date" sort={sort} onSort={onSort} className="w-28" />
               <SortableHead label="狀態" sortKey="status" sort={sort} onSort={onSort} className="w-20" />
@@ -570,20 +639,23 @@ function EnrollmentsTab() {
               <TableHead className="w-16 whitespace-nowrap text-xs">測驗</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">證書</TableHead>
               <SortableHead label="繳費日期" sortKey="paid_at" sort={sort} onSort={onSort} className="w-28" />
+              <TableHead className="whitespace-nowrap text-xs">備註</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : paged.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
                   <div className="text-sm font-medium">{(e.reg_members as any)?.name || "—"}</div>
                   <div className="text-xs text-muted-foreground">{(e.reg_members as any)?.member_no || ""}</div>
                 </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{(e.reg_members as any)?.phone || "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground max-w-[10rem] truncate">{(e.reg_members as any)?.email || "—"}</TableCell>
                 <TableCell>
                   <div className="text-sm">{(e.courses as any)?.title || "—"}</div>
                   <div className="text-xs text-muted-foreground">{categoryLabels[e.course_type || ""] || e.course_type}</div>
@@ -602,6 +674,7 @@ function EnrollmentsTab() {
                 <TableCell className="text-center text-xs">{e.test_score != null ? e.test_score : "—"}</TableCell>
                 <TableCell className="text-center">{e.certificate ? "✅" : "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{e.paid_at ? formatDate(e.paid_at) : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground max-w-[8rem] truncate" title={e.notes || ""}>{e.notes || "—"}</TableCell>
                 <TableCell>
                   {e.status !== "cancelled" && (
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => openCancel(e)} title="取消報名">
