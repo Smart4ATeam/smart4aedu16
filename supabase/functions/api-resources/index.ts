@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { title, category, description, tags, author, difficulty, download_url, detail_url, thumbnail_url, trial_url, duration, video_type, sub_category, version, flow_count, industry_tag, is_hot, status, hot_rank, usage_count, sort_order } = body;
+    const { title, category, description, tags, author, difficulty, download_url, detail_url, thumbnail_url, duration, video_type, sub_category, version, flow_count, industry_tag, is_hot, status, hot_rank, usage_count, sort_order, app_id, trial_enabled } = body;
 
     if (!title) {
       return new Response(JSON.stringify({ error: "Missing required field: title" }), {
@@ -64,7 +64,8 @@ Deno.serve(async (req) => {
     if (download_url) insertData.download_url = download_url;
     if (detail_url) insertData.detail_url = detail_url;
     if (thumbnail_url) insertData.thumbnail_url = thumbnail_url;
-    if (trial_url) insertData.trial_url = trial_url;
+    if (app_id) insertData.app_id = app_id;
+    if (trial_enabled !== undefined) insertData.trial_enabled = trial_enabled;
     if (duration) insertData.duration = duration;
     if (video_type) insertData.video_type = video_type;
     if (sub_category) insertData.sub_category = sub_category;

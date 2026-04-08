@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +32,7 @@ type SubCategory = {
 type NewResource = {
   title: string;description: string;category: string;difficulty: string;
   author: string;version: string;download_url: string;thumbnail_url: string;
-  detail_url: string;sub_category: string;tags: string;hot_rank: string;trial_url: string;
+  detail_url: string;sub_category: string;tags: string;hot_rank: string;
   flow_count: string;usage_count: string;industry_tag: string;
   duration: string;video_type: string;is_hot: boolean;sort_order: string;
   app_id: string;trial_enabled: boolean;
@@ -41,7 +41,7 @@ type NewResource = {
 const emptyResource = (): NewResource => ({
   title: "", description: "", category: "plugins", difficulty: "初級",
   author: "", version: "", download_url: "", thumbnail_url: "",
-  detail_url: "", sub_category: "", tags: "", hot_rank: "", trial_url: "",
+  detail_url: "", sub_category: "", tags: "", hot_rank: "",
   flow_count: "", usage_count: "", industry_tag: "",
   duration: "", video_type: "", is_hot: false, sort_order: "",
   app_id: "", trial_enabled: false,
@@ -156,13 +156,41 @@ function SubCategoryManager({ open, onOpenChange, subCategories, onRefresh
 function DynamicFields({ res, onChange, subCategories
 }: {res: NewResource;onChange: (field: keyof NewResource, value: any) => void;subCategories: SubCategory[];}) {
   const filteredSubs = subCategories.filter((s) => s.category === res.category);
+  const [uploading, setUploading] = useState(false);
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("resource-thumbnails").upload(path, file);
+    if (error) { toast.error("上傳失敗：" + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("resource-thumbnails").getPublicUrl(path);
+    onChange("thumbnail_url", urlData.publicUrl);
+    setUploading(false);
+    toast.success("縮圖已上傳");
+  };
 
   return (
     <div className="space-y-3">
-      {/* Shared: tags, hot_rank, is_hot, sort_order, thumbnail_url, detail_url */}
+      {/* Shared: tags, hot_rank, is_hot, sort_order, thumbnail, detail_url */}
       <div>
-        <Label className="text-xs">縮圖 URL</Label>
-        <Input className="h-8 text-xs mt-1" placeholder="https://..." value={res.thumbnail_url} onChange={(e) => onChange("thumbnail_url", e.target.value)} />
+        <Label className="text-xs">縮圖</Label>
+        <div className="flex items-center gap-3 mt-1">
+          {res.thumbnail_url ? (
+            <div className="relative w-16 h-16 rounded border overflow-hidden">
+              <img src={res.thumbnail_url} alt="縮圖" className="w-full h-full object-cover" />
+              <button onClick={() => onChange("thumbnail_url", "")} className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-bl p-0.5"><X className="w-3 h-3" /></button>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition text-xs text-muted-foreground">
+              <ImagePlus className="w-4 h-4" />
+              {uploading ? "上傳中..." : "上傳縮圖"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} disabled={uploading} />
+            </label>
+          )}
+        </div>
       </div>
       <div>
         <Label className="text-xs">詳細介紹連結</Label>
@@ -206,13 +234,8 @@ function DynamicFields({ res, onChange, subCategories
         </div>
       }
 
-      {/* Extensions: trial_url */}
-      {res.category === "extensions" &&
-      <div>
-          <Label className="text-xs">試用連結</Label>
-          <Input className="h-8 text-xs mt-1" placeholder="https://..." value={res.trial_url} onChange={(e) => onChange("trial_url", e.target.value)} />
-        </div>
-      }
+
+
 
       {/* APP ID & Trial toggle for extensions & templates */}
       {(res.category === "extensions" || res.category === "templates") &&
@@ -309,7 +332,6 @@ const AdminContent = () => {
     sub_category: r.sub_category || null,
     tags: r.tags ? r.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     hot_rank: r.hot_rank ? parseInt(r.hot_rank) : null,
-    trial_url: r.trial_url.trim() || null,
     flow_count: r.flow_count ? parseInt(r.flow_count) : null,
     usage_count: r.usage_count ? parseInt(r.usage_count) : null,
     industry_tag: r.industry_tag.trim() || null,
@@ -394,7 +416,6 @@ const AdminContent = () => {
           sub_category: get(col(["sub_category", "子分類"])),
           tags: get(col(["tags", "標籤"])),
           hot_rank: get(col(["hot_rank", "熱門排名"])),
-          trial_url: get(col(["trial_url", "試用連結"])),
           flow_count: get(col(["flow_count", "流程數"])),
           usage_count: get(col(["usage_count", "使用次數"])),
           industry_tag: get(col(["industry_tag", "行業標籤"])),
@@ -497,7 +518,7 @@ const AdminContent = () => {
             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5"><FileSpreadsheet className="w-4 h-4" /> 匯入 CSV</Button>
             <Button type="button" variant="outline" size="sm" onClick={addBatchRow} className="gap-1.5"><Plus className="w-4 h-4" /> 新增一列</Button>
             <Button type="button" variant="outline" size="sm" onClick={handleTemplateDownload} className="gap-1.5"><Download className="w-4 h-4" /> 下載範本</Button>
-            <p className="text-xs text-muted-foreground ml-auto self-center">支援新欄位：tags, sub_category, trial_url, duration 等</p>
+            <p className="text-xs text-muted-foreground ml-auto self-center">支援新欄位：tags, sub_category, duration, app_id, trial_enabled 等</p>
           </div>
           <div className="overflow-auto flex-1 border rounded-md">
             <Table>

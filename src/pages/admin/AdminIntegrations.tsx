@@ -44,7 +44,6 @@ const endpoints: ApiEndpoint[] = [
       { name: "download_url", type: "string", desc: "下載連結" },
       { name: "detail_url", type: "string", desc: "詳細介紹連結" },
       { name: "thumbnail_url", type: "string", desc: "縮圖 URL" },
-      { name: "trial_url", type: "string", desc: "試用連結" },
       { name: "duration", type: "string", desc: "時長（影片用）" },
       { name: "video_type", type: "string", desc: "影片類型" },
       { name: "sub_category", type: "string", desc: "子分類" },

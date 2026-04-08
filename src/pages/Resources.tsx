@@ -18,7 +18,6 @@ type Resource = Tables<"resources"> & {
   industry_tag?: string | null;
   duration?: string | null;
   video_type?: string | null;
-  trial_url?: string | null;
   app_id?: string | null;
   trial_enabled?: boolean;
 };
@@ -185,8 +184,7 @@ function PluginCard({ r }: { r: Resource }) {
 
 function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string) => void; claiming: string | null; trialRecord?: Trial }) {
   const hasTrialBtn = r.trial_enabled;
-  const cols = [r.trial_url, hasTrialBtn].filter(Boolean).length;
-  const gridCols = 2 + cols;
+  const gridCols = 2 + (hasTrialBtn ? 1 : 0);
 
   return (
     <div className="glass-card p-6 border-l-4 border-l-secondary">
@@ -210,16 +208,7 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>詳細介紹</button>
         )}
-        {r.trial_url && (
-          <a
-            href={r.trial_url}
-            target="_blank"
-            rel="noreferrer"
-            className="bg-secondary text-secondary-foreground py-2 rounded-lg text-xs font-bold hover:opacity-90 transition text-center flex items-center justify-center gap-1.5"
-          >
-            <Tag className="w-3.5 h-3.5" /> 領取試用
-          </a>
-        )}
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
         <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
       </div>
     </div>
