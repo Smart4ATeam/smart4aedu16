@@ -1,0 +1,1 @@
+ALTER TABLE public.reg_orders ADD COLUMN person_count integer NOT NULL DEFAULT 0;

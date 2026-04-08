@@ -19,14 +19,17 @@ interface RequestBody {
   session_dates?: string[];
   persons: PersonInfo[];
   payment_status?: string;
+  payment_method?: string;
   total_amount?: number;
   discount_plan?: string;
   invoice_type?: string;
   invoice_title?: string;
+  tax_id?: string;
   dealer_id?: string;
   notes?: string;
   is_retrain?: boolean;
   referrer?: string;
+  person_count?: number;
 }
 
 Deno.serve(async (req) => {
@@ -172,14 +175,17 @@ Deno.serve(async (req) => {
       course_snapshot: courseSnapshot,
       session_dates: sessionDates,
       payment_status: body.payment_status || "pending",
+      payment_method: body.payment_method || null,
       total_amount: body.total_amount || 0,
       discount_plan: body.discount_plan || null,
       invoice_type: body.invoice_type || null,
       invoice_title: body.invoice_title || null,
+      tax_id: body.tax_id || null,
       dealer_id: body.dealer_id || null,
       notes: body.notes || null,
       is_retrain: body.is_retrain || false,
       referrer: body.referrer || null,
+      person_count: body.person_count || body.persons.length,
     };
 
     // Map persons to p1/p2/p3
