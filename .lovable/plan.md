@@ -1,39 +1,34 @@
 
 
-## 問題分析
+## 合併「報名管理」到「學習中心」
 
-從截圖看到三個匯入錯誤：
+### 目前問題
+- 「學習中心」裡的「報名與報到」頁籤點進去是空的，因為它讀的是舊的資料表，根本撈不到東西。
+- 「報名管理」是另一個獨立頁面，裡面的訂單和報名資料都正常運作。
+- 兩個頁面功能重疊，管理員不知道該去哪裡看資料。
 
-1. **批次 1 & 5**：`is_retrain` 欄位為 null，違反 NOT NULL 約束 — 因為 CSV 中該欄位為空時，`mapRow` 不會設值（第 121 行的 `if` 條件 `values[i]?.trim()` 為空就跳過），而預設值區塊（第 138-142 行）漏了 `is_retrain` 的預設值。
-2. **批次 4**：日期欄位值為 `"45840.89514"` — 這是 Excel 序列日期數字（Excel 以 1900-01-01 為基準的天數），不是合法的 timestamp 格式。需要在 `mapRow` 中偵測並轉換。
+### 怎麼改
 
-## 修改計劃
+**第一步：把「報名管理」的內容搬進「學習中心」**
+- 把「報名管理」頁面裡可以正常運作的「訂單」和「報名明細」兩個區塊，抽出來變成共用元件。
+- 放到「學習中心」的「報名與報到」頁籤底下，取代原本壞掉的空白內容。
 
-### 檔案：`src/pages/admin/AdminImport.tsx`
+**第二步：刪掉「報名管理」頁面**
+- 從側邊選單移除「報名管理」這個連結。
+- 從路由設定移除 `/admin/registrations` 這條路徑。
+- 刪除 `AdminRegistrations.tsx` 這個檔案（內容已經搬走了）。
 
-#### 1. 新增 `is_retrain` 預設值
-在第 142 行後加入：
-```typescript
-if (mapped.is_retrain === undefined) mapped.is_retrain = false;
-```
+**第三步：修正統計數字**
+- 「學習中心」上方的「總報名人數」數字，改成從正確的資料表 `reg_enrollments` 撈取，這樣就不會顯示 0 了。
 
-#### 2. 新增 Excel 序列日期轉換函式
-加入一個工具函式，偵測純數字的日期值並轉換為 ISO 日期字串：
-```typescript
-function excelDateToISO(value: string): string {
-  const num = parseFloat(value);
-  if (!isNaN(num) && num > 25000 && num < 60000) {
-    // Excel serial date: days since 1900-01-01 (with Excel's leap year bug)
-    const date = new Date((num - 25569) * 86400000);
-    return date.toISOString();
-  }
-  return value; // 原本就是正常日期字串，直接回傳
-}
-```
+### 改完之後
+- 側邊選單少一個「報名管理」，所有報名相關的東西都在「學習中心」裡面找得到。
+- 「學習中心」的「報名與報到」頁籤會正常顯示訂單跟報名明細。
 
-#### 3. 在 `mapRow` 中對日期欄位套用轉換
-對 `paid_at`、`invoice_date`、`invoice_void_at`、`invoice_reissued_at` 等日期欄位，呼叫 `excelDateToISO` 進行轉換。
-
-### 涉及檔案
-- `src/pages/admin/AdminImport.tsx`（唯一修改）
+### 會動到的檔案
+1. `src/pages/admin/AdminRegistrations.tsx` — 抽出元件後刪除
+2. `src/components/admin/RegistrationTabs.tsx` — 新檔案，放訂單和報名明細元件
+3. `src/pages/admin/AdminLearning.tsx` — 換掉壞掉的報名頁籤內容
+4. `src/components/admin/AdminSidebar.tsx` — 移除「報名管理」選單項目
+5. `src/App.tsx` — 移除 `/admin/registrations` 路由
 
