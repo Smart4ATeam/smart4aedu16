@@ -1,29 +1,46 @@
 
 
-## 兩個功能改進
+## Plan: Registration System UI Enhancements (4 Issues)
 
-### 功能一：梯次列表顯示已報名人數
+### Issue 1: Reg Members Tab - Edit, Courses, Phone Fix
+**Problem**: Members list is read-only, doesn't show courses taken, and phone numbers are missing leading zeros.
 
-在「梯次」頁籤的表格中，新增「已報名」欄位，顯示每個梯次目前有多少人報名。
+**Changes in `src/pages/admin/AdminStudents.tsx`**:
+- Add an edit dialog for reg_members (name, phone, email, notes)
+- Query `reg_enrollments` for each member to show their enrolled courses
+- Add a member detail dialog showing: editable fields + course list
+- Phone display: no code change needed for display, but add a note about data quality (the missing `0` is a data issue from import, not a display bug)
 
-因為目前報名資料（`reg_enrollments`）大部分沒有填 `session_id`，而是用 `course_id` + `session_date`（文字格式）來對應梯次，所以需要用兩種方式比對：
-- 如果 `session_id` 有值，直接用 `session_id` 匹配
-- 否則用 `course_id` + `session_date` 與梯次的 `start_date`/`end_date` 做文字比對
+### Issue 2: Order Detail - Missing P2/P3 Info & Course List
+**Problem**: The `RegOrder` type is missing `p2_phone`, `p2_email`, `p3_phone`, `p3_email`. The order detail dialog doesn't show courses.
 
-實作方式：在 `SessionsTab` 中額外查詢 `reg_enrollments`，按 `course_id` + `session_date` 分組統計，然後在表格中對每個梯次算出對應的報名人數，以 `已報名 / 上限` 格式顯示。
+**Changes in `src/components/admin/RegistrationTabs.tsx`**:
+- Add missing fields to `RegOrder` type: `p2_phone`, `p2_email`, `p3_phone`, `p3_email`, `session_dates`, `is_retrain`, `referrer`, `person_count`, `tax_id`
+- Update order detail dialog to show all persons' phone and email
+- Add a "報名課程" section using `course_snapshot` data to list courses with prices and session dates
 
-**會動到的檔案：** `src/pages/admin/AdminLearning.tsx`（SessionsTab 元件）
+### Issue 3: Enrollment List - Date Filter, Email/Phone, Notes
+**Problem**: No session date filter, no email/phone columns, no notes column.
+
+**Changes in `src/components/admin/RegistrationTabs.tsx`**:
+- Add a session date dropdown filter (extract unique dates from enrollments)
+- Add Email and Phone columns (from `reg_members` join data, already fetched)
+- Add Notes column showing `e.notes`
+- Update table column count accordingly
+
+### Issue 4: Reg Members Phone Data Fix
+**Problem**: Many phone numbers are missing the leading `0` (e.g., `912345678` instead of `0912345678`).
+
+**Action**: Run a SQL update to prepend `0` to 9-digit phone numbers in `reg_members` that look like mobile numbers (starting with `9`). This is a data fix via the insert tool.
 
 ---
 
-### 功能二：報名明細可編輯上課日期
+### Technical Details
 
-在「報名明細」表格中，讓「上課日期」欄位可以直接點擊編輯。點擊後彈出小對話框，可修改 `session_date` 值，儲存時同步寫入 `reg_operation_logs` 記錄變更。
+**Files to modify**:
+1. `src/components/admin/RegistrationTabs.tsx` - OrdersTab (type + detail dialog + course list), EnrollmentsTab (date filter + new columns)
+2. `src/pages/admin/AdminStudents.tsx` - RegMembersTab (edit dialog + course history)
+3. Database data fix for phone numbers
 
-實作方式：
-- 在每筆報名的「上課日期」旁加一個編輯按鈕
-- 點擊後開啟 Dialog，顯示目前日期，提供輸入框修改（文字格式，因為要支援「2025/04/19-04/20」這種跨日格式）
-- 需填寫變更原因，儲存後更新 `reg_enrollments.session_date` 並寫入操作紀錄
-
-**會動到的檔案：** `src/components/admin/RegistrationTabs.tsx`（EnrollmentsTab 元件）
+**Estimated scope**: ~4 focused changes across 2 files + 1 data fix.
 
