@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ClipboardList, Search, FileText, Eye, Pencil,
+  ClipboardList, Search, FileText, Eye, Pencil, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -48,6 +49,9 @@ type RegEnrollment = {
 type RegCourse = {
   id: string; course_code: string | null; title: string; category: string;
 };
+
+type SortDir = "asc" | "desc" | null;
+type SortState = { key: string; dir: SortDir };
 
 // ── Helpers ──
 function statusBadge(status: string) {
@@ -85,6 +89,56 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString("zh-TW");
 }
 
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
+  return dir === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+}
+
+function SortableHead({ label, sortKey, sort, onSort, className }: { label: string; sortKey: string; sort: SortState; onSort: (k: string) => void; className?: string }) {
+  return (
+    <TableHead className={`cursor-pointer select-none whitespace-nowrap text-xs ${className || ""}`} onClick={() => onSort(sortKey)}>
+      <span className="inline-flex items-center">{label}<SortIcon active={sort.key === sortKey} dir={sort.key === sortKey ? sort.dir : null} /></span>
+    </TableHead>
+  );
+}
+
+function toggleSort(sort: SortState, key: string): SortState {
+  if (sort.key !== key) return { key, dir: "asc" };
+  if (sort.dir === "asc") return { key, dir: "desc" };
+  return { key: "", dir: null };
+}
+
+function PageSizeSelector({ pageSize, setPageSize }: { pageSize: number; setPageSize: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground">每頁</span>
+      <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+        <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="20">20</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+          <SelectItem value="100">100</SelectItem>
+          <SelectItem value="200">200</SelectItem>
+        </SelectContent>
+      </Select>
+      <span className="text-xs text-muted-foreground">筆</span>
+    </div>
+  );
+}
+
+function Pagination({ page, setPage, totalPages, total }: { page: number; setPage: (n: number) => void; totalPages: number; total: number }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between pt-2">
+      <span className="text-xs text-muted-foreground">共 {total} 筆，第 {page}/{totalPages} 頁</span>
+      <div className="flex gap-1">
+        <Button variant="outline" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="w-4 h-4" /></Button>
+        <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(page + 1)}><ChevronRight className="w-4 h-4" /></Button>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════
 // Main exported component
 // ═══════════════════════════════════════
@@ -112,6 +166,9 @@ export function RegistrationTabs() {
 function OrdersTab() {
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<RegOrder | null>(null);
+  const [sort, setSort] = useState<SortState>({ key: "created_at", dir: "desc" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -175,6 +232,33 @@ function OrdersTab() {
     o.p1_email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const sorted = useMemo(() => {
+    if (!sort.key || !sort.dir) return filtered;
+    const arr = [...filtered];
+    const dir = sort.dir === "asc" ? 1 : -1;
+    arr.sort((a: any, b: any) => {
+      let va = "", vb = "";
+      switch (sort.key) {
+        case "order_no": va = a.order_no || ""; vb = b.order_no || ""; break;
+        case "p1_name": va = a.p1_name || ""; vb = b.p1_name || ""; break;
+        case "total_amount": return (Number(a.total_amount) - Number(b.total_amount)) * dir;
+        case "payment_status": va = a.payment_status || ""; vb = b.payment_status || ""; break;
+        case "paid_at": va = a.paid_at || ""; vb = b.paid_at || ""; break;
+        case "invoice_status": va = a.invoice_status || ""; vb = b.invoice_status || ""; break;
+        case "created_at": va = a.created_at || ""; vb = b.created_at || ""; break;
+        default: return 0;
+      }
+      return va.localeCompare(vb) * dir;
+    });
+    return arr;
+  }, [filtered, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const onSort = (key: string) => { setSort(s => toggleSort(s, key)); setPage(1); };
+
   const hasInvoiceChanges = selectedOrder && (
     editInvoiceStatus !== selectedOrder.invoice_status ||
     editInvoiceNumber !== (selectedOrder.invoice_number || "")
@@ -182,40 +266,41 @@ function OrdersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="搜尋訂單編號、姓名、信箱..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder="搜尋訂單編號、姓名、信箱..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9" />
         </div>
+        <PageSizeSelector pageSize={pageSize} setPageSize={n => { setPageSize(n); setPage(1); }} />
         <Badge variant="outline">{filtered.length} 筆訂單</Badge>
       </div>
 
       <div className="glass-card overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow>
-              <TableHead className="min-w-[10rem] whitespace-nowrap text-xs">訂單編號</TableHead>
-              <TableHead className="min-w-[5rem] whitespace-nowrap text-xs">報名人</TableHead>
-              <TableHead className="whitespace-nowrap text-xs">金額</TableHead>
-              <TableHead className="whitespace-nowrap text-xs">付款狀態</TableHead>
+              <SortableHead label="訂單編號" sortKey="order_no" sort={sort} onSort={onSort} className="min-w-[10rem]" />
+              <SortableHead label="報名人" sortKey="p1_name" sort={sort} onSort={onSort} className="min-w-[5rem]" />
+              <SortableHead label="金額" sortKey="total_amount" sort={sort} onSort={onSort} />
+              <SortableHead label="付款狀態" sortKey="payment_status" sort={sort} onSort={onSort} />
               <TableHead className="whitespace-nowrap text-xs">付款方式</TableHead>
-              <TableHead className="whitespace-nowrap text-xs">付款日期</TableHead>
+              <SortableHead label="付款日期" sortKey="paid_at" sort={sort} onSort={onSort} />
               <TableHead className="whitespace-nowrap text-xs">優惠方案</TableHead>
-              <TableHead className="whitespace-nowrap text-xs">發票狀態</TableHead>
+              <SortableHead label="發票狀態" sortKey="invoice_status" sort={sort} onSort={onSort} />
               <TableHead className="whitespace-nowrap text-xs">發票號碼</TableHead>
               <TableHead className="whitespace-nowrap text-xs">發票類型</TableHead>
               <TableHead className="whitespace-nowrap text-xs">發票抬頭</TableHead>
               <TableHead className="whitespace-nowrap text-xs">經銷商</TableHead>
-              <TableHead className="whitespace-nowrap text-xs">建立日期</TableHead>
+              <SortableHead label="建立日期" sortKey="created_at" sort={sort} onSort={onSort} />
               <TableHead className="whitespace-nowrap text-xs">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
+            ) : paged.length === 0 ? (
               <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">尚無訂單資料</TableCell></TableRow>
-            ) : filtered.map(o => (
+            ) : paged.map(o => (
               <TableRow key={o.id}>
                 <TableCell className="font-mono text-xs">{o.order_no}</TableCell>
                 <TableCell>
@@ -243,6 +328,8 @@ function OrdersTab() {
           </TableBody>
         </Table>
       </div>
+
+      <Pagination page={safePage} setPage={setPage} totalPages={totalPages} total={filtered.length} />
 
       {/* Order Detail + Invoice Edit Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={v => { if (!v) setSelectedOrder(null); }}>
@@ -324,6 +411,9 @@ function OrdersTab() {
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortState>({ key: "", dir: null });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [editingEnroll, setEditingEnroll] = useState<RegEnrollment | null>(null);
   const [editSessionDate, setEditSessionDate] = useState("");
   const [editReason, setEditReason] = useState("");
@@ -393,10 +483,37 @@ function EnrollmentsTab() {
     return true;
   });
 
+  const sorted = useMemo(() => {
+    if (!sort.key || !sort.dir) return filtered;
+    const arr = [...filtered];
+    const dir = sort.dir === "asc" ? 1 : -1;
+    arr.sort((a: any, b: any) => {
+      let va = "", vb = "";
+      switch (sort.key) {
+        case "member_name": va = a.reg_members?.name || ""; vb = b.reg_members?.name || ""; break;
+        case "course_title": va = a.courses?.title || ""; vb = b.courses?.title || ""; break;
+        case "session_date": va = a.session_date || ""; vb = b.session_date || ""; break;
+        case "status": va = a.status || ""; vb = b.status || ""; break;
+        case "payment_status": va = a.payment_status || ""; vb = b.payment_status || ""; break;
+        case "paid_at": va = a.paid_at || ""; vb = b.paid_at || ""; break;
+        case "enrolled_at": va = a.enrolled_at || ""; vb = b.enrolled_at || ""; break;
+        default: return 0;
+      }
+      return va.localeCompare(vb) * dir;
+    });
+    return arr;
+  }, [filtered, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paged = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const onSort = (key: string) => { setSort(s => toggleSort(s, key)); setPage(1); };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Tabs value={selectedCourse} onValueChange={setSelectedCourse}>
+        <Tabs value={selectedCourse} onValueChange={v => { setSelectedCourse(v); setPage(1); }}>
           <TabsList className="flex-wrap h-auto gap-0.5">
             <TabsTrigger value="all" className="text-xs">全部</TabsTrigger>
             {regCourses.map(c => (
@@ -408,32 +525,33 @@ function EnrollmentsTab() {
         </Tabs>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="搜尋學員、課程..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input placeholder="搜尋學員、課程..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9" />
         </div>
+        <PageSizeSelector pageSize={pageSize} setPageSize={n => { setPageSize(n); setPage(1); }} />
         <Badge variant="outline">{filtered.length} 筆</Badge>
       </div>
 
       <div className="glass-card overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow>
-              <TableHead>學員</TableHead>
-              <TableHead>課程</TableHead>
-              <TableHead className="w-28">上課日期</TableHead>
-              <TableHead className="w-20">狀態</TableHead>
-              <TableHead className="w-20">付款</TableHead>
-              <TableHead className="w-16">出席</TableHead>
-              <TableHead className="w-16">測驗</TableHead>
-              <TableHead className="w-16">證書</TableHead>
-              <TableHead className="w-28">繳費日期</TableHead>
+              <SortableHead label="學員" sortKey="member_name" sort={sort} onSort={onSort} />
+              <SortableHead label="課程" sortKey="course_title" sort={sort} onSort={onSort} />
+              <SortableHead label="上課日期" sortKey="session_date" sort={sort} onSort={onSort} className="w-28" />
+              <SortableHead label="狀態" sortKey="status" sort={sort} onSort={onSort} className="w-20" />
+              <SortableHead label="付款" sortKey="payment_status" sort={sort} onSort={onSort} className="w-20" />
+              <TableHead className="w-16 whitespace-nowrap text-xs">出席</TableHead>
+              <TableHead className="w-16 whitespace-nowrap text-xs">測驗</TableHead>
+              <TableHead className="w-16 whitespace-nowrap text-xs">證書</TableHead>
+              <SortableHead label="繳費日期" sortKey="paid_at" sort={sort} onSort={onSort} className="w-28" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
+            ) : paged.length === 0 ? (
               <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
-            ) : filtered.map(e => (
+            ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
                   <div className="text-sm font-medium">{(e.reg_members as any)?.name || "—"}</div>
@@ -462,6 +580,8 @@ function EnrollmentsTab() {
           </TableBody>
         </Table>
       </div>
+
+      <Pagination page={safePage} setPage={setPage} totalPages={totalPages} total={filtered.length} />
 
       {/* Edit Session Date Dialog */}
       <Dialog open={!!editingEnroll} onOpenChange={v => { if (!v) setEditingEnroll(null); }}>
