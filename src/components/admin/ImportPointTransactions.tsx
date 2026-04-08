@@ -115,7 +115,7 @@ export default function ImportPointTransactions() {
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
-  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[]; failedRows: ParsedRow[] } | null>(null);
   const [progress, setProgress] = useState(0);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,6 +146,7 @@ export default function ImportPointTransactions() {
       let success = 0;
       let failed = 0;
       const errors: string[] = [];
+      const failedRows: ParsedRow[] = [];
 
       // Resolve member_no → member_id
       const allMemberNos = new Set<string>();
@@ -185,45 +186,47 @@ export default function ImportPointTransactions() {
 
       for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
         const batch = validRows.slice(i, i + BATCH_SIZE);
-        const inserts = batch
-          .map((r) => {
-            const row: Record<string, unknown> = {};
-            const memberNo = r.mapped.member_no as string;
-            const memberId = memberNoToId[memberNo];
-            if (!memberId) return null;
+        const successRows: ParsedRow[] = [];
+        const batchFailedRows: ParsedRow[] = [];
 
-            row.member_id = memberId;
+        for (const r of batch) {
+          const memberNo = r.mapped.member_no as string;
+          const memberId = memberNoToId[memberNo];
+          if (!memberId) {
+            batchFailedRows.push({ ...r, errors: [...r.errors, `找不到學員編號: ${memberNo}`] });
+          } else {
+            successRows.push(r);
+          }
+        }
+
+        if (successRows.length > 0) {
+          const inserts = successRows.map((r) => {
+            const row: Record<string, unknown> = {};
+            row.member_id = memberNoToId[r.mapped.member_no as string];
             row.points_delta = r.mapped.points_delta;
             if (r.mapped.type) row.type = r.mapped.type;
             if (r.mapped.description) row.description = r.mapped.description;
             if (r.mapped.created_at) row.created_at = r.mapped.created_at;
-
             const orderNo = r.mapped.order_no as string | undefined;
-            if (orderNo && orderNoToId[orderNo]) {
-              row.order_id = orderNoToId[orderNo];
-            }
-
+            if (orderNo && orderNoToId[orderNo]) row.order_id = orderNoToId[orderNo];
             return row;
-          })
-          .filter(Boolean);
+          });
 
-        if (inserts.length === 0) {
-          failed += batch.length;
-          continue;
+          const { error } = await supabase.from("reg_point_transactions").insert(inserts as any);
+          if (error) {
+            for (const r of successRows) batchFailedRows.push({ ...r, errors: [...r.errors, error.message] });
+            errors.push(`批次 ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
+          } else {
+            success += successRows.length;
+          }
         }
 
-        const { error } = await supabase.from("reg_point_transactions").insert(inserts as any);
-        if (error) {
-          failed += batch.length;
-          errors.push(`批次 ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
-        } else {
-          success += inserts.length;
-          failed += batch.length - inserts.length;
-        }
+        failed += batchFailedRows.length;
+        failedRows.push(...batchFailedRows);
         setProgress(Math.round(((i + batch.length) / validRows.length) * 100));
       }
 
-      return { success, failed, errors };
+      return { success, failed, errors, failedRows };
     },
     onSuccess: (result) => {
       setImportResult(result);
@@ -250,13 +253,30 @@ export default function ImportPointTransactions() {
   const downloadTemplate = () => {
     const templateHeaders = ["member_no", "points_delta", "type", "description", "order_no", "created_at"];
     const csv = templateHeaders.join(",") + "\n";
+    downloadCSV(csv, "point-transactions-import-template.csv");
+  };
+
+  const downloadCSV = (csv: string, filename: string) => {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "point-transactions-import-template.csv";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadFailedRows = () => {
+    if (!importResult?.failedRows.length) return;
+    const cols = ["member_no", "points_delta", "type", "description", "order_no", "created_at", "失敗原因"];
+    const lines = importResult.failedRows.map((r) => {
+      const vals = ["member_no", "points_delta", "type", "description", "order_no", "created_at"].map(
+        (c) => `"${String(r.mapped[c] ?? "").replace(/"/g, '""')}"`
+      );
+      vals.push(`"${r.errors.join("; ").replace(/"/g, '""')}"`);
+      return vals.join(",");
+    });
+    downloadCSV(cols.join(",") + "\n" + lines.join("\n"), "point-transactions-failed.csv");
   };
 
   return (
@@ -394,9 +414,17 @@ export default function ImportPointTransactions() {
               {importResult.errors.map((e, i) => <p key={i}>{e}</p>)}
             </div>
           )}
-          <Button variant="outline" className="mt-4" onClick={handleClear}>
-            匯入新檔案
-          </Button>
+          {importResult.failedRows.length > 0 && (
+            <Button variant="destructive" size="sm" className="mt-4 gap-2" onClick={downloadFailedRows}>
+              <Download className="w-4 h-4" />
+              下載失敗資料 CSV（{importResult.failedRows.length} 筆）
+            </Button>
+          )}
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" onClick={handleClear}>
+              匯入新檔案
+            </Button>
+          </div>
         </motion.div>
       )}
 
