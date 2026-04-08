@@ -248,12 +248,12 @@ export default function Auth() {
                       <Input
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="例：STU-2026-001"
+                      placeholder="例：SA26011001"
                       className="pl-10 bg-muted border-border"
                       required />
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      請輸入報名時收到的學員編號
+                      學員編號可前往智能助理查詢
                     </p>
                   </div>
                   <Button
@@ -265,7 +265,7 @@ export default function Auth() {
                     使用 Google 帳號啟用
                   </Button>
                   <p className="text-[11px] text-muted-foreground">
-                    請使用與報名時相同的 Google 帳號登入
+                    請使用報名時提供的E-mail帳號或是學員綁定的E-mail帳號啟用
                   </p>
                 </div>
 
@@ -288,7 +288,7 @@ export default function Auth() {
                       <Input
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="例：STU-2026-001"
+                      placeholder="例：SA26011001"
                       className="pl-10 bg-muted border-border" />
                     </div>
                   </div>
@@ -306,7 +306,7 @@ export default function Auth() {
                       className="pl-10 bg-muted border-border" />
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      請填寫與報名時相同的電子信箱，否則無法啟用
+                      請使用報名時提供的E-mail帳號或是學員綁定的E-mail帳號啟用
                     </p>
                   </div>
                 </div>
