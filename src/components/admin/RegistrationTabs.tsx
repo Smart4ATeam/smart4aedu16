@@ -45,7 +45,7 @@ type RegEnrollment = {
   post_survey: string | null; post_test: string | null; test_score: number | null;
   certificate: string | null; pre_notification_sent: boolean;
   points_awarded: number; lovable_invite: string | null; notes: string | null;
-  enrolled_at: string; session_date: string | null;
+  enrolled_at: string; session_date: string | null; is_retrain: boolean;
   reg_members?: { id: string; member_no: string | null; name: string; phone: string | null; email: string | null } | null;
   courses?: { id: string; course_code: string | null; title: string; category: string } | null;
 };
@@ -651,7 +651,10 @@ function EnrollmentsTab() {
             ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
-                  <div className="text-sm font-medium">{(e.reg_members as any)?.name || "—"}</div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium">{(e.reg_members as any)?.name || "—"}</span>
+                    {e.is_retrain && <Badge variant="outline" className="text-[10px] px-1 py-0 border-orange-400 text-orange-600 dark:text-orange-400">複訓</Badge>}
+                  </div>
                   <div className="text-xs text-muted-foreground">{(e.reg_members as any)?.member_no || ""}</div>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{(e.reg_members as any)?.phone || "—"}</TableCell>
