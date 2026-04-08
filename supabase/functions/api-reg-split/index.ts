@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
 
     const { data: courses, error: courseErr } = await adminClient
       .from("courses")
-      .select("id, course_code, category")
+      .select("id, course_code, category, title, enrollment_points")
       .in("id", courseIds);
 
     if (courseErr) throw courseErr;
@@ -210,6 +210,26 @@ Deno.serve(async (req) => {
       .select("id, member_id, course_id");
 
     if (enrollErr) throw enrollErr;
+
+    // 8. Auto-award points for each enrollment
+    const pointTxns: Record<string, unknown>[] = [];
+    for (const enrollment of (insertedEnrollments || [])) {
+      const course = courseMap.get(enrollment.course_id) as Record<string, unknown> | undefined;
+      const pts = (course?.enrollment_points as number) || 0;
+      if (pts > 0) {
+        pointTxns.push({
+          member_id: enrollment.member_id,
+          points_delta: pts,
+          type: "awarded",
+          description: `報名課程：${course?.title || ""}`,
+          order_id: order.id,
+        });
+      }
+    }
+    if (pointTxns.length > 0) {
+      const { error: ptErr } = await adminClient.from("reg_point_transactions").insert(pointTxns);
+      if (ptErr) console.error("Points insert error:", ptErr);
+    }
 
     // 8. Log operation
     await adminClient.from("reg_operation_logs").insert({
