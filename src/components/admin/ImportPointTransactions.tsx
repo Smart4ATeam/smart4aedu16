@@ -115,7 +115,7 @@ export default function ImportPointTransactions() {
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
-  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[]; failedRows: ParsedRow[] } | null>(null);
   const [progress, setProgress] = useState(0);
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
