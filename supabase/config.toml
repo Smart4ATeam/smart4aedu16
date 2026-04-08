@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.api-reg-payment]
 verify_jwt = false
+
+[functions.api-resource-trial]
+verify_jwt = false
+
+[functions.api-resource-trial-callback]
+verify_jwt = false
