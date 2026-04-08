@@ -417,6 +417,8 @@ function EnrollmentsTab() {
   const [editingEnroll, setEditingEnroll] = useState<RegEnrollment | null>(null);
   const [editSessionDate, setEditSessionDate] = useState("");
   const [editReason, setEditReason] = useState("");
+  const [cancellingEnroll, setCancellingEnroll] = useState<RegEnrollment | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -461,7 +463,26 @@ function EnrollmentsTab() {
         reason: editReason, operated_by: user?.id,
       } as any);
     },
-    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); setEditingEnroll(null); },
+    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] }); setEditingEnroll(null); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!cancellingEnroll) throw new Error("無資料");
+      if (!cancelReason.trim()) throw new Error("請填寫取消原因");
+      const { error } = await supabase.from("reg_enrollments" as any)
+        .update({ status: "cancelled" } as any)
+        .eq("id", cancellingEnroll.id);
+      if (error) throw error;
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "enrollment", entity_id: cancellingEnroll.id, action: "cancel",
+        old_value: { status: cancellingEnroll.status, payment_status: cancellingEnroll.payment_status },
+        new_value: { status: "cancelled" },
+        reason: cancelReason, operated_by: user?.id,
+      } as any);
+    },
+    onSuccess: () => { toast.success("已取消報名"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] }); queryClient.invalidateQueries({ queryKey: ["admin_enrollment_count"] }); setCancellingEnroll(null); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -469,6 +490,11 @@ function EnrollmentsTab() {
     setEditingEnroll(e);
     setEditSessionDate(e.session_date || "");
     setEditReason("");
+  };
+
+  const openCancel = (e: RegEnrollment) => {
+    setCancellingEnroll(e);
+    setCancelReason("");
   };
 
   const filtered = enrollments.filter(e => {
