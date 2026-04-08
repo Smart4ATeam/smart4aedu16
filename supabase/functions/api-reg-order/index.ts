@@ -142,8 +142,20 @@ Deno.serve(async (req) => {
     }));
     const courseIds = courses.map((c) => c.id);
 
-    // Validate session_dates length matches courses
-    const sessionDates = body.session_dates || [];
+    // Normalize session_dates: zero-pad month/day
+    const normDatePart = (d: string) => {
+      const parts = d.split("/");
+      if (parts.length === 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
+      if (parts.length === 2) return `${parts[0].padStart(2, "0")}/${parts[1].padStart(2, "0")}`;
+      return d;
+    };
+    const normDate = (d: string): string => {
+      const dashIdx = d.indexOf("-");
+      if (dashIdx > 0) return normDatePart(d.slice(0, dashIdx)) + "-" + normDatePart(d.slice(dashIdx + 1));
+      return normDatePart(d);
+    };
+
+    const sessionDates = (body.session_dates || []).map((d: string) => normDate(d));
     if (sessionDates.length > 0 && sessionDates.length !== courseIds.length) {
       return new Response(JSON.stringify({
         error: `session_dates 數量 (${sessionDates.length}) 必須與課程數量 (${courseIds.length}) 一致`,
