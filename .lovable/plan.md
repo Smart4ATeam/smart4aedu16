@@ -1,34 +1,29 @@
 
 
-## 合併「報名管理」到「學習中心」
+## 兩個功能改進
 
-### 目前問題
-- 「學習中心」裡的「報名與報到」頁籤點進去是空的，因為它讀的是舊的資料表，根本撈不到東西。
-- 「報名管理」是另一個獨立頁面，裡面的訂單和報名資料都正常運作。
-- 兩個頁面功能重疊，管理員不知道該去哪裡看資料。
+### 功能一：梯次列表顯示已報名人數
 
-### 怎麼改
+在「梯次」頁籤的表格中，新增「已報名」欄位，顯示每個梯次目前有多少人報名。
 
-**第一步：把「報名管理」的內容搬進「學習中心」**
-- 把「報名管理」頁面裡可以正常運作的「訂單」和「報名明細」兩個區塊，抽出來變成共用元件。
-- 放到「學習中心」的「報名與報到」頁籤底下，取代原本壞掉的空白內容。
+因為目前報名資料（`reg_enrollments`）大部分沒有填 `session_id`，而是用 `course_id` + `session_date`（文字格式）來對應梯次，所以需要用兩種方式比對：
+- 如果 `session_id` 有值，直接用 `session_id` 匹配
+- 否則用 `course_id` + `session_date` 與梯次的 `start_date`/`end_date` 做文字比對
 
-**第二步：刪掉「報名管理」頁面**
-- 從側邊選單移除「報名管理」這個連結。
-- 從路由設定移除 `/admin/registrations` 這條路徑。
-- 刪除 `AdminRegistrations.tsx` 這個檔案（內容已經搬走了）。
+實作方式：在 `SessionsTab` 中額外查詢 `reg_enrollments`，按 `course_id` + `session_date` 分組統計，然後在表格中對每個梯次算出對應的報名人數，以 `已報名 / 上限` 格式顯示。
 
-**第三步：修正統計數字**
-- 「學習中心」上方的「總報名人數」數字，改成從正確的資料表 `reg_enrollments` 撈取，這樣就不會顯示 0 了。
+**會動到的檔案：** `src/pages/admin/AdminLearning.tsx`（SessionsTab 元件）
 
-### 改完之後
-- 側邊選單少一個「報名管理」，所有報名相關的東西都在「學習中心」裡面找得到。
-- 「學習中心」的「報名與報到」頁籤會正常顯示訂單跟報名明細。
+---
 
-### 會動到的檔案
-1. `src/pages/admin/AdminRegistrations.tsx` — 抽出元件後刪除
-2. `src/components/admin/RegistrationTabs.tsx` — 新檔案，放訂單和報名明細元件
-3. `src/pages/admin/AdminLearning.tsx` — 換掉壞掉的報名頁籤內容
-4. `src/components/admin/AdminSidebar.tsx` — 移除「報名管理」選單項目
-5. `src/App.tsx` — 移除 `/admin/registrations` 路由
+### 功能二：報名明細可編輯上課日期
+
+在「報名明細」表格中，讓「上課日期」欄位可以直接點擊編輯。點擊後彈出小對話框，可修改 `session_date` 值，儲存時同步寫入 `reg_operation_logs` 記錄變更。
+
+實作方式：
+- 在每筆報名的「上課日期」旁加一個編輯按鈕
+- 點擊後開啟 Dialog，顯示目前日期，提供輸入框修改（文字格式，因為要支援「2025/04/19-04/20」這種跨日格式）
+- 需填寫變更原因，儲存後更新 `reg_enrollments.session_date` 並寫入操作紀錄
+
+**會動到的檔案：** `src/components/admin/RegistrationTabs.tsx`（EnrollmentsTab 元件）
 
