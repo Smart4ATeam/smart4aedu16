@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
+import { RegistrationTabs } from "@/components/admin/RegistrationTabs";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 import { categoryLabels, categoryColors } from "@/lib/category-colors";
@@ -70,16 +71,16 @@ export default function AdminLearning() {
     },
   });
 
-  const { data: enrollments = [] } = useQuery({
-    queryKey: ["admin_enrollments"],
+  const { data: regEnrollmentCount = 0 } = useQuery({
+    queryKey: ["admin_enrollment_count"],
     queryFn: async () => {
-      const { data } = await supabase.from("reg_enrollments").select("*, course_sessions(title_suffix, courses(title)), profiles:user_id(display_name, email)").order("enrolled_at", { ascending: false });
-      return data || [];
+      const { count, error } = await supabase.from("reg_enrollments").select("id", { count: "exact", head: true });
+      if (error) throw error;
+      return count || 0;
     },
   });
 
   const openSessions = sessions.filter((s: any) => ["open", "scheduled"].includes(s.status)).length;
-  const totalEnrollments = enrollments.length;
 
   return (
     <div className="space-y-6">
@@ -93,7 +94,7 @@ export default function AdminLearning() {
         <StatCard icon={BookOpen} label="總課程數" value={courses.length} color="bg-primary/20 text-primary" />
         <StatCard icon={CalendarDays} label="開放中梯次" value={openSessions} color="bg-blue-500/20 text-blue-400" />
         <StatCard icon={Handshake} label="合作單位" value={partners.length} color="bg-accent/20 text-accent" />
-        <StatCard icon={Users} label="總報名人數" value={totalEnrollments} color="bg-green-500/20 text-green-400" />
+        <StatCard icon={Users} label="總報名人數" value={regEnrollmentCount} color="bg-green-500/20 text-green-400" />
       </div>
 
       <Tabs defaultValue="courses" className="space-y-6">
@@ -128,7 +129,7 @@ export default function AdminLearning() {
 
         {/* ===== Tab: Enrollments ===== */}
         <TabsContent value="enrollments">
-          <EnrollmentsTab enrollments={enrollments} queryClient={queryClient} />
+          <RegistrationTabs />
         </TabsContent>
 
         {/* ===== Tab: Quizzes ===== */}
@@ -814,62 +815,6 @@ function InstructorsTab({ instructors, partners, queryClient }: { instructors: a
   );
 }
 
-// ========== Enrollments Tab ==========
-function EnrollmentsTab({ enrollments, queryClient }: { enrollments: any[]; queryClient: any }) {
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("reg_enrollments").update(updates as any).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("已更新"); queryClient.invalidateQueries({ queryKey: ["admin_enrollments"] }); },
-  });
-
-  return (
-    <>
-      <h2 className="font-semibold text-foreground mb-4">報名與報到管理</h2>
-      <div className="glass-card rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>學員</TableHead>
-              <TableHead>課程</TableHead>
-              <TableHead>梯次</TableHead>
-              <TableHead>繳費</TableHead>
-              <TableHead>狀態</TableHead>
-              <TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {enrollments.map((e: any) => (
-              <TableRow key={e.id}>
-                <TableCell className="font-medium">{(e.profiles as any)?.display_name || "-"}</TableCell>
-                <TableCell className="text-sm">{e.course_sessions?.courses?.title || "-"}</TableCell>
-                <TableCell className="text-sm">{e.course_sessions?.title_suffix || "-"}</TableCell>
-                <TableCell>
-                  <Switch checked={e.paid} onCheckedChange={(v) => updateMutation.mutate({ id: e.id, updates: { paid: v } })} />
-                </TableCell>
-                <TableCell>
-                  <Select value={e.status} onValueChange={(v) => updateMutation.mutate({ id: e.id, updates: { status: v } })}>
-                    <SelectTrigger className="w-28 h-8"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">待確認</SelectItem>
-                      <SelectItem value="confirmed">已確認</SelectItem>
-                      <SelectItem value="cancelled">已取消</SelectItem>
-                      <SelectItem value="waitlisted">候補</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">{new Date(e.enrolled_at).toLocaleDateString("zh-TW")}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  );
-}
 
 // ========== Quizzes Tab ==========
 function QuizzesTab({ courses }: { courses: any[] }) {
