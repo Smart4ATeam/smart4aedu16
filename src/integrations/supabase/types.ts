@@ -1153,7 +1153,6 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           trial_enabled: boolean
-          trial_url: string | null
           usage_count: number | null
           version: string | null
           video_type: string | null
@@ -1183,7 +1182,6 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           trial_enabled?: boolean
-          trial_url?: string | null
           usage_count?: number | null
           version?: string | null
           video_type?: string | null
@@ -1213,7 +1211,6 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           trial_enabled?: boolean
-          trial_url?: string | null
           usage_count?: number | null
           version?: string | null
           video_type?: string | null
