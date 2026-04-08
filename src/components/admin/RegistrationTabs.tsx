@@ -641,6 +641,35 @@ function EnrollmentsTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Enrollment Dialog */}
+      <Dialog open={!!cancellingEnroll} onOpenChange={v => { if (!v) setCancellingEnroll(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">取消報名</DialogTitle>
+            <DialogDescription>
+              確定要取消 {(cancellingEnroll?.reg_members as any)?.name || "—"} 的報名嗎？
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md bg-destructive/10 p-3 text-sm space-y-1">
+              <div><span className="text-muted-foreground">課程：</span>{(cancellingEnroll?.courses as any)?.title || "—"}</div>
+              <div><span className="text-muted-foreground">上課日期：</span>{cancellingEnroll?.session_date || "—"}</div>
+              <div><span className="text-muted-foreground">付款狀態：</span>{cancellingEnroll?.payment_status === "paid" ? "已付款" : "未付款"}</div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">取消原因（必填）</label>
+              <Textarea placeholder="例：學員申請退費取消" value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="h-16" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setCancellingEnroll(null)}>返回</Button>
+              <Button variant="destructive" size="sm" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending || !cancelReason.trim()}>
+                確認取消報名
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
