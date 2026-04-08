@@ -389,7 +389,6 @@ const AdminContent = () => {
           tags: get(col(["tags", "標籤"])),
           hot_rank: get(col(["hot_rank", "熱門排名"])),
           flow_count: get(col(["flow_count", "流程數"])),
-          flow_count: get(col(["flow_count", "流程數"])),
           usage_count: get(col(["usage_count", "使用次數"])),
           industry_tag: get(col(["industry_tag", "行業標籤"])),
           duration: get(col(["duration", "時長"])),
