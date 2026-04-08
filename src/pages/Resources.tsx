@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, Play, Flame, Star, FolderOpen, Wrench, Puzzle, LayoutTemplate, Video, ExternalLink, Download, Clock, Tag } from "lucide-react";
+import { Search, Play, Flame, Star, FolderOpen, Wrench, Puzzle, LayoutTemplate, Video, ExternalLink, Download, Clock, Tag, Copy, Check, Eye, EyeOff, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { difficultyColors } from "@/lib/category-colors";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 type Resource = Tables<"resources"> & {
   sub_category?: string | null;
@@ -15,6 +19,8 @@ type Resource = Tables<"resources"> & {
   duration?: string | null;
   video_type?: string | null;
   trial_url?: string | null;
+  app_id?: string | null;
+  trial_enabled?: boolean;
 };
 
 type SubCategory = {
@@ -22,6 +28,18 @@ type SubCategory = {
   category: string;
   label: string;
   sort_order: number;
+};
+
+type Trial = {
+  id: string;
+  resource_id: string;
+  organization_id: string;
+  app_id: string;
+  resource_category: string;
+  api_key: string | null;
+  webhook_status: string;
+  created_at: string;
+  member_no: string | null;
 };
 
 const categoryMeta = [
@@ -106,6 +124,38 @@ function ResourceMeta({ r }: { r: Resource }) {
   );
 }
 
+function TrialButton({ r, onClaim, claiming, trialRecord }: {
+  r: Resource;
+  onClaim: (resourceId: string) => void;
+  claiming: string | null;
+  trialRecord?: Trial;
+}) {
+  if (!r.trial_enabled) return null;
+
+  if (trialRecord) {
+    return (
+      <button className="bg-muted text-muted-foreground py-2 rounded-lg text-xs font-bold cursor-not-allowed" disabled>
+        ✅ 已領用
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onClaim(r.id)}
+      disabled={claiming === r.id}
+      className="bg-accent text-accent-foreground py-2 rounded-lg text-xs font-bold hover:opacity-90 transition text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
+    >
+      {claiming === r.id ? (
+        <div className="w-3.5 h-3.5 border-2 border-accent-foreground border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <Package className="w-3.5 h-3.5" />
+      )}
+      {claiming === r.id ? "領用中..." : "🧪 領用試用"}
+    </button>
+  );
+}
+
 /* ─── Card layouts ─── */
 
 function PluginCard({ r }: { r: Resource }) {
@@ -133,7 +183,11 @@ function PluginCard({ r }: { r: Resource }) {
   );
 }
 
-function ExtensionCard({ r }: { r: Resource }) {
+function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string) => void; claiming: string | null; trialRecord?: Trial }) {
+  const hasTrialBtn = r.trial_enabled;
+  const cols = [r.trial_url, hasTrialBtn].filter(Boolean).length;
+  const gridCols = 2 + cols;
+
   return (
     <div className="glass-card p-6 border-l-4 border-l-secondary">
       <div className="flex justify-between items-start mb-2">
@@ -141,12 +195,15 @@ function ExtensionCard({ r }: { r: Resource }) {
           <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
           <p className="text-xs text-primary font-medium">{r.author || "—"}</p>
         </div>
-        <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">v{r.version || "—"}</span>
+        <div className="flex items-center gap-2">
+          {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
+          <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">v{r.version || "—"}</span>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{r.description}</p>
       <TagList tags={r.tags} />
       <ResourceMeta r={r} />
-      <div className={`grid gap-4 ${r.trial_url ? "grid-cols-3" : "grid-cols-2"}`}>
+      <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
         <ActionButton href={r.download_url} label="安裝套件" />
         {r.detail_url ? (
           <a href={r.detail_url} target="_blank" rel="noreferrer" className="border border-primary text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/10 transition text-center flex items-center justify-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> 詳細介紹</a>
@@ -163,12 +220,16 @@ function ExtensionCard({ r }: { r: Resource }) {
             <Tag className="w-3.5 h-3.5" /> 領取試用
           </a>
         )}
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
       </div>
     </div>
   );
 }
 
-function TemplateCard({ r }: { r: Resource }) {
+function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string) => void; claiming: string | null; trialRecord?: Trial }) {
+  const hasTrialBtn = r.trial_enabled;
+  const gridCols = hasTrialBtn ? 3 : 2;
+
   return (
     <div className="glass-card p-6 border-l-4 border-l-primary">
       <div className="flex justify-between items-start mb-2">
@@ -176,9 +237,12 @@ function TemplateCard({ r }: { r: Resource }) {
           <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
           <p className="text-xs text-primary font-medium">{r.author || "—"}</p>
         </div>
-        {r.industry_tag && (
-          <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">{r.industry_tag}</span>
-        )}
+        <div className="flex items-center gap-2">
+          {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
+          {r.industry_tag && (
+            <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">{r.industry_tag}</span>
+          )}
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{r.description}</p>
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-4 border-t border-border pt-3">
@@ -187,13 +251,14 @@ function TemplateCard({ r }: { r: Resource }) {
         <span className="flex items-center gap-1"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</span>
         {r.is_hot && <span className="text-primary flex items-center gap-1"><Flame className="w-3 h-3" /> 熱門</span>}
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
         <ActionButton href={r.download_url} label="使用範本" />
         {r.detail_url ? (
           <a href={r.detail_url} target="_blank" rel="noreferrer" className="border border-primary text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/10 transition text-center flex items-center justify-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> 預覽流程</a>
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>預覽流程</button>
         )}
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
       </div>
     </div>
   );
@@ -232,15 +297,86 @@ function VideoCard({ r }: { r: Resource }) {
   );
 }
 
+/* ─── API Key display ─── */
+
+function ApiKeyCell({ apiKey }: { apiKey: string | null }) {
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  if (!apiKey) return <span className="text-muted-foreground">等待回傳中...</span>;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    toast.success("已複製");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-[10px]">{visible ? apiKey : "••••••••••••"}</span>
+      <button onClick={() => setVisible(!visible)} className="p-0.5 hover:text-primary">
+        {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      </button>
+      <button onClick={handleCopy} className="p-0.5 hover:text-primary">
+        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
+
+/* ─── My Trials Tab ─── */
+
+function MyTrialsTab({ trials, resources }: { trials: Trial[]; resources: Resource[] }) {
+  const resourceMap = new Map(resources.map(r => [r.id, r]));
+
+  if (!trials.length) {
+    return <div className="glass-card p-8 text-center text-muted-foreground">尚未領用任何試用資源</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {trials.map(t => {
+        const res = resourceMap.get(t.resource_id);
+        return (
+          <div key={t.id} className="glass-card p-4 flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="text-sm font-bold text-foreground">{res?.title || "—"}</h4>
+                <Badge variant="outline" className="text-[10px]">{t.resource_category === "extensions" ? "套件" : "模板"}</Badge>
+                <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
+                  {t.webhook_status === "completed" ? "✅ 金鑰已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                <span>APP ID: {t.app_id}</span>
+                <span>組織: {t.organization_id}</span>
+                <span>領用時間: {new Date(t.created_at).toLocaleString("zh-TW")}</span>
+              </div>
+            </div>
+            <div className="text-xs">
+              <ApiKeyCell apiKey={t.api_key} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Main ─── */
 
 export default function Resources() {
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState("plugins");
   const [searchQuery, setSearchQuery] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [activeSubCategory, setActiveSubCategory] = useState("");
   const [loading, setLoading] = useState(true);
+  const [trials, setTrials] = useState<Trial[]>([]);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("browse");
 
   useEffect(() => {
     const load = async () => {
@@ -255,8 +391,54 @@ export default function Resources() {
     load();
   }, []);
 
+  // Fetch trials for logged-in user
+  useEffect(() => {
+    if (!user) return;
+    const fetchTrials = async () => {
+      const { data } = await supabase
+        .from("resource_trials")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setTrials(data as Trial[]);
+    };
+    fetchTrials();
+  }, [user]);
+
   // Reset sub-category when category changes
   useEffect(() => { setActiveSubCategory(""); }, [activeCategory]);
+
+  const trialMap = new Map(trials.map(t => [t.resource_id, t]));
+
+  const handleClaim = async (resourceId: string) => {
+    if (!user) {
+      toast.error("請先登入");
+      return;
+    }
+    setClaiming(resourceId);
+    try {
+      const { data, error } = await supabase.functions.invoke("api-resource-trial", {
+        body: { resource_id: resourceId },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(data?.data?.message || "領用成功！");
+        // Refresh trials
+        const { data: newTrials } = await supabase
+          .from("resource_trials")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        if (newTrials) setTrials(newTrials as Trial[]);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "領用失敗");
+    } finally {
+      setClaiming(null);
+    }
+  };
 
   const categoryCounts = categoryMeta.map(c => ({
     ...c,
@@ -291,9 +473,9 @@ export default function Resources() {
       case "plugins":
         return <div className="space-y-4">{filtered.map(r => <PluginCard key={r.id} r={r} />)}</div>;
       case "extensions":
-        return <div className="space-y-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} />)}</div>;
+        return <div className="space-y-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={handleClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
       case "templates":
-        return <div className="space-y-4">{filtered.map(r => <TemplateCard key={r.id} r={r} />)}</div>;
+        return <div className="space-y-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={handleClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
       case "videos":
         return <div className="grid grid-cols-3 gap-6">{filtered.map(r => <VideoCard key={r.id} r={r} />)}</div>;
       default:
@@ -303,68 +485,88 @@ export default function Resources() {
 
   return (
     <div>
-      {/* Search */}
-      <header className="mb-8">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="搜尋課程內容、文件、工具..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-background/60 border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
-          />
-          <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary/90 transition-colors">
-            <Search className="w-4 h-4" />
-            <span>搜尋</span>
-          </button>
-        </div>
-      </header>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="browse">🔍 資源瀏覽</TabsTrigger>
+          <TabsTrigger value="trials">🧪 我的試用 {trials.length > 0 && `(${trials.length})`}</TabsTrigger>
+        </TabsList>
 
-      {/* Categories */}
-      <section className="mb-10 p-5 glass-card">
-        <h3 className="text-sm font-bold mb-5 flex items-center">
-          <FolderOpen className="w-4 h-4 text-primary mr-2" />
-          資源分類
-        </h3>
-        <div className="flex gap-4">
-          {categoryCounts.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex-1 p-4 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
-                activeCategory === cat.id
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "border-border hover:border-primary hover:bg-primary/5 text-muted-foreground"
-              }`}
-            >
-              <cat.icon className={`w-5 h-5 ${activeCategory === cat.id ? "" : "text-muted-foreground"}`} />
-              <div className="text-left">
-                <p className="text-xs font-bold">{cat.label}</p>
-                <p className="text-[9px] mt-0.5 opacity-80">{cat.count} 個</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
+        <TabsContent value="browse">
+          {/* Search */}
+          <header className="mb-8 mt-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="搜尋課程內容、文件、工具..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-background/60 border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              />
+              <button className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary/90 transition-colors">
+                <Search className="w-4 h-4" />
+                <span>搜尋</span>
+              </button>
+            </div>
+          </header>
 
-      {/* Resource list */}
-      <section className="mb-10">
-        <h3 className="text-sm font-bold mb-4 flex items-center">
-          <Flame className="w-4 h-4 text-primary mr-2" />
-          {categoryMeta.find(c => c.id === activeCategory)?.label || "資源"}
-        </h3>
+          {/* Categories */}
+          <section className="mb-10 p-5 glass-card">
+            <h3 className="text-sm font-bold mb-5 flex items-center">
+              <FolderOpen className="w-4 h-4 text-primary mr-2" />
+              資源分類
+            </h3>
+            <div className="flex gap-4">
+              {categoryCounts.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`flex-1 p-4 flex items-center gap-4 rounded-xl border transition-all duration-200 ${
+                    activeCategory === cat.id
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : "border-border hover:border-primary hover:bg-primary/5 text-muted-foreground"
+                  }`}
+                >
+                  <cat.icon className={`w-5 h-5 ${activeCategory === cat.id ? "" : "text-muted-foreground"}`} />
+                  <div className="text-left">
+                    <p className="text-xs font-bold">{cat.label}</p>
+                    <p className="text-[9px] mt-0.5 opacity-80">{cat.count} 個</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
 
-        {/* Sub-category filter for extensions & templates */}
-        {(activeCategory === "extensions" || activeCategory === "templates") && (
-          <SubCategoryFilter
-            subCategories={currentSubCategories}
-            active={activeSubCategory}
-            onChange={setActiveSubCategory}
-          />
-        )}
+          {/* Resource list */}
+          <section className="mb-10">
+            <h3 className="text-sm font-bold mb-4 flex items-center">
+              <Flame className="w-4 h-4 text-primary mr-2" />
+              {categoryMeta.find(c => c.id === activeCategory)?.label || "資源"}
+            </h3>
 
-        {renderCards()}
-      </section>
+            {/* Sub-category filter for extensions & templates */}
+            {(activeCategory === "extensions" || activeCategory === "templates") && (
+              <SubCategoryFilter
+                subCategories={currentSubCategories}
+                active={activeSubCategory}
+                onChange={setActiveSubCategory}
+              />
+            )}
+
+            {renderCards()}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="trials">
+          <div className="mt-4">
+            <h3 className="text-sm font-bold mb-4 flex items-center">
+              <Package className="w-4 h-4 text-primary mr-2" />
+              我的試用紀錄
+            </h3>
+            <MyTrialsTab trials={trials} resources={resources} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
