@@ -19,14 +19,17 @@ interface RequestBody {
   session_dates?: string[];
   persons: PersonInfo[];
   payment_status?: string;
+  payment_method?: string;
   total_amount?: number;
   discount_plan?: string;
   invoice_type?: string;
   invoice_title?: string;
+  tax_id?: string;
   dealer_id?: string;
   notes?: string;
   is_retrain?: boolean;
   referrer?: string;
+  person_count?: number;
 }
 
 Deno.serve(async (req) => {
