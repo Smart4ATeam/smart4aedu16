@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN enrollment_points integer NOT NULL DEFAULT 0;

@@ -146,7 +146,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
   const [contentCourse, setContentCourse] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "", course_code: "" });
+  const [form, setForm] = useState({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, enrollment_points: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "", course_code: "" });
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -170,8 +170,8 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
     onSuccess: () => { toast.success("已刪除"); queryClient.invalidateQueries({ queryKey: ["admin_courses"] }); },
   });
 
-  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "", course_code: "" }); setOpen(true); };
-  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, instructor_id: c.instructor_id || "", status: c.status, cover_url: c.cover_url || "", materials_url: c.materials_url || "", registration_url: c.registration_url || "https://dao.smart4a.tw/registration", detail_url: c.detail_url || "", course_code: c.course_code || "" }); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm({ title: "", description: "", long_description: "", category: "basic", price: 0, total_hours: 0, enrollment_points: 0, instructor_id: "", status: "draft", cover_url: "", materials_url: "", registration_url: "https://dao.smart4a.tw/registration", detail_url: "", course_code: "" }); setOpen(true); };
+  const openEdit = (c: any) => { setEditing(c); setForm({ title: c.title, description: c.description, long_description: c.long_description || "", category: c.category, price: c.price, total_hours: c.total_hours, enrollment_points: c.enrollment_points || 0, instructor_id: c.instructor_id || "", status: c.status, cover_url: c.cover_url || "", materials_url: c.materials_url || "", registration_url: c.registration_url || "https://dao.smart4a.tw/registration", detail_url: c.detail_url || "", course_code: c.course_code || "" }); setOpen(true); };
 
   const statusLabels: Record<string, string> = { draft: "草稿", published: "已發佈", archived: "已封存" };
   const statusColors: Record<string, string> = { draft: "secondary", published: "default", archived: "outline" };
@@ -257,9 +257,10 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div><Label>費用 (NT$)</Label><Input type="number" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: +e.target.value }))} /></div>
               <div><Label>總時數</Label><Input type="number" value={form.total_hours} onChange={(e) => setForm(f => ({ ...f, total_hours: +e.target.value }))} /></div>
+              <div><Label>報名點數</Label><Input type="number" value={form.enrollment_points} onChange={(e) => setForm(f => ({ ...f, enrollment_points: +e.target.value }))} placeholder="例: 400" /></div>
             </div>
             <div>
               <Label>講師</Label>
@@ -277,7 +278,7 @@ function CoursesTab({ courses, instructors, queryClient }: { courses: any[]; ins
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null, cover_url: form.cover_url || null, materials_url: form.materials_url || null, course_code: form.course_code || null })} disabled={!form.title}>
+            <Button onClick={() => saveMutation.mutate({ ...form, instructor_id: form.instructor_id || null, cover_url: form.cover_url || null, materials_url: form.materials_url || null, course_code: form.course_code || null, enrollment_points: form.enrollment_points || 0 })} disabled={!form.title}>
               {editing ? "更新" : "建立"}
             </Button>
           </DialogFooter>

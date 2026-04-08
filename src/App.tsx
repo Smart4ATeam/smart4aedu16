@@ -30,6 +30,7 @@ import AdminLearning from "./pages/admin/AdminLearning";
 import AdminImport from "./pages/admin/AdminImport";
 import Learning from "./pages/Learning";
 import CourseDetail from "./pages/CourseDetail";
+import Points from "./pages/Points";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
             <Route path="/learning" element={<ProtectedRoute><AppLayout><Learning /></AppLayout></ProtectedRoute>} />
             <Route path="/learning/course/:courseId" element={<ProtectedRoute><AppLayout><CourseDetail /></AppLayout></ProtectedRoute>} />
+            <Route path="/points" element={<ProtectedRoute><AppLayout><Points /></AppLayout></ProtectedRoute>} />
 
             {/* Protected admin routes */}
             <Route path="/admin" element={<AdminProtectedRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminProtectedRoute>} />

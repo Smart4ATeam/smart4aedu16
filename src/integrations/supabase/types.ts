@@ -295,6 +295,7 @@ export type Database = {
           created_at: string
           description: string | null
           detail_url: string | null
+          enrollment_points: number
           id: string
           instructor_id: string | null
           long_description: string | null
@@ -316,6 +317,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           detail_url?: string | null
+          enrollment_points?: number
           id?: string
           instructor_id?: string | null
           long_description?: string | null
@@ -337,6 +339,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           detail_url?: string | null
+          enrollment_points?: number
           id?: string
           instructor_id?: string | null
           long_description?: string | null
