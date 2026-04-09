@@ -278,7 +278,7 @@ function TemplateCard({ r, onClaim, claiming, trialRecord, todayClaimed }: { r: 
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>預覽流程</button>
         )}
-        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} todayClaimed={todayClaimed} />
       </div>
     </div>
   );
@@ -547,9 +547,9 @@ export default function Resources() {
       case "plugins":
         return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <PluginCard key={r.id} r={r} />)}</div>;
       case "extensions":
-        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} todayClaimed={todayClaimedCategories.has("extensions")} />)}</div>;
       case "templates":
-        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} todayClaimed={todayClaimedCategories.has("templates")} />)}</div>;
       case "videos":
         return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{filtered.map(r => <VideoCard key={r.id} r={r} />)}</div>;
       default:
