@@ -46,17 +46,41 @@ export default function Learning() {
     },
   });
 
-  // Fetch user enrollments
+  // Fetch user enrollments (by direct user_id OR via reg_members.user_id linkage)
   const { data: enrollments = [] } = useQuery({
     queryKey: ["my_enrollments", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First try direct user_id match
+      const { data: directData } = await supabase
         .from("reg_enrollments")
-        .select("*, course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
+        .select("*, courses(id, title, category, cover_url, instructors(name)), course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
         .eq("user_id", user!.id);
-      if (error) throw error;
-      return data || [];
+
+      // Also find via reg_members linkage
+      const { data: memberData } = await supabase
+        .from("reg_members" as any)
+        .select("id")
+        .eq("user_id", user!.id);
+
+      const memberIds = (memberData || []).map((m: any) => m.id);
+      let memberEnrollments: any[] = [];
+      if (memberIds.length > 0) {
+        const { data } = await supabase
+          .from("reg_enrollments")
+          .select("*, courses(id, title, category, cover_url, instructors(name)), course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
+          .in("member_id", memberIds);
+        memberEnrollments = data || [];
+      }
+
+      // Merge and deduplicate by id
+      const allEnrollments = [...(directData || []), ...memberEnrollments];
+      const seen = new Set<string>();
+      return allEnrollments.filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      });
     },
   });
 
@@ -167,28 +191,33 @@ export default function Learning() {
           <div className="space-y-4">
             {enrollments.map((enrollment: any) => {
               const session = enrollment.course_sessions;
-              const course = session?.courses;
+              const course = session?.courses || enrollment.courses;
+              const courseTitle = course?.title || "未知課程";
+              const courseId = course?.id || enrollment.course_id;
               return (
                 <div key={enrollment.id} className="glass-card rounded-xl p-5 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-foreground truncate">{course?.title}</h3>
+                      <h3 className="font-bold text-foreground truncate">{courseTitle}</h3>
                       <Badge variant={enrollment.payment_status === "paid" ? "default" : "outline"} className="text-xs shrink-0">
                         {enrollment.payment_status === "paid" ? "已繳費" : "待繳費"}
                       </Badge>
+                      {enrollment.is_retrain && <Badge variant="secondary" className="text-xs">複訓</Badge>}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {session?.start_date && (
+                      {enrollment.session_date && (
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{enrollment.session_date}</span>
+                      )}
+                      {!enrollment.session_date && session?.start_date && (
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{session.start_date} ~ {session.end_date || "未定"}</span>
                       )}
                       {session?.location && (
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>
                       )}
-                      {session?.title_suffix && <span>{session.title_suffix}</span>}
                     </div>
                   </div>
-                  {enrollment.payment_status === "paid" && (
-                    <Button size="sm" onClick={() => navigate(`/learning/course/${course?.id}`)} className="shrink-0 gap-1">
+                  {enrollment.payment_status === "paid" && courseId && (
+                    <Button size="sm" onClick={() => navigate(`/learning/course/${courseId}`)} className="shrink-0 gap-1">
                       查看內容 <ArrowRight className="w-3 h-3" />
                     </Button>
                   )}

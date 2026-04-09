@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
     const courseMap = new Map(courses!.map((c: Record<string, unknown>) => [c.id, c]));
 
-    // 6. Find or create reg_members for each person
+    // 6. Find or create reg_members for each person, auto-link user_id
     const memberIds: string[] = [];
     for (const person of persons) {
       let memberId: string | null = null;
@@ -130,10 +130,23 @@ Deno.serve(async (req) => {
       if (person.email) {
         const { data: existing } = await adminClient
           .from("reg_members")
-          .select("id")
+          .select("id, user_id")
           .eq("email", person.email)
           .maybeSingle();
-        if (existing) memberId = existing.id;
+        if (existing) {
+          memberId = existing.id;
+          // Auto-link user_id if not yet bound
+          if (!existing.user_id && person.email) {
+            const { data: profile } = await adminClient
+              .from("profiles")
+              .select("id")
+              .eq("email", person.email)
+              .maybeSingle();
+            if (profile) {
+              await adminClient.from("reg_members").update({ user_id: profile.id }).eq("id", existing.id);
+            }
+          }
+        }
       }
 
       // Then by name + phone
@@ -147,14 +160,24 @@ Deno.serve(async (req) => {
         if (existing) memberId = existing.id;
       }
 
-      // Create new member
+      // Create new member — try to auto-link user_id from profiles
       if (!memberId) {
+        let linkedUserId: string | null = null;
+        if (person.email) {
+          const { data: profile } = await adminClient
+            .from("profiles")
+            .select("id")
+            .eq("email", person.email)
+            .maybeSingle();
+          if (profile) linkedUserId = profile.id;
+        }
         const { data: newMember, error: memberErr } = await adminClient
           .from("reg_members")
           .insert({
             name: person.name.trim(),
             phone: person.phone,
             email: person.email,
+            user_id: linkedUserId,
           })
           .select("id")
           .single();
