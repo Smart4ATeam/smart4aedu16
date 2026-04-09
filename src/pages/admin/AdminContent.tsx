@@ -573,6 +573,35 @@ const AdminContent = () => {
         </TabsList>
 
         <TabsContent value="resources">
+      {/* Search & Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            className="pl-9 h-9 text-sm"
+            placeholder="搜尋資源名稱..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[120px] h-9 text-sm"><SelectValue placeholder="分類" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部分類</SelectItem>
+            {categoryOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAuthor} onValueChange={setFilterAuthor}>
+          <SelectTrigger className="w-[140px] h-9 text-sm"><SelectValue placeholder="作者" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部作者</SelectItem>
+            {[...new Set(resources.map((r) => r.author).filter(Boolean))].sort().map((a) => (
+              <SelectItem key={a} value={a}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={() => setShowSubCatDialog(true)} className="gap-2"><Settings2 className="w-4 h-4" /> 子分類管理</Button>
         <Button variant="outline" onClick={() => setShowBatchDialog(true)} className="gap-2"><Upload className="w-4 h-4" /> 批次上傳</Button>
