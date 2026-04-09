@@ -435,6 +435,23 @@ export default function Resources() {
 
   const trialMap = new Map(trials.map(t => [t.resource_id, t]));
 
+  // Check if user already claimed a resource in a given category today (Taiwan time)
+  const todayClaimedCategories = new Set<string>();
+  {
+    const now = new Date();
+    const taiwanOffset = 8 * 60 * 60 * 1000;
+    const taiwanNow = new Date(now.getTime() + taiwanOffset);
+    const todayStr = taiwanNow.toISOString().slice(0, 10);
+    const todayStartUTC = new Date(todayStr + "T00:00:00+08:00").getTime();
+    const todayEndUTC = todayStartUTC + 24 * 60 * 60 * 1000;
+    for (const t of trials) {
+      const ts = new Date(t.created_at).getTime();
+      if (ts >= todayStartUTC && ts < todayEndUTC) {
+        todayClaimedCategories.add(t.resource_category);
+      }
+    }
+  }
+
   // Step 1: Check org ID, then show confirmation dialog
   const requestClaim = async (resourceId: string, resourceTitle: string, resourceCategory: string) => {
     if (!user) {
