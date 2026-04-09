@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.api-resource-trial-callback]
 verify_jwt = false
+
+[functions.api-reg-enrollments]
+verify_jwt = false

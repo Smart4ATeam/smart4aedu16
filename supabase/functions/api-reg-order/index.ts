@@ -46,9 +46,46 @@ Deno.serve(async (req) => {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // ── GET: Query order by order_no ──
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      const orderNo = url.searchParams.get("order_no");
+      if (!orderNo) {
+        return new Response(JSON.stringify({ error: "Missing required query parameter: order_no" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await adminClient
+        .from("reg_orders")
+        .select("*")
+        .eq("order_no", orderNo)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        return new Response(JSON.stringify({ error: `訂單編號不存在: ${orderNo}` }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, data }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── POST: Create order (existing logic) ──
     const body: RequestBody = await req.json();
 
-    // Validate: must have either course_codes or course_names
     const hasCodes = body.course_codes && body.course_codes.length > 0;
     const hasNames = body.course_names && body.course_names.length > 0;
 
@@ -85,12 +122,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
     // Look up courses by course_code OR title
     let courses: any[];
     let lookupKeys: string[];
@@ -104,7 +135,6 @@ Deno.serve(async (req) => {
       if (error) throw error;
       courses = data || [];
 
-      // Check missing
       const foundCodes = courses.map((c) => c.course_code);
       const missing = lookupKeys.filter((c) => !foundCodes.includes(c));
       if (missing.length > 0) {
@@ -124,7 +154,6 @@ Deno.serve(async (req) => {
       if (error) throw error;
       courses = data || [];
 
-      // Check missing
       const foundTitles = courses.map((c) => c.title);
       const missing = lookupKeys.filter((n) => !foundTitles.includes(n));
       if (missing.length > 0) {
@@ -137,7 +166,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build course snapshot
     const courseSnapshot = courses.map((c) => ({
       course_code: c.course_code,
       course_name: c.title,
@@ -145,7 +173,7 @@ Deno.serve(async (req) => {
     }));
     const courseIds = courses.map((c) => c.id);
 
-    // Normalize session_dates: zero-pad month/day
+    // Normalize session_dates
     const normDatePart = (d: string) => {
       const parts = d.split("/");
       if (parts.length === 3) return `${parts[0]}/${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`;
@@ -168,7 +196,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build order insert
     const orderInsert: Record<string, unknown> = {
       order_no: body.order_no,
       course_ids: courseIds,
@@ -188,7 +215,6 @@ Deno.serve(async (req) => {
       person_count: body.person_count || body.persons.length,
     };
 
-    // Map persons to p1/p2/p3
     for (let i = 0; i < body.persons.length; i++) {
       const p = body.persons[i];
       const idx = i + 1;

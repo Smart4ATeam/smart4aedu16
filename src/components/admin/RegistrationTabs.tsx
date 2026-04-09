@@ -180,11 +180,37 @@ function OrdersTab() {
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
   const [editReason, setEditReason] = useState("");
 
+  const [editNotes, setEditNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
   const openOrderDetail = (o: RegOrder) => {
     setSelectedOrder(o);
     setEditInvoiceStatus(o.invoice_status);
     setEditInvoiceNumber(o.invoice_number || "");
     setEditReason("");
+    setEditNotes(o.notes || "");
+  };
+
+  const saveNotes = async () => {
+    if (!selectedOrder) return;
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase.from("reg_orders" as any).update({ notes: editNotes || null } as any).eq("id", selectedOrder.id);
+      if (error) throw error;
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "order", entity_id: selectedOrder.id, action: "update_notes",
+        old_value: { notes: selectedOrder.notes },
+        new_value: { notes: editNotes || null },
+        reason: "更新備註", operated_by: user?.id,
+      } as any);
+      toast.success("備註已儲存");
+      queryClient.invalidateQueries({ queryKey: ["reg-orders"] });
+      setSelectedOrder({ ...selectedOrder, notes: editNotes || null });
+    } catch (e: any) {
+      toast.error(e.message || "儲存失敗");
+    } finally {
+      setSavingNotes(false);
+    }
   };
 
   const invoiceMutation = useMutation({
@@ -405,11 +431,20 @@ function OrdersTab() {
                 );
               })()}
 
-              {selectedOrder.notes && (
-                <div className="border-t border-border pt-2">
-                  <p className="text-xs text-muted-foreground">{selectedOrder.notes}</p>
-                </div>
-              )}
+              <div className="border-t border-border pt-2 space-y-1.5">
+                <p className="text-xs font-medium">備註</p>
+                <Textarea
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="輸入備註..."
+                  className="h-20 text-xs"
+                />
+                {editNotes !== (selectedOrder.notes || "") && (
+                  <Button size="sm" onClick={saveNotes} disabled={savingNotes}>
+                    {savingNotes ? "儲存中..." : "儲存備註"}
+                  </Button>
+                )}
+              </div>
 
               {/* Invoice Edit Section */}
               <div className="border-t border-border pt-3 space-y-3">
@@ -494,12 +529,15 @@ function EnrollmentsTab() {
     },
   });
 
-  // Extract unique session dates for filter
+  // Extract unique session dates for filter — dynamic by selected course
   const uniqueDates = useMemo(() => {
+    const source = selectedCourse === "all"
+      ? enrollments
+      : enrollments.filter(e => e.course_id === selectedCourse);
     const dates = new Set<string>();
-    enrollments.forEach(e => { if (e.session_date) dates.add(e.session_date); });
+    source.forEach(e => { if (e.session_date) dates.add(e.session_date); });
     return [...dates].sort();
-  }, [enrollments]);
+  }, [enrollments, selectedCourse]);
 
   const sessionDateMutation = useMutation({
     mutationFn: async () => {
@@ -595,7 +633,7 @@ function EnrollmentsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Tabs value={selectedCourse} onValueChange={v => { setSelectedCourse(v); setPage(1); }}>
+        <Tabs value={selectedCourse} onValueChange={v => { setSelectedCourse(v); setSelectedDate("all"); setPage(1); }}>
           <TabsList className="flex-wrap h-auto gap-0.5">
             <TabsTrigger value="all" className="text-xs">全部</TabsTrigger>
             {regCourses.map(c => (
