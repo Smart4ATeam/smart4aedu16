@@ -191,28 +191,33 @@ export default function Learning() {
           <div className="space-y-4">
             {enrollments.map((enrollment: any) => {
               const session = enrollment.course_sessions;
-              const course = session?.courses;
+              const course = session?.courses || enrollment.courses;
+              const courseTitle = course?.title || "未知課程";
+              const courseId = course?.id || enrollment.course_id;
               return (
                 <div key={enrollment.id} className="glass-card rounded-xl p-5 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-foreground truncate">{course?.title}</h3>
+                      <h3 className="font-bold text-foreground truncate">{courseTitle}</h3>
                       <Badge variant={enrollment.payment_status === "paid" ? "default" : "outline"} className="text-xs shrink-0">
                         {enrollment.payment_status === "paid" ? "已繳費" : "待繳費"}
                       </Badge>
+                      {enrollment.is_retrain && <Badge variant="secondary" className="text-xs">複訓</Badge>}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {session?.start_date && (
+                      {enrollment.session_date && (
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{enrollment.session_date}</span>
+                      )}
+                      {!enrollment.session_date && session?.start_date && (
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{session.start_date} ~ {session.end_date || "未定"}</span>
                       )}
                       {session?.location && (
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{session.location}</span>
                       )}
-                      {session?.title_suffix && <span>{session.title_suffix}</span>}
                     </div>
                   </div>
-                  {enrollment.payment_status === "paid" && (
-                    <Button size="sm" onClick={() => navigate(`/learning/course/${course?.id}`)} className="shrink-0 gap-1">
+                  {enrollment.payment_status === "paid" && courseId && (
+                    <Button size="sm" onClick={() => navigate(`/learning/course/${courseId}`)} className="shrink-0 gap-1">
                       查看內容 <ArrowRight className="w-3 h-3" />
                     </Button>
                   )}
