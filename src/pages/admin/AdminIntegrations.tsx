@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save } from "lucide-react";
+import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save, Webhook } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApiKeyManager } from "@/components/admin/ApiKeyManager";
 import { IconBox } from "@/components/ui/icon-box";
@@ -297,6 +297,35 @@ const endpoints: ApiEndpoint[] = [
       payment_status: "paid",
     },
   },
+  {
+    id: "api-resource-trial-callback",
+    name: "資源試用 Webhook 金鑰回傳",
+    icon: <Webhook className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-resource-trial-callback",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "資源試用 Webhook 串接的回傳端點。當學員領用試用資源時，系統會 POST Webhook 到您設定的 URL（含 trial_id、app_id、organization_id 等）。您的系統產生 API Key 後，呼叫此端點將金鑰寫回平台，學員即可查看。完整流程：①學員領用 → ②系統發送 Webhook → ③您產生 Key → ④呼叫此 API 回傳 → ⑤學員可見金鑰",
+    requiredFields: [
+      { name: "trial_id", type: "string", required: true, desc: "領用記錄 ID（來自 Webhook Payload）" },
+      { name: "api_key", type: "string", required: true, desc: "您產生的 API Key" },
+    ],
+    optionalFields: [],
+    exampleBody: { trial_id: "uuid-xxx", api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx" },
+    exampleResponse: { success: true, data: { trial_id: "uuid-xxx", message: "API Key 已更新" } },
+    extraExamples: [
+      {
+        title: "系統發送的 Webhook Payload 範例（您的系統會收到）",
+        body: {
+          trial_id: "uuid-xxx",
+          organization_id: "org-123456",
+          app_id: "richmenu-yrfqmv",
+          member_no: "SA26040001",
+          category: "extensions",
+          resource_title: "Rich Menu 管理套件",
+        },
+      },
+    ],
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -546,87 +575,15 @@ export default function AdminIntegrations() {
         </div>
       </div>
 
-      {/* Webhook Integration Guide — includes callback API */}
+      {/* Webhook URL Setting */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-1 h-5 rounded-full bg-accent" />
-          <h2 className="text-sm font-semibold text-foreground">🔗 資源試用 Webhook 串接（含金鑰回傳）</h2>
+          <h2 className="text-sm font-semibold text-foreground">Webhook URL 設定</h2>
         </div>
         <WebhookUrlSetting />
-        <div className="text-xs text-muted-foreground space-y-4 mt-4">
-
-          {/* Flow */}
-          <div>
-            <p className="font-medium text-foreground mb-1.5">完整串接流程</p>
-            <div className="space-y-1 pl-2">
-              <p>1️⃣ 學員在資源中心點擊「領用試用」→ 系統確認組織編號與每日額度</p>
-              <p>2️⃣ 系統建立 <code className="px-1 py-0.5 rounded bg-muted font-mono">resource_trials</code> 記錄，並 POST Webhook Payload 至上方設定的 URL</p>
-              <p>3️⃣ 您的系統收到 Payload 後，根據 <code className="px-1 py-0.5 rounded bg-muted font-mono">app_id</code> 與 <code className="px-1 py-0.5 rounded bg-muted font-mono">organization_id</code> 產生 API Key</p>
-              <p>4️⃣ 呼叫 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">POST /api-resource-trial-callback</code> 回傳金鑰（見下方）</p>
-              <p>5️⃣ 系統更新 <code className="px-1 py-0.5 rounded bg-muted font-mono">webhook_status = completed</code>，學員即可在「我的試用」查看 API Key</p>
-            </div>
-          </div>
-
-          {/* Step 2: Webhook Payload */}
-          <div>
-            <p className="font-medium text-foreground mb-1">步驟 ② — 系統發送的 Webhook Payload</p>
-            <p className="mb-1">學員確認領用後，系統會 POST 以下 JSON 到您設定的 Webhook URL：</p>
-            <pre className="bg-background/80 border border-border rounded-lg p-3 text-xs overflow-x-auto">
-              <code className="text-muted-foreground">{JSON.stringify({
-                trial_id: "uuid-xxx（領用記錄 ID，回傳金鑰時需提供）",
-                organization_id: "org-123456（學員的組織編號）",
-                app_id: "richmenu-yrfqmv（資源的應用編號）",
-                member_no: "SA26040001（學員的會員編號，若有）",
-                category: "extensions（資源分類：extensions / templates）",
-                resource_title: "Rich Menu 管理套件（資源標題）",
-              }, null, 2)}</code>
-            </pre>
-          </div>
-
-          {/* Step 4: Callback API */}
-          <div>
-            <p className="font-medium text-foreground mb-1">步驟 ④ — 回傳金鑰 API（<code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">api-resource-trial-callback</code>）</p>
-            <p className="mb-1.5">您的系統產生 API Key 後，呼叫此端點將金鑰寫回平台：</p>
-
-            <div className="border border-border rounded-lg overflow-hidden mb-2">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">欄位</th>
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">型別</th>
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">說明</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-border">
-                    <td className="px-3 py-1.5 font-mono text-primary">trial_id</td>
-                    <td className="px-3 py-1.5">string</td>
-                    <td className="px-3 py-1.5 text-foreground">領用記錄 ID（來自 Webhook payload）</td>
-                  </tr>
-                  <tr className="border-t border-border">
-                    <td className="px-3 py-1.5 font-mono text-primary">api_key</td>
-                    <td className="px-3 py-1.5">string</td>
-                    <td className="px-3 py-1.5 text-foreground">產生的 API Key</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p className="mb-1 font-medium text-foreground">cURL 範例</p>
-            <pre className="bg-background/80 border border-border rounded-lg p-3 text-xs overflow-x-auto">
-              <code className="text-muted-foreground">{`curl -X POST "${BASE_URL}/api-resource-trial-callback" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: <YOUR_API_KEY>" \\
-  -d '${JSON.stringify({ trial_id: "uuid-xxx", api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx" }, null, 2)}'`}</code>
-            </pre>
-
-            <p className="mt-1.5 font-medium text-foreground">回應範例</p>
-            <pre className="bg-background/80 border border-border rounded-lg p-3 text-xs overflow-x-auto mt-1">
-              <code className="text-muted-foreground">{JSON.stringify({ success: true, data: { trial_id: "uuid-xxx", message: "API Key 已更新" } }, null, 2)}</code>
-            </pre>
-          </div>
-        </div>
       </div>
+
 
       {/* Endpoint List */}
       <div>
