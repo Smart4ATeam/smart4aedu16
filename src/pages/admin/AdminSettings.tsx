@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Calendar, Save } from "lucide-react";
+import { Plus, Trash2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +25,6 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" });
-  const [trialWebhookUrl, setTrialWebhookUrl] = useState("");
-  const [savingWebhook, setSavingWebhook] = useState(false);
-
   const fetchEvents = async () => {
     const { data } = await supabase.from("calendar_events").select("*").order("event_date", { ascending: true });
     if (data) setEvents(data);
