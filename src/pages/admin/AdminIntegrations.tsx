@@ -584,21 +584,6 @@ export default function AdminIntegrations() {
         <WebhookUrlSetting />
       </div>
 
-            <p className="mb-1 font-medium text-foreground">cURL 範例</p>
-            <pre className="bg-background/80 border border-border rounded-lg p-3 text-xs overflow-x-auto">
-              <code className="text-muted-foreground">{`curl -X POST "${BASE_URL}/api-resource-trial-callback" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: <YOUR_API_KEY>" \\
-  -d '${JSON.stringify({ trial_id: "uuid-xxx", api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx" }, null, 2)}'`}</code>
-            </pre>
-
-            <p className="mt-1.5 font-medium text-foreground">回應範例</p>
-            <pre className="bg-background/80 border border-border rounded-lg p-3 text-xs overflow-x-auto mt-1">
-              <code className="text-muted-foreground">{JSON.stringify({ success: true, data: { trial_id: "uuid-xxx", message: "API Key 已更新" } }, null, 2)}</code>
-            </pre>
-          </div>
-        </div>
-      </div>
 
       {/* Endpoint List */}
       <div>
