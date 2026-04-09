@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, User, CheckCircle, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, User, CheckCircle, Users, Upload } from "lucide-react";
+import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -222,7 +223,8 @@ const AdminTasks = () => {
         </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-start gap-4 flex-wrap">
+            <ImportTasks onComplete={fetchData} />
             <Button onClick={() => setShowNewTask(true)} className="gap-2"><Plus className="w-4 h-4" /> 發布新任務</Button>
           </div>
 
