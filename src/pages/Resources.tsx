@@ -113,11 +113,16 @@ function TagList({ tags }: { tags?: string[] }) {
   );
 }
 
-function ThumbnailImage({ url }: { url?: string | null }) {
-  if (!url) return null;
+function CardThumbnail({ url, icon: Icon }: { url?: string | null; icon?: React.ElementType }) {
   return (
-    <div className="mb-4 -mx-6 -mt-6 overflow-hidden rounded-t-xl">
-      <img src={url} alt="" className="w-full h-40 object-cover" />
+    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted/50 flex items-center justify-center border border-border/50">
+      {url ? (
+        <img src={url} alt="" className="w-full h-full object-cover" />
+      ) : Icon ? (
+        <Icon className="w-8 h-8 text-muted-foreground/40" />
+      ) : (
+        <Package className="w-8 h-8 text-muted-foreground/40" />
+      )}
     </div>
   );
 }
