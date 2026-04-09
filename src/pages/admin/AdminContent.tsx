@@ -309,6 +309,10 @@ const AdminContent = () => {
   const [batchRows, setBatchRows] = useState<NewResource[]>([emptyResource(), emptyResource(), emptyResource()]);
   const [batchUploading, setBatchUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminTab, setAdminTab] = useState("resources");
+  const [trials, setTrials] = useState<any[]>([]);
+  const [trialsLoading, setTrialsLoading] = useState(false);
+  const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
 
   const fetchAll = async () => {
     const [resResult, scResult] = await Promise.all([
