@@ -293,6 +293,30 @@ function DynamicFields({ res, onChange, subCategories
 
 }
 
+/* ─── Admin API Key Cell ─── */
+
+function AdminApiKeyCell({ apiKey }: { apiKey: string | null }) {
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!apiKey) return <span className="text-muted-foreground">等待中...</span>;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[10px]">{visible ? apiKey : "••••••••"}</span>
+      <button onClick={() => setVisible(!visible)} className="p-0.5 hover:text-primary">
+        {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      </button>
+      <button onClick={handleCopy} className="p-0.5 hover:text-primary">
+        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
+
 /* ─── Main ─── */
 
 const AdminContent = () => {
