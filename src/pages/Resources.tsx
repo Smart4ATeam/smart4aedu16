@@ -138,18 +138,20 @@ function ResourceMeta({ r }: { r: Resource }) {
   );
 }
 
-function TrialButton({ r, onClaim, claiming, trialRecord }: {
+function TrialButton({ r, onClaim, claiming, trialRecord, todayClaimed }: {
   r: Resource;
   onClaim: (resourceId: string, resourceTitle: string, resourceCategory: string) => void;
   claiming: string | null;
   trialRecord?: Trial;
+  todayClaimed?: boolean;
 }) {
   if (!r.trial_enabled) return null;
 
-  if (trialRecord) {
+  // If user already claimed any resource in this category today, hide button entirely
+  if (todayClaimed) {
     return (
       <button className="bg-muted text-muted-foreground py-2 rounded-lg text-xs font-bold cursor-not-allowed" disabled>
-        ✅ 已領用
+        ✅ 今日已領用
       </button>
     );
   }
