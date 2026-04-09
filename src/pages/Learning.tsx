@@ -46,17 +46,41 @@ export default function Learning() {
     },
   });
 
-  // Fetch user enrollments
+  // Fetch user enrollments (by direct user_id OR via reg_members.user_id linkage)
   const { data: enrollments = [] } = useQuery({
     queryKey: ["my_enrollments", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First try direct user_id match
+      const { data: directData } = await supabase
         .from("reg_enrollments")
-        .select("*, course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
+        .select("*, courses(id, title, category, cover_url, instructors(name)), course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
         .eq("user_id", user!.id);
-      if (error) throw error;
-      return data || [];
+
+      // Also find via reg_members linkage
+      const { data: memberData } = await supabase
+        .from("reg_members" as any)
+        .select("id")
+        .eq("user_id", user!.id);
+
+      const memberIds = (memberData || []).map((m: any) => m.id);
+      let memberEnrollments: any[] = [];
+      if (memberIds.length > 0) {
+        const { data } = await supabase
+          .from("reg_enrollments")
+          .select("*, courses(id, title, category, cover_url, instructors(name)), course_sessions(*, courses(id, title, category, cover_url, instructors(name)))")
+          .in("member_id", memberIds);
+        memberEnrollments = data || [];
+      }
+
+      // Merge and deduplicate by id
+      const allEnrollments = [...(directData || []), ...memberEnrollments];
+      const seen = new Set<string>();
+      return allEnrollments.filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      });
     },
   });
 
