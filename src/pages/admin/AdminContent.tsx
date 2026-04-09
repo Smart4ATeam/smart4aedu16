@@ -326,6 +326,29 @@ const AdminContent = () => {
 
   useEffect(() => {fetchAll();}, []);
 
+  const fetchTrials = async () => {
+    setTrialsLoading(true);
+    const { data } = await supabase
+      .from("resource_trials")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) {
+      setTrials(data);
+      // Fetch profiles for all unique user_ids
+      const userIds = [...new Set(data.map((t: any) => t.user_id))];
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, display_name, email, student_id")
+          .in("id", userIds);
+        if (profs) setProfiles(new Map(profs.map((p: any) => [p.id, p])));
+      }
+    }
+    setTrialsLoading(false);
+  };
+
+  useEffect(() => { if (adminTab === "trials") fetchTrials(); }, [adminTab]);
+
   const buildInsertPayload = (r: NewResource) => ({
     title: r.title.trim(),
     description: r.description.trim(),
