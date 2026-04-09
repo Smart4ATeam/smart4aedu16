@@ -326,6 +326,82 @@ const endpoints: ApiEndpoint[] = [
       },
     ],
   },
+  {
+    id: "api-reg-order-query",
+    name: "查詢報名訂單",
+    icon: <ClipboardList className="w-4 h-4" />,
+    method: "GET",
+    path: "/api-reg-order",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "根據訂單編號查詢完整訂單資料，包含所有報名人員、課程快照、付款資訊、發票資訊、備註等所有欄位。",
+    requiredFields: [
+      { name: "order_no", type: "string (query param)", required: true, desc: "訂單編號" },
+    ],
+    optionalFields: [],
+    exampleBody: {},
+    exampleResponse: {
+      success: true,
+      data: {
+        id: "uuid-xxx",
+        order_no: "ORD20250401001",
+        p1_name: "王小明", p1_phone: "0912345678", p1_email: "ming@example.com",
+        p2_name: "李小花", p2_phone: "0987654321", p2_email: "hua@example.com",
+        p3_name: null, p3_phone: null, p3_email: null,
+        course_ids: ["uuid-c1", "uuid-c2"],
+        course_snapshot: [{ course_code: "beginner_01", course_name: "入門課-設計流程", price: 6000 }],
+        session_dates: ["2025/12/20-12/21"],
+        payment_status: "paid", payment_method: "信用卡", paid_at: "2025-04-08T14:30:00Z",
+        total_amount: 12000, discount_plan: "duo", person_count: 2,
+        invoice_type: "三聯式", invoice_title: "某某有限公司", invoice_number: "AB12345678",
+        invoice_status: "active", invoice_date: "2025-04-08",
+        tax_id: "12345678", dealer_id: "D001", referrer: "林老師",
+        is_retrain: false, notes: "備註內容", created_at: "2025-04-01T10:00:00Z",
+      },
+    },
+    extraExamples: [
+      {
+        title: "cURL 範例（GET 請求無需 Body）",
+        body: { "說明": "GET 請求使用 Query Parameter，不需要 Body" },
+      },
+    ],
+  },
+  {
+    id: "api-reg-enrollments",
+    name: "查詢報名明細",
+    icon: <Users className="w-4 h-4" />,
+    method: "GET",
+    path: "/api-reg-enrollments",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "根據課程名稱（模糊比對）與/或上課日期查詢所有報名明細，回傳學員完整資料（姓名、學員編號、電話、email）與報名狀態、付款狀態、報到狀態等。已取消的報名不會回傳。",
+    requiredFields: [
+      { name: "course_name", type: "string (query param)", required: true, desc: "課程名稱（模糊比對，至少提供 course_name 或 session_date 其一）" },
+    ],
+    optionalFields: [
+      { name: "session_date", type: "string (query param)", desc: "上課日期（精確比對，如 2026/04/16）" },
+    ],
+    exampleBody: {},
+    exampleResponse: {
+      success: true,
+      total: 3,
+      data: [
+        {
+          enrollment_id: "uuid-xxx",
+          member_name: "王小明", member_no: "SA26040001", member_phone: "0912345678", member_email: "ming@example.com",
+          course_name: "入門課-設計流程", course_code: "beginner_01", course_category: "basic",
+          session_date: "2026/04/16", status: "enrolled", payment_status: "paid", checked_in: true,
+          is_retrain: false, enrolled_at: "2026-04-01T10:00:00Z", paid_at: "2026-04-08T14:30:00Z",
+          invoice_title: "某某有限公司", dealer_id: "D001", referrer: "林老師",
+          notes: null, test_score: 85, certificate: "CERT-001", points_awarded: 10,
+        },
+      ],
+    },
+    extraExamples: [
+      {
+        title: "cURL 範例（GET 請求無需 Body）",
+        body: { "說明": "GET 請求使用 Query Parameter，不需要 Body" },
+      },
+    ],
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {
