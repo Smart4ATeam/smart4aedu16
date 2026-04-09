@@ -539,6 +539,13 @@ const AdminContent = () => {
         <p className="text-sm text-muted-foreground mt-1">管理所有學習資源，上架供學員瀏覽與使用</p>
       </motion.div>
 
+      <Tabs value={adminTab} onValueChange={setAdminTab}>
+        <TabsList>
+          <TabsTrigger value="resources">📦 資源列表</TabsTrigger>
+          <TabsTrigger value="trials">🧪 試用紀錄</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="resources">
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={() => setShowSubCatDialog(true)} className="gap-2"><Settings2 className="w-4 h-4" /> 子分類管理</Button>
         <Button variant="outline" onClick={() => setShowBatchDialog(true)} className="gap-2"><Upload className="w-4 h-4" /> 批次上傳</Button>
