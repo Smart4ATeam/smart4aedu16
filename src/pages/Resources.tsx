@@ -3,6 +3,7 @@ import { Search, Play, Flame, Star, FolderOpen, Wrench, Puzzle, LayoutTemplate, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { difficultyColors } from "@/lib/category-colors";
@@ -112,6 +113,15 @@ function TagList({ tags }: { tags?: string[] }) {
   );
 }
 
+function ThumbnailImage({ url }: { url?: string | null }) {
+  if (!url) return null;
+  return (
+    <div className="mb-4 -mx-6 -mt-6 overflow-hidden rounded-t-xl">
+      <img src={url} alt="" className="w-full h-40 object-cover" />
+    </div>
+  );
+}
+
 function ResourceMeta({ r }: { r: Resource }) {
   return (
     <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-4 border-t border-border pt-3">
@@ -125,7 +135,7 @@ function ResourceMeta({ r }: { r: Resource }) {
 
 function TrialButton({ r, onClaim, claiming, trialRecord }: {
   r: Resource;
-  onClaim: (resourceId: string) => void;
+  onClaim: (resourceId: string, resourceTitle: string, resourceCategory: string) => void;
   claiming: string | null;
   trialRecord?: Trial;
 }) {
@@ -141,7 +151,7 @@ function TrialButton({ r, onClaim, claiming, trialRecord }: {
 
   return (
     <button
-      onClick={() => onClaim(r.id)}
+      onClick={() => onClaim(r.id, r.title, r.category)}
       disabled={claiming === r.id}
       className="bg-accent text-accent-foreground py-2 rounded-lg text-xs font-bold hover:opacity-90 transition text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
     >
@@ -160,6 +170,7 @@ function TrialButton({ r, onClaim, claiming, trialRecord }: {
 function PluginCard({ r }: { r: Resource }) {
   return (
     <div className="glass-card p-6 border-l-4 border-l-primary">
+      <ThumbnailImage url={r.thumbnail_url} />
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
@@ -182,12 +193,13 @@ function PluginCard({ r }: { r: Resource }) {
   );
 }
 
-function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = 2 + (hasTrialBtn ? 1 : 0);
 
   return (
     <div className="glass-card p-6 border-l-4 border-l-secondary">
+      <ThumbnailImage url={r.thumbnail_url} />
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
@@ -209,18 +221,18 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>詳細介紹</button>
         )}
         <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
-        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
       </div>
     </div>
   );
 }
 
-function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = hasTrialBtn ? 3 : 2;
 
   return (
     <div className="glass-card p-6 border-l-4 border-l-primary">
+      <ThumbnailImage url={r.thumbnail_url} />
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
@@ -257,6 +269,9 @@ function VideoCard({ r }: { r: Resource }) {
   return (
     <div className="glass-card p-4">
       <div className="aspect-video bg-muted rounded-xl relative mb-3 overflow-hidden group cursor-pointer">
+        {r.thumbnail_url ? (
+          <img src={r.thumbnail_url} alt={r.title} className="absolute inset-0 w-full h-full object-cover" />
+        ) : null}
         {r.download_url ? (
           <a href={r.download_url} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center">
             <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -367,6 +382,10 @@ export default function Resources() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("browse");
 
+  // Confirmation dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingClaim, setPendingClaim] = useState<{ id: string; title: string; category: string } | null>(null);
+
   useEffect(() => {
     const load = async () => {
       const [resResult, scResult] = await Promise.all([
@@ -399,11 +418,35 @@ export default function Resources() {
 
   const trialMap = new Map(trials.map(t => [t.resource_id, t]));
 
-  const handleClaim = async (resourceId: string) => {
+  // Step 1: Check org ID, then show confirmation dialog
+  const requestClaim = async (resourceId: string, resourceTitle: string, resourceCategory: string) => {
     if (!user) {
       toast.error("請先登入");
       return;
     }
+
+    // Check organization_id from profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      toast.error("請先在「設定」頁面填寫您的組織編號（Organization ID），才能領用試用資源。");
+      return;
+    }
+
+    // Show confirmation dialog
+    setPendingClaim({ id: resourceId, title: resourceTitle, category: resourceCategory });
+    setConfirmOpen(true);
+  };
+
+  // Step 2: User confirmed — actually invoke the edge function
+  const handleConfirmedClaim = async () => {
+    if (!pendingClaim || !user) return;
+    setConfirmOpen(false);
+    const resourceId = pendingClaim.id;
     setClaiming(resourceId);
     try {
       const { data, error } = await supabase.functions.invoke("api-resource-trial", {
@@ -414,7 +457,6 @@ export default function Resources() {
         toast.error(data.error);
       } else {
         toast.success(data?.data?.message || "領用成功！");
-        // Refresh trials
         const { data: newTrials } = await supabase
           .from("resource_trials")
           .select("*")
@@ -426,6 +468,7 @@ export default function Resources() {
       toast.error(err.message || "領用失敗");
     } finally {
       setClaiming(null);
+      setPendingClaim(null);
     }
   };
 
@@ -446,6 +489,12 @@ export default function Resources() {
     return true;
   });
 
+  const categoryLabel = (cat: string) => {
+    if (cat === "extensions") return "套件";
+    if (cat === "templates") return "模板";
+    return "資源";
+  };
+
   const renderCards = () => {
     if (loading) {
       return (
@@ -460,13 +509,13 @@ export default function Resources() {
 
     switch (activeCategory) {
       case "plugins":
-        return <div className="space-y-4">{filtered.map(r => <PluginCard key={r.id} r={r} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <PluginCard key={r.id} r={r} />)}</div>;
       case "extensions":
-        return <div className="space-y-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={handleClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
       case "templates":
-        return <div className="space-y-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={handleClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
       case "videos":
-        return <div className="grid grid-cols-3 gap-6">{filtered.map(r => <VideoCard key={r.id} r={r} />)}</div>;
+        return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{filtered.map(r => <VideoCard key={r.id} r={r} />)}</div>;
       default:
         return null;
     }
@@ -474,6 +523,24 @@ export default function Resources() {
 
   return (
     <div>
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認領用</AlertDialogTitle>
+            <AlertDialogDescription>
+              今天確定要領用「<strong>{pendingClaim?.title}</strong>」{categoryLabel(pendingClaim?.category || "")}嗎？
+              <br /><br />
+              每個分類每天只能領用一個，確認後將無法取消。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmedClaim}>確認領用</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList>
