@@ -744,32 +744,40 @@ const AdminContent = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {resources.map((r) =>
-            <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.title}</TableCell>
-                <TableCell><Badge variant="outline">{categoryLabel[r.category] || r.category}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{r.author || "—"}</TableCell>
-                <TableCell><Badge variant="secondary" className="text-[10px]">v{r.version || "—"}</Badge></TableCell>
-                <TableCell>
-                  {r.trial_enabled ? <Badge className="text-[10px]">🧪 開放</Badge> : <span className="text-xs text-muted-foreground">—</span>}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-xs"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</div>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                  {r.download_url ?
-                <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
-                "—"}
-                </TableCell>
-                <TableCell className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                </TableCell>
-              </TableRow>
-            )}
-            {resources.length === 0 &&
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無資源</TableCell></TableRow>
-            }
+            {(() => {
+              const filtered = resources.filter((r) => {
+                const q = searchQuery.toLowerCase();
+                if (q && !r.title?.toLowerCase().includes(q)) return false;
+                if (filterCategory !== "all" && r.category !== filterCategory) return false;
+                if (filterAuthor !== "all" && r.author !== filterAuthor) return false;
+                return true;
+              });
+              return filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">無符合條件的資源</TableCell></TableRow>
+              ) : filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.title}</TableCell>
+                  <TableCell><Badge variant="outline">{categoryLabel[r.category] || r.category}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{r.author || "—"}</TableCell>
+                  <TableCell><Badge variant="secondary" className="text-[10px]">v{r.version || "—"}</Badge></TableCell>
+                  <TableCell>
+                    {r.trial_enabled ? <Badge className="text-[10px]">🧪 開放</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-xs"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                    {r.download_url ?
+                      <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
+                      "—"}
+                  </TableCell>
+                  <TableCell className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </TableCell>
+                </TableRow>
+              ));
+            })()}
           </TableBody>
         </Table>
       </motion.div>
