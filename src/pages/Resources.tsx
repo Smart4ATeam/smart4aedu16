@@ -204,7 +204,7 @@ function PluginCard({ r }: { r: Resource }) {
   );
 }
 
-function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function ExtensionCard({ r, onClaim, claiming, trialRecord, todayClaimed }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial; todayClaimed?: boolean }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = 2 + (hasTrialBtn ? 1 : 0);
 
@@ -235,13 +235,13 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>詳細介紹</button>
         )}
-        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} todayClaimed={todayClaimed} />
       </div>
     </div>
   );
 }
 
-function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function TemplateCard({ r, onClaim, claiming, trialRecord, todayClaimed }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial; todayClaimed?: boolean }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = hasTrialBtn ? 3 : 2;
 
