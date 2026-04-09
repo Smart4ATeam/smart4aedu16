@@ -1,66 +1,74 @@
 
 
-## Plan: 修正資源中心 UI 與補充 API 文件
+# 三項調整計畫
 
-### 問題清單
-1. **ExtensionCard 重複領用按鈕** — 第 212 行有重複的 `TrialButton`
-2. **卡片未顯示縮圖** — `thumbnail_url` 欄位存在但卡片元件未渲染圖片
-3. **卡片排版改為兩欄** — 目前套件/模板為單欄 `space-y-4`，需改為 `grid grid-cols-2`
-4. **領用確認流程不足** — 按下領用後應先確認組織編號、再彈出確認對話框（「今天確定要領用 XXX 套件嗎？」），確認後才送出
-5. **API 文件缺少 Webhook 發送說明** — 管理端 API 串接頁面缺少「系統發送到 Webhook 的 Payload 格式」與「Webhook URL 設定說明」
+## 1. 新增兩個查詢 API + 文件更新
 
----
+### 1A. Edge Function: `api-reg-order` 擴充 GET 查詢
+在現有 `api-reg-order/index.ts` 中加入 GET 方法支援：
+- **GET** `?order_no=ORD20250401001` → 回傳該筆訂單完整資料（所有欄位：p1~p3 姓名/電話/email、金額、付款方式/狀態、發票相關所有欄位、備註、經銷商、推薦人、課程快照、上課日期等）
+- 驗證 `x-api-key`，找不到回 404
 
-### 1. 移除重複 TrialButton
+### 1B. 新建 Edge Function: `api-reg-enrollments`
+- **GET** `?course_name=入門課-設計流程&session_date=2026/04/16`
+- 以 `course_name` 模糊比對 `courses.title`，`session_date` 精確比對 `reg_enrollments.session_date`
+- 回傳所有符合的報名明細，包含學員完整資料（姓名、學員編號、電話、email）、課程名稱、上課日期、報名狀態、付款狀態、報到狀態等
+- 驗證 `x-api-key`
+- 在 `supabase/config.toml` 加入 `[functions.api-reg-enrollments]` verify_jwt = false
 
-**檔案**：`src/pages/Resources.tsx` 第 212 行
+### 1C. AdminIntegrations 文件更新
+在 `endpoints` 陣列中新增兩個端點定義：
+- **查詢報名訂單** (GET `/api-reg-order?order_no=...`)
+- **查詢報名明細** (GET `/api-reg-enrollments?course_name=...&session_date=...`)
 
-刪除第二個 `<TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />`。
-
----
-
-### 2. 卡片顯示縮圖
-
-**檔案**：`src/pages/Resources.tsx`
-
-在 `ExtensionCard`、`TemplateCard`、`PluginCard` 中，若 `r.thumbnail_url` 存在，在卡片頂部渲染圖片（`<img>` 圓角裁切），無圖片時不顯示。
+含完整的 requiredFields、optionalFields、exampleResponse
 
 ---
 
-### 3. 卡片改為兩欄排版
+## 2. 報名明細日期篩選器 — 依課程動態過濾
 
-**檔案**：`src/pages/Resources.tsx` `renderCards()` 函式
+**檔案**: `src/components/admin/RegistrationTabs.tsx` EnrollmentsTab
 
-- plugins、extensions、templates 改為 `grid grid-cols-1 md:grid-cols-2 gap-4`
-- videos 維持三欄
+目前 `uniqueDates` 從所有 enrollments 取得所有日期。改為：
+- 當 `selectedCourse !== "all"` 時，只從該課程的 enrollments 中提取日期選項
+- 切換課程頁籤時，自動重設 `selectedDate` 為 `"all"`
 
----
+修改 `uniqueDates` 的 useMemo，加入 `selectedCourse` 依賴：
+```
+const uniqueDates = useMemo(() => {
+  const source = selectedCourse === "all" 
+    ? enrollments 
+    : enrollments.filter(e => e.course_id === selectedCourse);
+  const dates = new Set<string>();
+  source.forEach(e => { if (e.session_date) dates.add(e.session_date); });
+  return [...dates].sort();
+}, [enrollments, selectedCourse]);
+```
 
-### 4. 領用前確認對話框
-
-**檔案**：`src/pages/Resources.tsx`
-
-- 引入 `AlertDialog` 元件
-- 在 `handleClaim` 中，先檢查組織編號（從 profiles 取得），若未設定則 toast 提示
-- 組織編號確認後，彈出確認對話框顯示資源名稱：「今天確定要領用『XXX』套件嗎？每天只能領用一個套件（或模板），確認後將無法取消。」
-- 使用者點擊「確認領用」後才呼叫 Edge Function
-
----
-
-### 5. API 文件補充 Webhook 說明
-
-**檔案**：`src/pages/admin/AdminIntegrations.tsx`
-
-在認證方式說明區塊下方新增「Webhook 設定說明」區塊：
-- 說明 Webhook URL 需在「管理設定」頁面配置（`system_settings` key: `trial_webhook_url`）
-- 列出系統發送到 Webhook 的完整 Payload 格式與各欄位說明
-- 提供收到 Payload 後應呼叫 `api-resource-trial-callback` 回傳金鑰的完整流程圖
-
-同時在現有的 `api-resource-trial-callback` 端點文件中，補充更詳細的「Webhook 完整串接流程」說明。
+並在課程選擇的 `onValueChange` 中加入 `setSelectedDate("all")`。
 
 ---
 
-### 技術細節
-- 修改 `src/pages/Resources.tsx`：移除重複按鈕、加入縮圖、改兩欄 grid、加入 AlertDialog 確認流程
-- 修改 `src/pages/admin/AdminIntegrations.tsx`：新增 Webhook 說明區塊
+## 3. 訂單詳情 — 備註加標題 + 可編輯
+
+**檔案**: `src/components/admin/RegistrationTabs.tsx` OrdersTab
+
+目前備註區塊（約第 408-412 行）：
+- 加上小標 `<p className="text-xs font-medium mb-1">備註</p>`
+- 改為始終顯示（即使 notes 為空也顯示）
+- 用 `Textarea` 取代純文字顯示，讓備註可編輯
+- 新增 state: `editNotes`，在 `openOrderDetail` 時初始化
+- 新增儲存按鈕，update `reg_orders.notes` 並記錄 `reg_operation_logs`
+
+---
+
+## 涉及的檔案
+
+| 檔案 | 操作 |
+|---|---|
+| `supabase/functions/api-reg-order/index.ts` | 加入 GET 查詢 |
+| `supabase/functions/api-reg-enrollments/index.ts` | 新建 |
+| `supabase/config.toml` | 加入新 function 設定 |
+| `src/pages/admin/AdminIntegrations.tsx` | 新增 2 個端點文件 |
+| `src/components/admin/RegistrationTabs.tsx` | 日期篩選邏輯 + 備註編輯 |
 
