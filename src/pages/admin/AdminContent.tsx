@@ -337,6 +337,9 @@ const AdminContent = () => {
   const [trials, setTrials] = useState<any[]>([]);
   const [trialsLoading, setTrialsLoading] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterAuthor, setFilterAuthor] = useState("all");
 
   const fetchAll = async () => {
     const [resResult, scResult] = await Promise.all([
