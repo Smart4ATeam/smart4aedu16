@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     if (msgError) throw msgError;
 
-    // Add participants
+    // Add participants (filter by notification settings)
     let userIds: string[] = target_user_ids || [];
     if (userIds.length === 0) {
       // Broadcast to all activated users
@@ -78,18 +78,43 @@ Deno.serve(async (req) => {
       userIds = (users || []).map((u: { id: string }) => u.id);
     }
 
+    // Filter out users who have disabled the relevant notification setting
     if (userIds.length > 0) {
-      const participants = userIds.map((uid: string) => ({
-        conversation_id: conversation.id,
-        user_id: uid,
-        unread: true,
-      }));
+      const { data: allSettings } = await adminClient
+        .from("notification_settings")
+        .select("user_id, show_info")
+        .in("user_id", userIds);
 
-      const { error: partError } = await adminClient
-        .from("conversation_participants")
-        .insert(participants);
+      // Build a set of users who explicitly disabled show_info
+      const disabledUsers = new Set(
+        (allSettings || [])
+          .filter((s: { user_id: string; show_info: boolean }) => s.show_info === false)
+          .map((s: { user_id: string }) => s.user_id)
+      );
 
-      if (partError) throw partError;
+      const filteredIds = userIds.filter((uid: string) => !disabledUsers.has(uid));
+
+      if (filteredIds.length > 0) {
+        const participants = filteredIds.map((uid: string) => ({
+          conversation_id: conversation.id,
+          user_id: uid,
+          unread: true,
+        }));
+
+        const { error: partError } = await adminClient
+          .from("conversation_participants")
+          .insert(participants);
+
+        if (partError) throw partError;
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: { conversation_id: conversation.id, recipients: filteredIds.length },
+      }), {
+        status: 201,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(JSON.stringify({
