@@ -1,164 +1,66 @@
 
 
-## Plan: 資源試用領用系統
+## Plan: 修正資源中心 UI 與補充 API 文件
 
-### 概要
-建立學員每日可領用一個套件/模板的完整系統，包含：資源試用設定、領用記錄、Webhook 金鑰申請、管理員統計、API 文件。
-
----
-
-### 1. 資料庫 Migration
-
-**resources 表新增欄位：**
-```sql
-ALTER TABLE resources ADD COLUMN app_id text;
-ALTER TABLE resources ADD COLUMN trial_enabled boolean NOT NULL DEFAULT false;
-```
-- `app_id`：套件/模板的應用編號（如截圖中的 `richmenu-yrfqmv`）
-- `trial_enabled`：是否開放試用
-
-**新增 resource_trials 表：**
-```sql
-CREATE TABLE public.resource_trials (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  resource_id uuid REFERENCES resources(id) ON DELETE CASCADE NOT NULL,
-  member_no text,
-  organization_id text NOT NULL,
-  app_id text NOT NULL,
-  resource_category text NOT NULL,
-  api_key text,
-  webhook_status text DEFAULT 'pending',
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(user_id, resource_id)
-);
-ALTER TABLE resource_trials ENABLE ROW LEVEL SECURITY;
-
--- 學員只能看到自己的領用紀錄
-CREATE POLICY "Users can view own trials"
-  ON resource_trials FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own trials"
-  ON resource_trials FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
-
--- 管理員可查看全部
-CREATE POLICY "Admins can view all trials"
-  ON resource_trials FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-```
+### 問題清單
+1. **ExtensionCard 重複領用按鈕** — 第 212 行有重複的 `TrialButton`
+2. **卡片未顯示縮圖** — `thumbnail_url` 欄位存在但卡片元件未渲染圖片
+3. **卡片排版改為兩欄** — 目前套件/模板為單欄 `space-y-4`，需改為 `grid grid-cols-2`
+4. **領用確認流程不足** — 按下領用後應先確認組織編號、再彈出確認對話框（「今天確定要領用 XXX 套件嗎？」），確認後才送出
+5. **API 文件缺少 Webhook 發送說明** — 管理端 API 串接頁面缺少「系統發送到 Webhook 的 Payload 格式」與「Webhook URL 設定說明」
 
 ---
 
-### 2. 資源管理 UI 新增欄位
+### 1. 移除重複 TrialButton
 
-**檔案**：`src/pages/admin/AdminContent.tsx`
+**檔案**：`src/pages/Resources.tsx` 第 212 行
 
-- `NewResource` type 新增 `app_id: string` 和 `trial_enabled: boolean`
-- `emptyResource()` 加入預設值
-- `buildInsertPayload` 加入 `app_id` 和 `trial_enabled`
-- `DynamicFields` 中，當分類為 `extensions` 或 `templates` 時顯示：
-  - APP ID 輸入框
-  - 開放試用 checkbox
-- 資源列表 Table 增加「試用」欄位標記
+刪除第二個 `<TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />`。
 
 ---
 
-### 3. 學員資源頁面 — 領用功能
+### 2. 卡片顯示縮圖
 
 **檔案**：`src/pages/Resources.tsx`
 
-- 套件卡片 (`ExtensionCard`) 和模板卡片 (`TemplateCard`)：當 `trial_enabled=true` 時顯示「領用試用」按鈕
-- 領用前檢查：
-  1. 使用者已登入
-  2. `profiles.organization_id` 已設定（未設定則提示前往設定頁面）
-  3. 當日尚未領用過任何資源（查 `resource_trials` 當日記錄，套件和模板分開計算各一個）
-- 領用流程：呼叫新的 Edge Function `api-resource-trial`
+在 `ExtensionCard`、`TemplateCard`、`PluginCard` 中，若 `r.thumbnail_url` 存在，在卡片頂部渲染圖片（`<img>` 圓角裁切），無圖片時不顯示。
 
 ---
 
-### 4. 學員試用紀錄頁面
+### 3. 卡片改為兩欄排版
 
-**檔案**：`src/pages/Resources.tsx`（新增 Tab 或區塊）
+**檔案**：`src/pages/Resources.tsx` `renderCards()` 函式
 
-- 在資源頁面上方加入「我的試用」Tab
-- 列出該學員所有領用紀錄：資源名稱、APP ID、領用日期、API Key（若已回傳）
-- API Key 以遮罩顯示，點擊可複製
-
----
-
-### 5. Edge Function：領用資源
-
-**新增檔案**：`supabase/functions/api-resource-trial/index.ts`
-
-- 需要使用者 JWT 認證（非 x-api-key）
-- 接收 `resource_id`
-- 驗證：
-  1. 資源存在且 `trial_enabled = true`
-  2. 使用者 `organization_id` 已設定
-  3. 該資源的 category 當日未領用（extensions 一個 / templates 一個）
-  4. 該資源未曾領用過
-- 寫入 `resource_trials` 記錄
-- 發送 Webhook（POST）到系統設定的 URL，payload：
-  ```json
-  {
-    "organization_id": "學員的組織編號",
-    "app_id": "資源的 APP ID",
-    "member_no": "學員編號",
-    "category": "extensions 或 templates",
-    "resource_title": "資源名稱",
-    "trial_id": "resource_trials 的 id"
-  }
-  ```
-- Webhook URL 從 `system_settings` 表取得（key: `trial_webhook_url`），管理員可在設定頁面配置
+- plugins、extensions、templates 改為 `grid grid-cols-1 md:grid-cols-2 gap-4`
+- videos 維持三欄
 
 ---
 
-### 6. Webhook 回傳 API Key 端點
+### 4. 領用前確認對話框
 
-**新增檔案**：`supabase/functions/api-resource-trial-callback/index.ts`
+**檔案**：`src/pages/Resources.tsx`
 
-- 使用 `x-api-key` 認證
-- 接收 `{ trial_id, api_key }`
-- 更新 `resource_trials` 的 `api_key` 和 `webhook_status = 'completed'`
-
----
-
-### 7. 管理員統計
-
-**檔案**：`src/pages/admin/AdminContent.tsx`
-
-- 新增「試用統計」區塊或 Tab：
-  - 今日領用數量
-  - 各資源領用人次排名（熱門排行）
-  - 近期領用紀錄列表（學員、資源、時間）
+- 引入 `AlertDialog` 元件
+- 在 `handleClaim` 中，先檢查組織編號（從 profiles 取得），若未設定則 toast 提示
+- 組織編號確認後，彈出確認對話框顯示資源名稱：「今天確定要領用『XXX』套件嗎？每天只能領用一個套件（或模板），確認後將無法取消。」
+- 使用者點擊「確認領用」後才呼叫 Edge Function
 
 ---
 
-### 8. 管理員設定 — Webhook URL
-
-**檔案**：`src/pages/admin/AdminSettings.tsx`（或 AdminIntegrations）
-
-- 新增「試用 Webhook URL」設定欄位，儲存至 `system_settings` 表（key: `trial_webhook_url`）
-
----
-
-### 9. API 文件更新
+### 5. API 文件補充 Webhook 說明
 
 **檔案**：`src/pages/admin/AdminIntegrations.tsx`
 
-- 新增 `api-resource-trial-callback` 端點文件：
-  - Method: POST
-  - Auth: x-api-key
-  - 必填：`trial_id`, `api_key`
-  - 範例 cURL 與回應
+在認證方式說明區塊下方新增「Webhook 設定說明」區塊：
+- 說明 Webhook URL 需在「管理設定」頁面配置（`system_settings` key: `trial_webhook_url`）
+- 列出系統發送到 Webhook 的完整 Payload 格式與各欄位說明
+- 提供收到 Payload 後應呼叫 `api-resource-trial-callback` 回傳金鑰的完整流程圖
+
+同時在現有的 `api-resource-trial-callback` 端點文件中，補充更詳細的「Webhook 完整串接流程」說明。
 
 ---
 
 ### 技術細節
-- Migration：resources 新增 2 欄位 + 新建 resource_trials 表
-- 新增 Edge Function：`api-resource-trial`（學員領用）、`api-resource-trial-callback`（接收金鑰回傳）
-- 修改檔案：`AdminContent.tsx`、`Resources.tsx`、`AdminIntegrations.tsx`、`AdminSettings.tsx`、`types.ts`
-- 每日限制邏輯：套件和模板各一個，以 `created_at` 的日期（台灣時區 UTC+8）判斷
+- 修改 `src/pages/Resources.tsx`：移除重複按鈕、加入縮圖、改兩欄 grid、加入 AlertDialog 確認流程
+- 修改 `src/pages/admin/AdminIntegrations.tsx`：新增 Webhook 說明區塊
 
