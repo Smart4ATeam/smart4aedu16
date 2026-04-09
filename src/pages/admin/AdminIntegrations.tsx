@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApiKeyManager } from "@/components/admin/ApiKeyManager";
 import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const BASE_URL = "https://clwruolkostoirdwnnuy.supabase.co/functions/v1";
 
@@ -500,6 +502,49 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   );
 }
 
+function WebhookUrlSetting() {
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase.from("system_settings").select("value").eq("key_name", "trial_webhook_url").maybeSingle().then(({ data }) => {
+      if (data) setUrl(data.value);
+      setLoaded(true);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key_name", "trial_webhook_url").maybeSingle();
+    const trimmed = url.trim();
+    if (existing) {
+      const { error } = await supabase.from("system_settings").update({ value: trimmed }).eq("key_name", "trial_webhook_url");
+      if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
+    } else {
+      const { error } = await supabase.from("system_settings").insert({ key_name: "trial_webhook_url", value: trimmed, description: "資源試用領用 Webhook URL" });
+      if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
+    }
+    toast.success("Webhook URL 已儲存");
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-foreground">Webhook URL 設定</p>
+      <p className="text-xs text-muted-foreground">學員領用試用資源時，系統會自動 POST 到此 URL</p>
+      <div className="flex gap-2">
+        <Input placeholder="https://hook.example.com/trial" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1 text-xs" />
+        <Button onClick={handleSave} disabled={saving} size="sm" className="gap-1.5">
+          <Save className="w-3.5 h-3.5" /> {saving ? "儲存中..." : "儲存"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
@@ -542,12 +587,8 @@ export default function AdminIntegrations() {
           <div className="w-1 h-5 rounded-full bg-accent" />
           <h2 className="text-sm font-semibold text-foreground">🔗 資源試用 Webhook 串接說明</h2>
         </div>
-        <div className="text-xs text-muted-foreground space-y-3">
-          <div>
-            <p className="font-medium text-foreground mb-1">Webhook URL 設定</p>
-            <p>請至「管理設定」頁面，在系統設定中配置 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">trial_webhook_url</code>。學員領用試用資源時，系統會自動 POST 到此 URL。</p>
-          </div>
-
+        <WebhookUrlSetting />
+        <div className="text-xs text-muted-foreground space-y-3 mt-4">
           <div>
             <p className="font-medium text-foreground mb-1">系統發送的 Webhook Payload</p>
             <p className="mb-1">當學員按下「領用試用」後，系統會發送以下 JSON 到您設定的 Webhook URL：</p>
@@ -567,7 +608,7 @@ export default function AdminIntegrations() {
             <p className="font-medium text-foreground mb-1">完整串接流程</p>
             <div className="space-y-1 pl-2">
               <p>1️⃣ 學員在資源中心點擊「領用試用」→ 系統確認組織編號與每日額度</p>
-              <p>2️⃣ 系統建立 <code className="px-1 py-0.5 rounded bg-muted font-mono">resource_trials</code> 記錄，並 POST Webhook Payload 至您的 URL</p>
+              <p>2️⃣ 系統建立 <code className="px-1 py-0.5 rounded bg-muted font-mono">resource_trials</code> 記錄，並 POST Webhook Payload 至上方設定的 URL</p>
               <p>3️⃣ 您的系統收到 Payload 後，根據 <code className="px-1 py-0.5 rounded bg-muted font-mono">app_id</code> 與 <code className="px-1 py-0.5 rounded bg-muted font-mono">organization_id</code> 產生 API Key</p>
               <p>4️⃣ 呼叫 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">POST /api-resource-trial-callback</code> 回傳金鑰：</p>
             </div>

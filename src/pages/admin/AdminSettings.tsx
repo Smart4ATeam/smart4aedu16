@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Calendar, Save } from "lucide-react";
+import { Plus, Trash2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,35 +25,14 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" });
-  const [trialWebhookUrl, setTrialWebhookUrl] = useState("");
-  const [savingWebhook, setSavingWebhook] = useState(false);
-
   const fetchEvents = async () => {
     const { data } = await supabase.from("calendar_events").select("*").order("event_date", { ascending: true });
     if (data) setEvents(data);
     setLoading(false);
   };
 
-  const fetchWebhookUrl = async () => {
-    const { data } = await supabase.from("system_settings").select("value").eq("key_name", "trial_webhook_url").maybeSingle();
-    if (data) setTrialWebhookUrl(data.value);
-  };
 
-  useEffect(() => { fetchEvents(); fetchWebhookUrl(); }, []);
-
-  const handleSaveWebhook = async () => {
-    setSavingWebhook(true);
-    const { data: existing } = await supabase.from("system_settings").select("id").eq("key_name", "trial_webhook_url").maybeSingle();
-    if (existing) {
-      const { error } = await supabase.from("system_settings").update({ value: trialWebhookUrl.trim() }).eq("key_name", "trial_webhook_url");
-      if (error) { toast.error("儲存失敗：" + error.message); setSavingWebhook(false); return; }
-    } else {
-      const { error } = await supabase.from("system_settings").insert({ key_name: "trial_webhook_url", value: trialWebhookUrl.trim(), description: "資源試用領用 Webhook URL" });
-      if (error) { toast.error("儲存失敗：" + error.message); setSavingWebhook(false); return; }
-    }
-    toast.success("Webhook URL 已儲存");
-    setSavingWebhook(false);
-  };
+  useEffect(() => { fetchEvents(); }, []);
 
   const handleAdd = async () => {
     if (!newEvent.title || !newEvent.event_date) return;
@@ -91,22 +70,8 @@ const AdminSettings = () => {
         <p className="text-sm text-muted-foreground mt-1">全域行事曆排程與系統組態管理</p>
       </motion.div>
 
-      {/* Webhook URL Setting */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }} className="glass-card p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">試用領用 Webhook URL</h3>
-        <p className="text-xs text-muted-foreground">學員領用套件/模板時，系統會 POST 到此 URL 以建立金鑰</p>
-        <div className="flex gap-2">
-          <Input
-            placeholder="https://hook.example.com/trial"
-            value={trialWebhookUrl}
-            onChange={(e) => setTrialWebhookUrl(e.target.value)}
-            className="flex-1"
-          />
-          <Button onClick={handleSaveWebhook} disabled={savingWebhook} className="gap-1.5">
-            <Save className="w-4 h-4" /> {savingWebhook ? "儲存中..." : "儲存"}
-          </Button>
-        </div>
-      </motion.div>
+
+
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="space-y-4">
         <div className="flex justify-between items-center">
