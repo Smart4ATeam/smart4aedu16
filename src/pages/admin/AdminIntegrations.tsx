@@ -436,7 +436,11 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   const [expanded, setExpanded] = useState(false);
   const fullUrl = `${BASE_URL}${endpoint.path}`;
 
-  const curlExample = `curl -X ${endpoint.method} "${fullUrl}" \\
+  const isGet = endpoint.method === "GET";
+  const curlExample = isGet
+    ? `curl -X GET "${fullUrl}?order_no=ORD20250401001" \\
+  -H "x-api-key: <YOUR_API_KEY>"`
+    : `curl -X ${endpoint.method} "${fullUrl}" \\
   -H "Content-Type: application/json" \\
   -H "x-api-key: <YOUR_API_KEY>" \\
   -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
