@@ -138,18 +138,20 @@ function ResourceMeta({ r }: { r: Resource }) {
   );
 }
 
-function TrialButton({ r, onClaim, claiming, trialRecord }: {
+function TrialButton({ r, onClaim, claiming, trialRecord, todayClaimed }: {
   r: Resource;
   onClaim: (resourceId: string, resourceTitle: string, resourceCategory: string) => void;
   claiming: string | null;
   trialRecord?: Trial;
+  todayClaimed?: boolean;
 }) {
   if (!r.trial_enabled) return null;
 
-  if (trialRecord) {
+  // If user already claimed any resource in this category today, hide button entirely
+  if (todayClaimed) {
     return (
       <button className="bg-muted text-muted-foreground py-2 rounded-lg text-xs font-bold cursor-not-allowed" disabled>
-        ✅ 已領用
+        ✅ 今日已領用
       </button>
     );
   }
@@ -202,7 +204,7 @@ function PluginCard({ r }: { r: Resource }) {
   );
 }
 
-function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function ExtensionCard({ r, onClaim, claiming, trialRecord, todayClaimed }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial; todayClaimed?: boolean }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = 2 + (hasTrialBtn ? 1 : 0);
 
@@ -233,13 +235,13 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>詳細介紹</button>
         )}
-        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} todayClaimed={todayClaimed} />
       </div>
     </div>
   );
 }
 
-function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial }) {
+function TemplateCard({ r, onClaim, claiming, trialRecord, todayClaimed }: { r: Resource; onClaim: (id: string, title: string, cat: string) => void; claiming: string | null; trialRecord?: Trial; todayClaimed?: boolean }) {
   const hasTrialBtn = r.trial_enabled;
   const gridCols = hasTrialBtn ? 3 : 2;
 
@@ -276,7 +278,7 @@ function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onCl
         ) : (
           <button className="border border-border text-muted-foreground py-2 rounded-lg text-xs font-bold opacity-50 cursor-not-allowed" disabled>預覽流程</button>
         )}
-        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} />
+        <TrialButton r={r} onClaim={onClaim} claiming={claiming} trialRecord={trialRecord} todayClaimed={todayClaimed} />
       </div>
     </div>
   );
@@ -435,6 +437,23 @@ export default function Resources() {
 
   const trialMap = new Map(trials.map(t => [t.resource_id, t]));
 
+  // Check if user already claimed a resource in a given category today (Taiwan time)
+  const todayClaimedCategories = new Set<string>();
+  {
+    const now = new Date();
+    const taiwanOffset = 8 * 60 * 60 * 1000;
+    const taiwanNow = new Date(now.getTime() + taiwanOffset);
+    const todayStr = taiwanNow.toISOString().slice(0, 10);
+    const todayStartUTC = new Date(todayStr + "T00:00:00+08:00").getTime();
+    const todayEndUTC = todayStartUTC + 24 * 60 * 60 * 1000;
+    for (const t of trials) {
+      const ts = new Date(t.created_at).getTime();
+      if (ts >= todayStartUTC && ts < todayEndUTC) {
+        todayClaimedCategories.add(t.resource_category);
+      }
+    }
+  }
+
   // Step 1: Check org ID, then show confirmation dialog
   const requestClaim = async (resourceId: string, resourceTitle: string, resourceCategory: string) => {
     if (!user) {
@@ -528,9 +547,9 @@ export default function Resources() {
       case "plugins":
         return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <PluginCard key={r.id} r={r} />)}</div>;
       case "extensions":
-        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <ExtensionCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} todayClaimed={todayClaimedCategories.has("extensions")} />)}</div>;
       case "templates":
-        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} />)}</div>;
+        return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(r => <TemplateCard key={r.id} r={r} onClaim={requestClaim} claiming={claiming} trialRecord={trialMap.get(r.id)} todayClaimed={todayClaimedCategories.has("templates")} />)}</div>;
       case "videos":
         return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{filtered.map(r => <VideoCard key={r.id} r={r} />)}</div>;
       default:

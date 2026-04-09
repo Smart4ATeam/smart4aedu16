@@ -92,21 +92,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Check if already claimed this resource
-    const { count: existingCount } = await adminClient
-      .from("resource_trials")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("resource_id", resource_id);
-
-    if (existingCount && existingCount > 0) {
-      return new Response(JSON.stringify({ error: "您已領用過此資源" }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 4. Check daily limit (1 per category per day, Taiwan time UTC+8)
+    // 3. Check daily limit (1 per category per day, Taiwan time UTC+8)
     const now = new Date();
     const taiwanOffset = 8 * 60 * 60 * 1000;
     const taiwanNow = new Date(now.getTime() + taiwanOffset);
