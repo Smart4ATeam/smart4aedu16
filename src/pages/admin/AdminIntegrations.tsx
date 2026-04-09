@@ -502,6 +502,49 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   );
 }
 
+function WebhookUrlSetting() {
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase.from("system_settings").select("value").eq("key_name", "trial_webhook_url").maybeSingle().then(({ data }) => {
+      if (data) setUrl(data.value);
+      setLoaded(true);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key_name", "trial_webhook_url").maybeSingle();
+    const trimmed = url.trim();
+    if (existing) {
+      const { error } = await supabase.from("system_settings").update({ value: trimmed }).eq("key_name", "trial_webhook_url");
+      if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
+    } else {
+      const { error } = await supabase.from("system_settings").insert({ key_name: "trial_webhook_url", value: trimmed, description: "資源試用領用 Webhook URL" });
+      if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
+    }
+    toast.success("Webhook URL 已儲存");
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-foreground">Webhook URL 設定</p>
+      <p className="text-xs text-muted-foreground">學員領用試用資源時，系統會自動 POST 到此 URL</p>
+      <div className="flex gap-2">
+        <Input placeholder="https://hook.example.com/trial" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1 text-xs" />
+        <Button onClick={handleSave} disabled={saving} size="sm" className="gap-1.5">
+          <Save className="w-3.5 h-3.5" /> {saving ? "儲存中..." : "儲存"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
