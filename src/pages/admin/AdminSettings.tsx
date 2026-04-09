@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Trash2, Calendar } from "lucide-react";
+import ImportCalendarEvents from "@/components/admin/ImportCalendarEvents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -74,8 +75,11 @@ const AdminSettings = () => {
 
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-sm font-semibold text-foreground">全域行事曆活動</h3>
+        <div className="flex justify-between items-start gap-4 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">全域行事曆活動</h3>
+            <ImportCalendarEvents onComplete={fetchEvents} />
+          </div>
           <Button onClick={() => setShowDialog(true)} className="gap-2"><Plus className="w-4 h-4" /> 新增活動</Button>
         </div>
 
