@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      data: { trial_id: data.id, message: "API Key 已更新" },
+      data: { trial_id: data.id, message: "API Key 已更新", key: api_key },
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

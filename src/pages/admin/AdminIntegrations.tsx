@@ -311,7 +311,7 @@ const endpoints: ApiEndpoint[] = [
     ],
     optionalFields: [],
     exampleBody: { trial_id: "uuid-xxx", api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx" },
-    exampleResponse: { success: true, data: { trial_id: "uuid-xxx", message: "API Key 已更新" } },
+    exampleResponse: { success: true, data: { trial_id: "uuid-xxx", message: "API Key 已更新", key: "sk-xxxxxxxxxxxxxxxxxxxxxxxx" } },
     extraExamples: [
       {
         title: "系統發送的 Webhook Payload 範例（您的系統會收到）",
