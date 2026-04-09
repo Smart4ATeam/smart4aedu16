@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -337,6 +337,9 @@ const AdminContent = () => {
   const [trials, setTrials] = useState<any[]>([]);
   const [trialsLoading, setTrialsLoading] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterAuthor, setFilterAuthor] = useState("all");
 
   const fetchAll = async () => {
     const [resResult, scResult] = await Promise.all([
@@ -570,6 +573,35 @@ const AdminContent = () => {
         </TabsList>
 
         <TabsContent value="resources">
+      {/* Search & Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            className="pl-9 h-9 text-sm"
+            placeholder="搜尋資源名稱..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[120px] h-9 text-sm"><SelectValue placeholder="分類" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部分類</SelectItem>
+            {categoryOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAuthor} onValueChange={setFilterAuthor}>
+          <SelectTrigger className="w-[140px] h-9 text-sm"><SelectValue placeholder="作者" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部作者</SelectItem>
+            {[...new Set(resources.map((r) => r.author).filter(Boolean))].sort().map((a) => (
+              <SelectItem key={a} value={a}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={() => setShowSubCatDialog(true)} className="gap-2"><Settings2 className="w-4 h-4" /> 子分類管理</Button>
         <Button variant="outline" onClick={() => setShowBatchDialog(true)} className="gap-2"><Upload className="w-4 h-4" /> 批次上傳</Button>
@@ -712,32 +744,40 @@ const AdminContent = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {resources.map((r) =>
-            <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.title}</TableCell>
-                <TableCell><Badge variant="outline">{categoryLabel[r.category] || r.category}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{r.author || "—"}</TableCell>
-                <TableCell><Badge variant="secondary" className="text-[10px]">v{r.version || "—"}</Badge></TableCell>
-                <TableCell>
-                  {r.trial_enabled ? <Badge className="text-[10px]">🧪 開放</Badge> : <span className="text-xs text-muted-foreground">—</span>}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-xs"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</div>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                  {r.download_url ?
-                <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
-                "—"}
-                </TableCell>
-                <TableCell className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                </TableCell>
-              </TableRow>
-            )}
-            {resources.length === 0 &&
-            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無資源</TableCell></TableRow>
-            }
+            {(() => {
+              const filtered = resources.filter((r) => {
+                const q = searchQuery.toLowerCase();
+                if (q && !r.title?.toLowerCase().includes(q)) return false;
+                if (filterCategory !== "all" && r.category !== filterCategory) return false;
+                if (filterAuthor !== "all" && r.author !== filterAuthor) return false;
+                return true;
+              });
+              return filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">無符合條件的資源</TableCell></TableRow>
+              ) : filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.title}</TableCell>
+                  <TableCell><Badge variant="outline">{categoryLabel[r.category] || r.category}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{r.author || "—"}</TableCell>
+                  <TableCell><Badge variant="secondary" className="text-[10px]">v{r.version || "—"}</Badge></TableCell>
+                  <TableCell>
+                    {r.trial_enabled ? <Badge className="text-[10px]">🧪 開放</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-xs"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                    {r.download_url ?
+                      <a href={r.download_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{r.download_url}</a> :
+                      "—"}
+                  </TableCell>
+                  <TableCell className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(r.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </TableCell>
+                </TableRow>
+              ));
+            })()}
           </TableBody>
         </Table>
       </motion.div>
