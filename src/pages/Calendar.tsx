@@ -160,15 +160,24 @@ const Calendar = () => {
                   {day}
                 </span>
                 <div className="mt-1 space-y-1">
-                  {dayEvents.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className={`text-[9px] px-1.5 py-0.5 rounded ${ev.color} text-primary-foreground truncate`}
-                      title={ev.description || ev.title}
-                    >
-                      {ev.title}
-                    </div>
-                  ))}
+                  {dayEvents.map((ev) => {
+                    const colorMap: Record<string, string> = {
+                      "gradient-orange": "bg-accent/15 text-accent border border-accent/20",
+                      "gradient-purple": "bg-secondary/15 text-secondary border border-secondary/20",
+                      "gradient-lime": "bg-success/15 text-success border border-success/20",
+                      "gradient-cyan": "bg-chart-cyan/15 text-chart-cyan border border-chart-cyan/20",
+                    };
+                    const colorClass = colorMap[ev.color] || colorMap["gradient-orange"];
+                    return (
+                      <div
+                        key={ev.id}
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${colorClass}`}
+                        title={ev.description || ev.title}
+                      >
+                        {ev.title}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -198,7 +207,12 @@ const Calendar = () => {
           ) : (
             upcomingEvents.map((ev) => (
               <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                <div className={`w-2 h-2 rounded-full ${ev.color}`} />
+                <div className={`w-2 h-2 rounded-full ${
+                  ev.color === "gradient-purple" ? "bg-secondary" :
+                  ev.color === "gradient-lime" ? "bg-success" :
+                  ev.color === "gradient-cyan" ? "bg-chart-cyan" :
+                  "bg-accent"
+                }`} />
                 <div className="flex-1">
                   <p className="text-xs font-medium text-foreground">{ev.title}</p>
                   <p className="text-[10px] text-muted-foreground">
@@ -225,9 +239,18 @@ const Calendar = () => {
             <Select value={newEvent.color} onValueChange={(v) => setNewEvent({ ...newEvent, color: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="gradient-orange">橘色</SelectItem>
-                <SelectItem value="gradient-purple">紫色</SelectItem>
-                <SelectItem value="gradient-lime">綠色</SelectItem>
+                <SelectItem value="gradient-orange">
+                  <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-accent" />金琥珀</span>
+                </SelectItem>
+                <SelectItem value="gradient-purple">
+                  <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-secondary" />鋼藍灰</span>
+                </SelectItem>
+                <SelectItem value="gradient-lime">
+                  <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-success" />青綠色</span>
+                </SelectItem>
+                <SelectItem value="gradient-cyan">
+                  <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-chart-cyan" />鋼鐵藍</span>
+                </SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-3">
