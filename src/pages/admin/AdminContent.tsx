@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -292,6 +293,30 @@ function DynamicFields({ res, onChange, subCategories
 
 }
 
+/* ─── Admin API Key Cell ─── */
+
+function AdminApiKeyCell({ apiKey }: { apiKey: string | null }) {
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!apiKey) return <span className="text-muted-foreground">等待中...</span>;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[10px]">{visible ? apiKey : "••••••••"}</span>
+      <button onClick={() => setVisible(!visible)} className="p-0.5 hover:text-primary">
+        {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      </button>
+      <button onClick={handleCopy} className="p-0.5 hover:text-primary">
+        {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+}
+
 /* ─── Main ─── */
 
 const AdminContent = () => {
@@ -308,6 +333,10 @@ const AdminContent = () => {
   const [batchRows, setBatchRows] = useState<NewResource[]>([emptyResource(), emptyResource(), emptyResource()]);
   const [batchUploading, setBatchUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminTab, setAdminTab] = useState("resources");
+  const [trials, setTrials] = useState<any[]>([]);
+  const [trialsLoading, setTrialsLoading] = useState(false);
+  const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
 
   const fetchAll = async () => {
     const [resResult, scResult] = await Promise.all([
@@ -320,6 +349,29 @@ const AdminContent = () => {
   };
 
   useEffect(() => {fetchAll();}, []);
+
+  const fetchTrials = async () => {
+    setTrialsLoading(true);
+    const { data } = await supabase
+      .from("resource_trials")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) {
+      setTrials(data);
+      // Fetch profiles for all unique user_ids
+      const userIds = [...new Set(data.map((t: any) => t.user_id))];
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, display_name, email, student_id")
+          .in("id", userIds);
+        if (profs) setProfiles(new Map(profs.map((p: any) => [p.id, p])));
+      }
+    }
+    setTrialsLoading(false);
+  };
+
+  useEffect(() => { if (adminTab === "trials") fetchTrials(); }, [adminTab]);
 
   const buildInsertPayload = (r: NewResource) => ({
     title: r.title.trim(),
@@ -511,6 +563,13 @@ const AdminContent = () => {
         <p className="text-sm text-muted-foreground mt-1">管理所有學習資源，上架供學員瀏覽與使用</p>
       </motion.div>
 
+      <Tabs value={adminTab} onValueChange={setAdminTab}>
+        <TabsList>
+          <TabsTrigger value="resources">📦 資源列表</TabsTrigger>
+          <TabsTrigger value="trials">🧪 試用紀錄</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="resources">
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={() => setShowSubCatDialog(true)} className="gap-2"><Settings2 className="w-4 h-4" /> 子分類管理</Button>
         <Button variant="outline" onClick={() => setShowBatchDialog(true)} className="gap-2"><Upload className="w-4 h-4" /> 批次上傳</Button>
@@ -682,6 +741,61 @@ const AdminContent = () => {
           </TableBody>
         </Table>
       </motion.div>
+        </TabsContent>
+
+        <TabsContent value="trials">
+          <div className="mt-4">
+            {trialsLoading ? (
+              <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : trials.length === 0 ? (
+              <div className="glass-card p-8 text-center text-muted-foreground">尚無試用紀錄</div>
+            ) : (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="glass-card p-5">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>學員</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>資源名稱</TableHead>
+                      <TableHead>分類</TableHead>
+                      <TableHead>組織編號</TableHead>
+                      <TableHead>APP ID</TableHead>
+                      <TableHead>狀態</TableHead>
+                      <TableHead>API Key</TableHead>
+                      <TableHead>領用時間</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trials.map((t: any) => {
+                      const prof = profiles.get(t.user_id);
+                      const res = resources.find((r) => r.id === t.resource_id);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium text-xs">{prof?.display_name || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{prof?.email || "—"}</TableCell>
+                          <TableCell className="text-xs">{res?.title || t.resource_id.slice(0, 8)}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel[t.resource_category] || t.resource_category}</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{t.organization_id}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{t.app_id}</TableCell>
+                          <TableCell>
+                            <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
+                              {t.webhook_status === "completed" ? "✅ 已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <AdminApiKeyCell apiKey={t.api_key} />
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleString("zh-TW")}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </motion.div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>);
 
 };
