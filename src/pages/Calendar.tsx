@@ -162,10 +162,10 @@ const Calendar = () => {
                 <div className="mt-1 space-y-1">
                   {dayEvents.map((ev) => {
                     const colorMap: Record<string, string> = {
-                      "gradient-orange": "bg-accent/15 text-accent border border-accent/20",
-                      "gradient-purple": "bg-secondary/15 text-secondary border border-secondary/20",
-                      "gradient-lime": "bg-success/15 text-success border border-success/20",
-                      "gradient-cyan": "bg-chart-cyan/15 text-chart-cyan border border-chart-cyan/20",
+                      "gradient-orange": "bg-accent/15 text-[hsl(37,58%,38%)] dark:text-accent border border-accent/20",
+                      "gradient-purple": "bg-secondary/15 text-[hsl(210,18%,45%)] dark:text-secondary border border-secondary/20",
+                      "gradient-lime": "bg-success/15 text-[hsl(168,42%,30%)] dark:text-success border border-success/20",
+                      "gradient-cyan": "bg-chart-cyan/15 text-[hsl(200,35%,38%)] dark:text-chart-cyan border border-chart-cyan/20",
                     };
                     const colorClass = colorMap[ev.color] || colorMap["gradient-orange"];
                     return (
