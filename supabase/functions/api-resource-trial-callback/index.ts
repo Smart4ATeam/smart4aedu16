@@ -50,6 +50,47 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Send notification to the student's message center
+    try {
+      // Get resource title
+      const { data: resource } = await adminClient
+        .from("resources")
+        .select("title")
+        .eq("id", data.resource_id)
+        .single();
+
+      const resourceTitle = resource?.title || "資源";
+
+      // Create conversation
+      const { data: conversation, error: convErr } = await adminClient
+        .from("conversations")
+        .insert({
+          title: `🔑 ${resourceTitle} 金鑰已到`,
+          category: "system",
+        })
+        .select("id")
+        .single();
+
+      if (conversation && !convErr) {
+        // Insert system message
+        await adminClient.from("messages").insert({
+          conversation_id: conversation.id,
+          content: `您領用的「${resourceTitle}」已收到 API Key，請至資源中心「我的試用」分頁查看。`,
+          is_system: true,
+          sender_id: null,
+        });
+
+        // Add student as participant
+        await adminClient.from("conversation_participants").insert({
+          conversation_id: conversation.id,
+          user_id: data.user_id,
+          unread: true,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to send notification:", e);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       data: { trial_id: data.id, message: "API Key 已更新", key: api_key },
