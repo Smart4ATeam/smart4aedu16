@@ -266,28 +266,8 @@ export default function Settings() {
         </FieldGroup>
       </SectionCard>
 
-      {/* 平台連線設定 */}
-      <SectionCard icon={<Link className="w-5 h-5 text-primary" />} title="平台連線設定">
-        <FieldGroup label="Webhook URL">
-          <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} className="bg-muted border-border" />
-          <p className="text-xs text-muted-foreground mt-1">請輸入 Smart4A 提供的完整 Webhook URL，用於同步學習資料</p>
-        </FieldGroup>
-        <ToggleRow title="自動同步學習進度" desc="開啟後會自動將您的學習進度同步至雲端" checked={autoSync} onChange={setAutoSync} />
 
-        <Button variant="outline" className="w-full mt-2 border-warning/50 text-warning hover:bg-warning/10">
-          🔧 測試連線
-        </Button>
-      </SectionCard>
 
-      {/* 數據管理 */}
-      <SectionCard icon={<BarChart3 className="w-5 h-5 text-primary" />} title="數據管理">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">📤 匯出學習資料</Button>
-          <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">🔄 同步雲端資料</Button>
-          <Button variant="outline" className="text-muted-foreground hover:text-foreground">🗑 清除快取</Button>
-          <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10">⚠ 重置所有設定</Button>
-        </div>
-      </SectionCard>
 
       {/* 關於 */}
       <SectionCard icon={<Info className="w-5 h-5 text-chart-cyan" />} title="關於">
