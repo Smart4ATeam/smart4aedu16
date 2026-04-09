@@ -544,12 +544,8 @@ export default function AdminIntegrations() {
           <div className="w-1 h-5 rounded-full bg-accent" />
           <h2 className="text-sm font-semibold text-foreground">🔗 資源試用 Webhook 串接說明</h2>
         </div>
-        <div className="text-xs text-muted-foreground space-y-3">
-          <div>
-            <p className="font-medium text-foreground mb-1">Webhook URL 設定</p>
-            <p>請至「管理設定」頁面，在系統設定中配置 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">trial_webhook_url</code>。學員領用試用資源時，系統會自動 POST 到此 URL。</p>
-          </div>
-
+        <WebhookUrlSetting />
+        <div className="text-xs text-muted-foreground space-y-3 mt-4">
           <div>
             <p className="font-medium text-foreground mb-1">系統發送的 Webhook Payload</p>
             <p className="mb-1">當學員按下「領用試用」後，系統會發送以下 JSON 到您設定的 Webhook URL：</p>
@@ -569,7 +565,7 @@ export default function AdminIntegrations() {
             <p className="font-medium text-foreground mb-1">完整串接流程</p>
             <div className="space-y-1 pl-2">
               <p>1️⃣ 學員在資源中心點擊「領用試用」→ 系統確認組織編號與每日額度</p>
-              <p>2️⃣ 系統建立 <code className="px-1 py-0.5 rounded bg-muted font-mono">resource_trials</code> 記錄，並 POST Webhook Payload 至您的 URL</p>
+              <p>2️⃣ 系統建立 <code className="px-1 py-0.5 rounded bg-muted font-mono">resource_trials</code> 記錄，並 POST Webhook Payload 至上方設定的 URL</p>
               <p>3️⃣ 您的系統收到 Payload 後，根據 <code className="px-1 py-0.5 rounded bg-muted font-mono">app_id</code> 與 <code className="px-1 py-0.5 rounded bg-muted font-mono">organization_id</code> 產生 API Key</p>
               <p>4️⃣ 呼叫 <code className="px-1 py-0.5 rounded bg-muted text-primary font-mono">POST /api-resource-trial-callback</code> 回傳金鑰：</p>
             </div>
