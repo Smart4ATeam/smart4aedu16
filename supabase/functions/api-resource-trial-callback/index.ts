@@ -50,42 +50,52 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send notification to the student's message center
+    // Send notification to the student's message center (respecting notification settings)
     try {
-      // Get resource title
-      const { data: resource } = await adminClient
-        .from("resources")
-        .select("title")
-        .eq("id", data.resource_id)
+      // Check user's notification settings
+      const { data: notifSettings } = await adminClient
+        .from("notification_settings")
+        .select("show_success")
+        .eq("user_id", data.user_id)
         .single();
 
-      const resourceTitle = resource?.title || "資源";
+      // Only send if show_success is enabled (default true if no settings found)
+      const shouldNotify = notifSettings?.show_success !== false;
 
-      // Create conversation
-      const { data: conversation, error: convErr } = await adminClient
-        .from("conversations")
-        .insert({
-          title: `🔑 ${resourceTitle} 金鑰已到`,
-          category: "system",
-        })
-        .select("id")
-        .single();
+      if (shouldNotify) {
+        // Get resource title
+        const { data: resource } = await adminClient
+          .from("resources")
+          .select("title")
+          .eq("id", data.resource_id)
+          .single();
 
-      if (conversation && !convErr) {
-        // Insert system message
-        await adminClient.from("messages").insert({
-          conversation_id: conversation.id,
-          content: `您領用的「${resourceTitle}」已收到 API Key，請至資源中心「我的試用」分頁查看。`,
-          is_system: true,
-          sender_id: null,
-        });
+        const resourceTitle = resource?.title || "資源";
 
-        // Add student as participant
-        await adminClient.from("conversation_participants").insert({
-          conversation_id: conversation.id,
-          user_id: data.user_id,
-          unread: true,
-        });
+        // Create conversation
+        const { data: conversation, error: convErr } = await adminClient
+          .from("conversations")
+          .insert({
+            title: `🔑 ${resourceTitle} 金鑰已到`,
+            category: "system",
+          })
+          .select("id")
+          .single();
+
+        if (conversation && !convErr) {
+          await adminClient.from("messages").insert({
+            conversation_id: conversation.id,
+            content: `您領用的「${resourceTitle}」已收到 API Key，請至資源中心「我的試用」分頁查看。`,
+            is_system: true,
+            sender_id: null,
+          });
+
+          await adminClient.from("conversation_participants").insert({
+            conversation_id: conversation.id,
+            user_id: data.user_id,
+            unread: true,
+          });
+        }
       }
     } catch (e) {
       console.error("Failed to send notification:", e);
