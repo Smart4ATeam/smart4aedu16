@@ -150,7 +150,7 @@ const ImportCalendarEvents = ({ onComplete }: { onComplete: () => void }) => {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        CSV 欄位：title（必填）, event_date（必填，YYYY-MM-DD）, event_time（HH:MM）, description, color（gradient-orange/gradient-purple/gradient-lime）, is_global（true/false，預設 true）
+        CSV 欄位：title（必填）, event_date（必填，YYYY-MM-DD）, event_time（HH:MM）, description, color（gradient-orange/gradient-purple/gradient-lime/gradient-cyan）, is_global（true/false，預設 true）
       </div>
 
       {result && (

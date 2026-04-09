@@ -95,9 +95,18 @@ const AdminSettings = () => {
               <Select value={newEvent.color} onValueChange={(v) => setNewEvent({ ...newEvent, color: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gradient-orange">橘色</SelectItem>
-                  <SelectItem value="gradient-purple">紫色</SelectItem>
-                  <SelectItem value="gradient-lime">綠色</SelectItem>
+                  <SelectItem value="gradient-orange">
+                    <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-accent" />金琥珀</span>
+                  </SelectItem>
+                  <SelectItem value="gradient-purple">
+                    <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-secondary" />鋼藍灰</span>
+                  </SelectItem>
+                  <SelectItem value="gradient-lime">
+                    <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-success" />青綠色</span>
+                  </SelectItem>
+                  <SelectItem value="gradient-cyan">
+                    <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-chart-cyan" />鋼鐵藍</span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-3">
