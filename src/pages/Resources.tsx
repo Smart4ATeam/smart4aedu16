@@ -113,11 +113,16 @@ function TagList({ tags }: { tags?: string[] }) {
   );
 }
 
-function ThumbnailImage({ url }: { url?: string | null }) {
-  if (!url) return null;
+function CardThumbnail({ url, icon: Icon }: { url?: string | null; icon?: React.ElementType }) {
   return (
-    <div className="mb-4 -mx-6 -mt-6 overflow-hidden rounded-t-xl">
-      <img src={url} alt="" className="w-full h-40 object-cover" />
+    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted/50 flex items-center justify-center border border-border/50">
+      {url ? (
+        <img src={url} alt="" className="w-full h-full object-cover" />
+      ) : Icon ? (
+        <Icon className="w-8 h-8 text-muted-foreground/40" />
+      ) : (
+        <Package className="w-8 h-8 text-muted-foreground/40" />
+      )}
     </div>
   );
 }
@@ -169,19 +174,23 @@ function TrialButton({ r, onClaim, claiming, trialRecord }: {
 
 function PluginCard({ r }: { r: Resource }) {
   return (
-    <div className="glass-card p-6 border-l-4 border-l-primary">
-      <ThumbnailImage url={r.thumbnail_url} />
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
-          <p className="text-xs text-primary font-medium">{r.author || "—"}</p>
+    <div className="glass-card p-5">
+      <div className="flex gap-4 mb-4">
+        <CardThumbnail url={r.thumbnail_url} icon={Wrench} />
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-sm font-bold text-foreground leading-tight">{r.title}</h4>
+              <p className="text-[11px] text-primary font-medium mt-0.5">{r.author || "—"}</p>
+            </div>
+            <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded flex-shrink-0">v{r.version || "—"}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed line-clamp-2">{r.description}</p>
         </div>
-        <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">v{r.version || "—"}</span>
       </div>
-      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{r.description}</p>
       <TagList tags={r.tags} />
       <ResourceMeta r={r} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <ActionButton href={r.download_url} label="立即安裝" />
         {r.detail_url ? (
           <a href={r.detail_url} target="_blank" rel="noreferrer" className="border border-primary text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/10 transition text-center flex items-center justify-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> 詳細介紹</a>
@@ -198,22 +207,26 @@ function ExtensionCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onC
   const gridCols = 2 + (hasTrialBtn ? 1 : 0);
 
   return (
-    <div className="glass-card p-6 border-l-4 border-l-secondary">
-      <ThumbnailImage url={r.thumbnail_url} />
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
-          <p className="text-xs text-primary font-medium">{r.author || "—"}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
-          <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">v{r.version || "—"}</span>
+    <div className="glass-card p-5">
+      <div className="flex gap-4 mb-4">
+        <CardThumbnail url={r.thumbnail_url} icon={Puzzle} />
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-sm font-bold text-foreground leading-tight">{r.title}</h4>
+              <p className="text-[11px] text-primary font-medium mt-0.5">{r.author || "—"}</p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
+              <span className="text-[10px] text-primary font-mono bg-primary/10 px-2 py-0.5 rounded">v{r.version || "—"}</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed line-clamp-2">{r.description}</p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{r.description}</p>
       <TagList tags={r.tags} />
       <ResourceMeta r={r} />
-      <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+      <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
         <ActionButton href={r.download_url} label="安裝套件" />
         {r.detail_url ? (
           <a href={r.detail_url} target="_blank" rel="noreferrer" className="border border-primary text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/10 transition text-center flex items-center justify-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> 詳細介紹</a>
@@ -231,28 +244,32 @@ function TemplateCard({ r, onClaim, claiming, trialRecord }: { r: Resource; onCl
   const gridCols = hasTrialBtn ? 3 : 2;
 
   return (
-    <div className="glass-card p-6 border-l-4 border-l-primary">
-      <ThumbnailImage url={r.thumbnail_url} />
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h4 className="text-lg font-bold text-foreground">{r.title}</h4>
-          <p className="text-xs text-primary font-medium">{r.author || "—"}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
-          {r.industry_tag && (
-            <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">{r.industry_tag}</span>
-          )}
+    <div className="glass-card p-5">
+      <div className="flex gap-4 mb-4">
+        <CardThumbnail url={r.thumbnail_url} icon={LayoutTemplate} />
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-sm font-bold text-foreground leading-tight">{r.title}</h4>
+              <p className="text-[11px] text-primary font-medium mt-0.5">{r.author || "—"}</p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {r.trial_enabled && <Badge className="text-[10px]">🧪 可試用</Badge>}
+              {r.industry_tag && (
+                <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">{r.industry_tag}</span>
+              )}
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed line-clamp-2">{r.description}</p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{r.description}</p>
       <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-4 border-t border-border pt-3">
         {r.flow_count != null && <span>🔗 {r.flow_count} 個流程</span>}
         {r.usage_count != null && <span>👥 {r.usage_count} 次使用</span>}
         <span className="flex items-center gap-1"><Star className="w-3 h-3 text-primary" /> {Number(r.rating).toFixed(1)}</span>
         {r.is_hot && <span className="text-primary flex items-center gap-1"><Flame className="w-3 h-3" /> 熱門</span>}
       </div>
-      <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+      <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
         <ActionButton href={r.download_url} label="使用範本" />
         {r.detail_url ? (
           <a href={r.detail_url} target="_blank" rel="noreferrer" className="border border-primary text-primary py-2 rounded-lg text-xs font-bold hover:bg-primary/10 transition text-center flex items-center justify-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> 預覽流程</a>
