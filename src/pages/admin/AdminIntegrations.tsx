@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApiKeyManager } from "@/components/admin/ApiKeyManager";
 import { IconBox } from "@/components/ui/icon-box";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const BASE_URL = "https://clwruolkostoirdwnnuy.supabase.co/functions/v1";
 
