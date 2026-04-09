@@ -717,6 +717,61 @@ const AdminContent = () => {
           </TableBody>
         </Table>
       </motion.div>
+        </TabsContent>
+
+        <TabsContent value="trials">
+          <div className="mt-4">
+            {trialsLoading ? (
+              <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : trials.length === 0 ? (
+              <div className="glass-card p-8 text-center text-muted-foreground">尚無試用紀錄</div>
+            ) : (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="glass-card p-5">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>學員</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>資源名稱</TableHead>
+                      <TableHead>分類</TableHead>
+                      <TableHead>組織編號</TableHead>
+                      <TableHead>APP ID</TableHead>
+                      <TableHead>狀態</TableHead>
+                      <TableHead>API Key</TableHead>
+                      <TableHead>領用時間</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {trials.map((t: any) => {
+                      const prof = profiles.get(t.user_id);
+                      const res = resources.find((r) => r.id === t.resource_id);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium text-xs">{prof?.display_name || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{prof?.email || "—"}</TableCell>
+                          <TableCell className="text-xs">{res?.title || t.resource_id.slice(0, 8)}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel[t.resource_category] || t.resource_category}</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{t.organization_id}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{t.app_id}</TableCell>
+                          <TableCell>
+                            <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
+                              {t.webhook_status === "completed" ? "✅ 已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <AdminApiKeyCell apiKey={t.api_key} />
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleString("zh-TW")}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </motion.div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>);
 
 };
