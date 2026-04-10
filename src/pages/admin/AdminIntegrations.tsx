@@ -385,7 +385,7 @@ const endpoints: ApiEndpoint[] = [
       total: 3,
       data: [
         {
-          enrollment_id: "uuid-xxx",
+          enrollment_id: "uuid-xxx", order_no: "ORD20250401001",
           member_name: "王小明", member_no: "SA26040001", member_phone: "0912345678", member_email: "ming@example.com",
           course_name: "入門課-設計流程", course_code: "beginner_01", course_category: "basic",
           session_date: "2026/04/16", status: "enrolled", payment_status: "paid", checked_in: true,
