@@ -411,23 +411,27 @@ const endpoints: ApiEndpoint[] = [
     method: "POST",
     path: "/api-reg-pre-notification",
     authType: "x-api-key (API_INTEGRATION_KEY)",
-    description: "根據訂單編號更新該訂單下所有報名明細的行前通知狀態（pre_notification_sent）。已取消的報名不會被更新。",
+    description: "根據訂單編號更新行前通知狀態。可搭配 member_no 指定更新單一學員，不帶則更新整張訂單所有人。已取消的報名不會被更新。",
     requiredFields: [
       { name: "order_no", type: "string", required: true, desc: "訂單編號（對應 reg_orders.order_no）" },
       { name: "pre_notification_sent", type: "boolean", required: true, desc: "行前通知狀態（true = 已發送）" },
     ],
-    optionalFields: [],
+    optionalFields: [
+      { name: "member_no", type: "string", desc: "學員編號（指定只更新該學員，不帶則更新整張訂單）" },
+    ],
     exampleBody: {
       order_no: "ORD20250401001",
+      member_no: "SA26040001",
       pre_notification_sent: true,
     },
     exampleResponse: {
       success: true,
       data: {
         order_no: "ORD20250401001",
+        member_no: "SA26040001",
         pre_notification_sent: true,
-        updated_count: 2,
-        message: "已更新 2 筆報名明細的行前通知狀態",
+        updated_count: 1,
+        message: "已更新 學員 SA26040001 共 1 筆報名明細的行前通知狀態",
       },
     },
   },
