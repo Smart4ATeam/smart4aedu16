@@ -392,6 +392,7 @@ const endpoints: ApiEndpoint[] = [
           is_retrain: false, enrolled_at: "2026-04-01T10:00:00Z", paid_at: "2026-04-08T14:30:00Z",
           invoice_title: "某某有限公司", dealer_id: "D001", referrer: "林老師",
           notes: null, test_score: 85, certificate: "CERT-001", points_awarded: 10,
+          pre_notification_sent: true,
         },
       ],
     },
@@ -401,6 +402,33 @@ const endpoints: ApiEndpoint[] = [
         body: { "說明": "GET 請求使用 Query Parameter，不需要 Body" },
       },
     ],
+  },
+  {
+    id: "api-reg-pre-notification",
+    name: "更新行前通知狀態",
+    icon: <Send className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-reg-pre-notification",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "根據訂單編號更新該訂單下所有報名明細的行前通知狀態（pre_notification_sent）。已取消的報名不會被更新。",
+    requiredFields: [
+      { name: "order_no", type: "string", required: true, desc: "訂單編號（對應 reg_orders.order_no）" },
+      { name: "pre_notification_sent", type: "boolean", required: true, desc: "行前通知狀態（true = 已發送）" },
+    ],
+    optionalFields: [],
+    exampleBody: {
+      order_no: "ORD20250401001",
+      pre_notification_sent: true,
+    },
+    exampleResponse: {
+      success: true,
+      data: {
+        order_no: "ORD20250401001",
+        pre_notification_sent: true,
+        updated_count: 2,
+        message: "已更新 2 筆報名明細的行前通知狀態",
+      },
+    },
   },
 ];
 
