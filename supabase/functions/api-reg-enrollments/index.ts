@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
       test_score: e.test_score,
       certificate: e.certificate,
       points_awarded: e.points_awarded,
+      pre_notification_sent: e.pre_notification_sent,
     }));
 
     return new Response(JSON.stringify({ success: true, data: results, total: results.length }), {
