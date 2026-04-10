@@ -378,6 +378,7 @@ const endpoints: ApiEndpoint[] = [
     ],
     optionalFields: [
       { name: "session_date", type: "string (query param)", desc: "上課日期（精確比對，如 2026/04/16）" },
+      { name: "pre_notification_sent", type: "string (query param)", desc: "行前通知篩選（true 或 false）" },
     ],
     exampleBody: {},
     exampleResponse: {
