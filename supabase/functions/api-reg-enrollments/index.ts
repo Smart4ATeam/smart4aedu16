@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
     // Flatten response for easier consumption
     const results = (data || []).map((e: any) => ({
       enrollment_id: e.id,
+      order_no: e.reg_orders?.order_no || null,
       member_name: e.reg_members?.name || null,
       member_no: e.reg_members?.member_no || null,
       member_phone: e.reg_members?.phone || null,
