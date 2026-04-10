@@ -673,6 +673,7 @@ function EnrollmentsTab() {
               <SortableHead label="上課日期" sortKey="session_date" sort={sort} onSort={onSort} className="w-28" />
               <SortableHead label="狀態" sortKey="status" sort={sort} onSort={onSort} className="w-20" />
               <SortableHead label="付款" sortKey="payment_status" sort={sort} onSort={onSort} className="w-20" />
+              <TableHead className="w-16 whitespace-nowrap text-xs">行前通知</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">出席</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">測驗</TableHead>
               <TableHead className="w-16 whitespace-nowrap text-xs">證書</TableHead>
@@ -683,9 +684,9 @@ function EnrollmentsTab() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : paged.length === 0 ? (
-              <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">尚無報名資料</TableCell></TableRow>
             ) : paged.map(e => (
               <TableRow key={e.id}>
                 <TableCell>
@@ -711,6 +712,7 @@ function EnrollmentsTab() {
                 </TableCell>
                 <TableCell>{statusBadge(e.status)}</TableCell>
                 <TableCell>{e.payment_status ? paymentBadge(e.payment_status) : "—"}</TableCell>
+                <TableCell className="text-center">{e.pre_notification_sent ? "✅" : "—"}</TableCell>
                 <TableCell className="text-center">{e.checked_in ? "✅" : "—"}</TableCell>
                 <TableCell className="text-center text-xs">{e.test_score != null ? e.test_score : "—"}</TableCell>
                 <TableCell className="text-center">{e.certificate ? "✅" : "—"}</TableCell>
