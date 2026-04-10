@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus } from "lucide-react";
+import { BookOpen, Users, Handshake, GraduationCap, CalendarDays, ClipboardCheck, Plus, Pencil, Trash2, FileText, ListPlus, Trophy } from "lucide-react";
 import { RegistrationTabs } from "@/components/admin/RegistrationTabs";
 import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 import { categoryLabels, categoryColors } from "@/lib/category-colors";
+import { AchievementsTab } from "@/components/admin/AchievementsTab";
 
 // ===== Stat Card =====
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) {
@@ -105,6 +106,7 @@ export default function AdminLearning() {
           <TabsTrigger value="instructors" className="gap-1.5"><GraduationCap className="w-3.5 h-3.5" />講師</TabsTrigger>
           <TabsTrigger value="enrollments" className="gap-1.5"><Users className="w-3.5 h-3.5" />報名與報到</TabsTrigger>
           <TabsTrigger value="quizzes" className="gap-1.5"><ClipboardCheck className="w-3.5 h-3.5" />測驗</TabsTrigger>
+          <TabsTrigger value="achievements" className="gap-1.5"><Trophy className="w-3.5 h-3.5" />成就勳章</TabsTrigger>
         </TabsList>
 
         {/* ===== Tab: Courses ===== */}
@@ -135,6 +137,10 @@ export default function AdminLearning() {
         {/* ===== Tab: Quizzes ===== */}
         <TabsContent value="quizzes">
           <QuizzesTab courses={courses} />
+        </TabsContent>
+
+        <TabsContent value="achievements">
+          <AchievementsTab />
         </TabsContent>
       </Tabs>
     </div>
