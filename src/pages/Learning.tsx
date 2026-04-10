@@ -199,8 +199,11 @@ export default function Learning() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-foreground truncate">{courseTitle}</h3>
-                      <Badge variant={enrollment.payment_status === "paid" ? "default" : "outline"} className="text-xs shrink-0">
-                        {enrollment.payment_status === "paid" ? "已繳費" : "待繳費"}
+                      <Badge
+                        variant={enrollment.status === "cancelled" ? "destructive" : enrollment.payment_status === "paid" ? "default" : "outline"}
+                        className="text-xs shrink-0"
+                      >
+                        {enrollment.status === "cancelled" ? "已取消" : enrollment.payment_status === "paid" ? "已繳費" : "待繳費"}
                       </Badge>
                       {enrollment.is_retrain && <Badge variant="secondary" className="text-xs">複訓</Badge>}
                     </div>
