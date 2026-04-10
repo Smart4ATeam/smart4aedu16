@@ -73,6 +73,12 @@ Deno.serve(async (req) => {
       query = query.eq("session_date", sessionDate);
     }
 
+    // Filter by pre_notification_sent
+    const preNotification = url.searchParams.get("pre_notification_sent");
+    if (preNotification !== null) {
+      query = query.eq("pre_notification_sent", preNotification === "true");
+    }
+
     // Only active enrollments
     query = query.neq("status", "cancelled");
     query = query.order("session_date", { ascending: true });
