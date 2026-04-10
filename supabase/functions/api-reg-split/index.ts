@@ -234,24 +234,26 @@ Deno.serve(async (req) => {
 
     if (enrollErr) throw enrollErr;
 
-    // 8. Auto-award points for each enrollment
+    // 8. Auto-award points for each enrollment (skip for retrain orders)
     const pointTxns: Record<string, unknown>[] = [];
-    for (const enrollment of (insertedEnrollments || [])) {
-      const course = courseMap.get(enrollment.course_id) as Record<string, unknown> | undefined;
-      const pts = (course?.enrollment_points as number) || 0;
-      if (pts > 0) {
-        pointTxns.push({
-          member_id: enrollment.member_id,
-          points_delta: pts,
-          type: "awarded",
-          description: `報名課程：${course?.title || ""}`,
-          order_id: order.id,
-        });
+    if (!order.is_retrain) {
+      for (const enrollment of (insertedEnrollments || [])) {
+        const course = courseMap.get(enrollment.course_id) as Record<string, unknown> | undefined;
+        const pts = (course?.enrollment_points as number) || 0;
+        if (pts > 0) {
+          pointTxns.push({
+            member_id: enrollment.member_id,
+            points_delta: pts,
+            type: "awarded",
+            description: `報名課程：${course?.title || ""}`,
+            order_id: order.id,
+          });
+        }
       }
-    }
-    if (pointTxns.length > 0) {
-      const { error: ptErr } = await adminClient.from("reg_point_transactions").insert(pointTxns);
-      if (ptErr) console.error("Points insert error:", ptErr);
+      if (pointTxns.length > 0) {
+        const { error: ptErr } = await adminClient.from("reg_point_transactions").insert(pointTxns);
+        if (ptErr) console.error("Points insert error:", ptErr);
+      }
     }
 
     // 8. Log operation
