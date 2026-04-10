@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { order_no, pre_notification_sent } = body;
+    const { order_no, member_no, pre_notification_sent } = body;
 
     if (!order_no) {
       return new Response(JSON.stringify({ error: "缺少必要欄位: order_no" }), {
@@ -64,25 +64,45 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update all enrollments under this order
-    const { data: updated, error: uErr } = await adminClient
+    // Build update query
+    let query = adminClient
       .from("reg_enrollments")
       .update({ pre_notification_sent })
       .eq("order_id", order.id)
-      .neq("status", "cancelled")
-      .select("id");
+      .neq("status", "cancelled");
 
+    // If member_no provided, only update that specific member
+    if (member_no) {
+      const { data: member, error: mErr } = await adminClient
+        .from("reg_members")
+        .select("id")
+        .eq("member_no", member_no)
+        .single();
+
+      if (mErr || !member) {
+        return new Response(JSON.stringify({ error: `找不到學員編號: ${member_no}` }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      query = query.eq("member_id", member.id);
+    }
+
+    const { data: updated, error: uErr } = await query.select("id");
     if (uErr) throw uErr;
 
     const count = updated?.length || 0;
+    const scope = member_no ? `學員 ${member_no}` : `整張訂單`;
 
     return new Response(JSON.stringify({
       success: true,
       data: {
         order_no,
+        member_no: member_no || null,
         pre_notification_sent,
         updated_count: count,
-        message: `已更新 ${count} 筆報名明細的行前通知狀態`,
+        message: `已更新 ${scope} 共 ${count} 筆報名明細的行前通知狀態`,
       },
     }), {
       status: 200,
