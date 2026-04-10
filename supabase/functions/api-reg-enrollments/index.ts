@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Build query
     let query = adminClient
       .from("reg_enrollments")
-      .select("*, reg_members(id, member_no, name, phone, email), courses(id, course_code, title, category)");
+      .select("*, reg_members(id, member_no, name, phone, email), courses(id, course_code, title, category), reg_orders(order_no)");
 
     // Filter by course_name (fuzzy match via course lookup)
     if (courseName) {
@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
     // Flatten response for easier consumption
     const results = (data || []).map((e: any) => ({
       enrollment_id: e.id,
+      order_no: e.reg_orders?.order_no || null,
       member_name: e.reg_members?.name || null,
       member_no: e.reg_members?.member_no || null,
       member_phone: e.reg_members?.phone || null,
