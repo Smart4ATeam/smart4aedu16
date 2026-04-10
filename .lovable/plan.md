@@ -1,74 +1,58 @@
 
 
-# 三項調整計畫
+## Plan: 建立成就勳章管理機制
 
-## 1. 新增兩個查詢 API + 文件更新
+### 目標
+在管理後台的「學習中心」頁面新增「成就勳章」分頁，提供完整的 CRUD 管理功能，包括管理成就定義、查看學員獲得紀錄，以及手動頒發/撤銷勳章。
 
-### 1A. Edge Function: `api-reg-order` 擴充 GET 查詢
-在現有 `api-reg-order/index.ts` 中加入 GET 方法支援：
-- **GET** `?order_no=ORD20250401001` → 回傳該筆訂單完整資料（所有欄位：p1~p3 姓名/電話/email、金額、付款方式/狀態、發票相關所有欄位、備註、經銷商、推薦人、課程快照、上課日期等）
-- 驗證 `x-api-key`，找不到回 404
+### 功能範圍
 
-### 1B. 新建 Edge Function: `api-reg-enrollments`
-- **GET** `?course_name=入門課-設計流程&session_date=2026/04/16`
-- 以 `course_name` 模糊比對 `courses.title`，`session_date` 精確比對 `reg_enrollments.session_date`
-- 回傳所有符合的報名明細，包含學員完整資料（姓名、學員編號、電話、email）、課程名稱、上課日期、報名狀態、付款狀態、報到狀態等
-- 驗證 `x-api-key`
-- 在 `supabase/config.toml` 加入 `[functions.api-reg-enrollments]` verify_jwt = false
+**1. 成就定義管理 (CRUD)**
+- 列表顯示所有成就（圖示、名稱、類別、描述）
+- 新增 / 編輯成就（名稱、圖示 emoji、類別、描述）
+- 刪除成就（含確認提示）
 
-### 1C. AdminIntegrations 文件更新
-在 `endpoints` 陣列中新增兩個端點定義：
-- **查詢報名訂單** (GET `/api-reg-order?order_no=...`)
-- **查詢報名明細** (GET `/api-reg-enrollments?course_name=...&session_date=...`)
+**2. 學員勳章紀錄查看**
+- 顯示已頒發的勳章記錄（學員名稱、成就名稱、獲得時間）
 
-含完整的 requiredFields、optionalFields、exampleResponse
+**3. 手動頒發 / 撤銷勳章**
+- 選擇學員 + 選擇成就 → 手動頒發
+- 從紀錄中撤銷已頒發的勳章
+- 頒發時自動更新 `profiles.total_badges` 計數
 
----
+### 技術細節
 
-## 2. 報名明細日期篩選器 — 依課程動態過濾
+**修改檔案：**
+- `src/pages/admin/AdminLearning.tsx` — 新增 `TabsTrigger` "成就勳章" 與對應的 `AchievementsTab` 組件
 
-**檔案**: `src/components/admin/RegistrationTabs.tsx` EnrollmentsTab
+**AchievementsTab 組件內容：**
+- 上半部：成就定義表格 + 新增/編輯/刪除 Dialog
+- 下半部：已頒發紀錄表格 + 手動頒發 Dialog + 撤銷按鈕
+- 使用 `@tanstack/react-query` 管理資料，與現有 Tab 風格一致
+- 類別選項：learning, automation, task, community, revenue（對應現有資料）
+- 撤銷勳章時透過 Supabase 刪除 `user_achievements` 記錄，`on_achievement_earned` trigger 會自動更新 `total_badges`
 
-目前 `uniqueDates` 從所有 enrollments 取得所有日期。改為：
-- 當 `selectedCourse !== "all"` 時，只從該課程的 enrollments 中提取日期選項
-- 切換課程頁籤時，自動重設 `selectedDate` 為 `"all"`
+**需新增 trigger：** 目前 `on_achievement_earned` 只在 INSERT 時觸發，需補一個 DELETE trigger 來扣減 `total_badges`。
 
-修改 `uniqueDates` 的 useMemo，加入 `selectedCourse` 依賴：
+**資料庫遷移 (1 筆)：**
+```sql
+CREATE OR REPLACE FUNCTION public.on_achievement_removed()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public' AS $$
+BEGIN
+  UPDATE public.profiles
+  SET total_badges = (SELECT COUNT(*) FROM public.user_achievements WHERE user_id = OLD.user_id)
+  WHERE id = OLD.user_id;
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER trg_achievement_removed
+AFTER DELETE ON public.user_achievements
+FOR EACH ROW EXECUTE FUNCTION public.on_achievement_removed();
 ```
-const uniqueDates = useMemo(() => {
-  const source = selectedCourse === "all" 
-    ? enrollments 
-    : enrollments.filter(e => e.course_id === selectedCourse);
-  const dates = new Set<string>();
-  source.forEach(e => { if (e.session_date) dates.add(e.session_date); });
-  return [...dates].sort();
-}, [enrollments, selectedCourse]);
-```
 
-並在課程選擇的 `onValueChange` 中加入 `setSelectedDate("all")`。
-
----
-
-## 3. 訂單詳情 — 備註加標題 + 可編輯
-
-**檔案**: `src/components/admin/RegistrationTabs.tsx` OrdersTab
-
-目前備註區塊（約第 408-412 行）：
-- 加上小標 `<p className="text-xs font-medium mb-1">備註</p>`
-- 改為始終顯示（即使 notes 為空也顯示）
-- 用 `Textarea` 取代純文字顯示，讓備註可編輯
-- 新增 state: `editNotes`，在 `openOrderDetail` 時初始化
-- 新增儲存按鈕，update `reg_orders.notes` 並記錄 `reg_operation_logs`
-
----
-
-## 涉及的檔案
-
-| 檔案 | 操作 |
-|---|---|
-| `supabase/functions/api-reg-order/index.ts` | 加入 GET 查詢 |
-| `supabase/functions/api-reg-enrollments/index.ts` | 新建 |
-| `supabase/config.toml` | 加入新 function 設定 |
-| `src/pages/admin/AdminIntegrations.tsx` | 新增 2 個端點文件 |
-| `src/components/admin/RegistrationTabs.tsx` | 日期篩選邏輯 + 備註編輯 |
+### 不涉及的部分
+- 不修改學員端顯示邏輯（`AchievementSection.tsx` 維持不變）
+- 不修改 RLS 政策（現有 admin ALL 政策已足夠）
 
