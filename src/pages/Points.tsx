@@ -52,8 +52,9 @@ export default function Points() {
     manual: "手動發放",
     awarded: "課程給點",
     redeemed: "兌換扣點",
-    adjusted: "手動調整",
+    adjusted: "調整",
     referral: "推薦獎勵",
+    cancelled: "取消扣回",
   };
 
   const isLoading = memberLoading || txLoading;
