@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Build query
     let query = adminClient
       .from("reg_enrollments")
-      .select("*, reg_members(id, member_no, name, phone, email), courses(id, course_code, title, category)");
+      .select("*, reg_members(id, member_no, name, phone, email), courses(id, course_code, title, category), reg_orders(order_no)");
 
     // Filter by course_name (fuzzy match via course lookup)
     if (courseName) {
