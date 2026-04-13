@@ -1,0 +1,1 @@
+DELETE FROM public.resource_trials WHERE id = '24f23651-0e39-47e0-a049-1d94c90beda8';
