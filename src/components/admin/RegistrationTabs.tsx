@@ -729,6 +729,7 @@ function EnrollmentsTab() {
   const filtered = enrollments.filter(e => {
     if (selectedCourse !== "all" && e.course_id !== selectedCourse) return false;
     if (selectedDate !== "all" && e.session_date !== selectedDate) return false;
+    if (selectedStatus !== "all" && e.status !== selectedStatus) return false;
     if (search) {
       const s = search.toLowerCase();
       const memberName = (e.reg_members as any)?.name?.toLowerCase() || "";
