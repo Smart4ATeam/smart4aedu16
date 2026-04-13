@@ -498,29 +498,52 @@ function OrdersTab() {
                 <div><span className="text-muted-foreground">折扣方案：</span>{selectedOrder.discount_plan || "—"}</div>
                 <div><span className="text-muted-foreground">付款方式：</span>{selectedOrder.payment_method || "—"}</div>
                 <div><span className="text-muted-foreground">付款狀態：</span>{paymentBadge(selectedOrder.payment_status)}</div>
+                <div><span className="text-muted-foreground">付款時間：</span>{selectedOrder.paid_at ? new Date(selectedOrder.paid_at).toLocaleString("zh-TW") : "—"}</div>
                 <div><span className="text-muted-foreground">經銷商：</span>{selectedOrder.dealer_id || "—"}</div>
-                <div><span className="text-muted-foreground">發票抬頭：</span>{selectedOrder.invoice_title || "—"}</div>
-                <div><span className="text-muted-foreground">統一編號：</span>{selectedOrder.tax_id || "—"}</div>
                 <div><span className="text-muted-foreground">報名人數：</span>{selectedOrder.person_count || "—"}</div>
                 <div><span className="text-muted-foreground">推薦人：</span>{selectedOrder.referrer || "—"}</div>
                 <div><span className="text-muted-foreground">複訓：</span>{selectedOrder.is_retrain ? "是" : "否"}</div>
+                <div><span className="text-muted-foreground">建立時間：</span>{new Date(selectedOrder.created_at).toLocaleString("zh-TW")}</div>
               </div>
 
-              {/* 報名人員 - 完整顯示所有人的聯絡資訊 */}
-              <div className="border-t border-border pt-2">
-                <p className="text-xs font-medium mb-1">報名人員</p>
-                {[
-                  { name: selectedOrder.p1_name, phone: selectedOrder.p1_phone, email: selectedOrder.p1_email },
-                  { name: selectedOrder.p2_name, phone: selectedOrder.p2_phone, email: selectedOrder.p2_email },
-                  { name: selectedOrder.p3_name, phone: selectedOrder.p3_phone, email: selectedOrder.p3_email },
-                ].filter(p => p.name).map((p, i) => (
-                  <div key={i} className="text-xs text-muted-foreground">
-                    P{i + 1}: {p.name}
-                    {p.phone ? ` / ${p.phone}` : ""}
-                    {p.email ? ` / ${p.email}` : ""}
+              {/* 發票抬頭 / 統一編號 - 可編輯 */}
+              <div className="border-t border-border pt-2 space-y-2">
+                <p className="text-xs font-medium">發票資訊</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">發票抬頭</label>
+                    <Input value={editInvoiceTitle} onChange={e => setEditInvoiceTitle(e.target.value)} placeholder="發票抬頭" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">統一編號</label>
+                    <Input value={editTaxId} onChange={e => setEditTaxId(e.target.value)} placeholder="統一編號" className="h-8 text-xs" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 報名人員 - 可編輯 */}
+              <div className="border-t border-border pt-2 space-y-2">
+                <p className="text-xs font-medium">報名人員</p>
+                {editPersons.map((p, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">P{i + 1}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input value={p.name} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], name: e.target.value }; setEditPersons(arr); }} placeholder="姓名" className="h-8 text-xs" />
+                      <Input value={p.phone} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], phone: e.target.value }; setEditPersons(arr); }} placeholder="電話" className="h-8 text-xs" />
+                      <Input value={p.email} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], email: e.target.value }; setEditPersons(arr); }} placeholder="Email" className="h-8 text-xs" />
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {hasFieldChanges && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={saveFieldChanges} disabled={savingFields}>
+                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                    {savingFields ? "儲存中..." : "儲存訂單資訊"}
+                  </Button>
+                </div>
+              )}
 
               {/* 報名課程 */}
               {(() => {
