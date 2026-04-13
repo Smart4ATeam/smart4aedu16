@@ -183,12 +183,32 @@ function OrdersTab() {
   const [editNotes, setEditNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
+  // Editable fields for invoice & person info
+  const [editInvoiceTitle, setEditInvoiceTitle] = useState("");
+  const [editTaxId, setEditTaxId] = useState("");
+  const [editPersons, setEditPersons] = useState<{ name: string; phone: string; email: string }[]>([]);
+  const [savingFields, setSavingFields] = useState(false);
+
   const openOrderDetail = (o: RegOrder) => {
     setSelectedOrder(o);
     setEditInvoiceStatus(o.invoice_status);
     setEditInvoiceNumber(o.invoice_number || "");
     setEditReason("");
     setEditNotes(o.notes || "");
+    setEditInvoiceTitle(o.invoice_title || "");
+    setEditTaxId(o.tax_id || "");
+    const persons: { name: string; phone: string; email: string }[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const name = (o as any)[`p${i}_name`] || "";
+      if (name) {
+        persons.push({
+          name,
+          phone: (o as any)[`p${i}_phone`] || "",
+          email: (o as any)[`p${i}_email`] || "",
+        });
+      }
+    }
+    setEditPersons(persons);
   };
 
   const saveNotes = async () => {
@@ -294,6 +314,100 @@ function OrdersTab() {
     editInvoiceNumber !== (selectedOrder.invoice_number || "")
   );
 
+  // Check if editable fields have changed
+  const hasFieldChanges = selectedOrder && (
+    editInvoiceTitle !== (selectedOrder.invoice_title || "") ||
+    editTaxId !== (selectedOrder.tax_id || "") ||
+    editPersons.some((p, i) => {
+      const origName = (selectedOrder as any)[`p${i + 1}_name`] || "";
+      const origPhone = (selectedOrder as any)[`p${i + 1}_phone`] || "";
+      const origEmail = (selectedOrder as any)[`p${i + 1}_email`] || "";
+      return p.name !== origName || p.phone !== origPhone || p.email !== origEmail;
+    })
+  );
+
+  const saveFieldChanges = async () => {
+    if (!selectedOrder || !user) return;
+    setSavingFields(true);
+    try {
+      const updates: Record<string, any> = {
+        invoice_title: editInvoiceTitle || null,
+        tax_id: editTaxId || null,
+      };
+      for (let i = 0; i < 3; i++) {
+        const p = editPersons[i];
+        updates[`p${i + 1}_name`] = p?.name || null;
+        updates[`p${i + 1}_phone`] = p?.phone || null;
+        updates[`p${i + 1}_email`] = p?.email || null;
+      }
+
+      const oldValues: Record<string, any> = {
+        invoice_title: selectedOrder.invoice_title,
+        tax_id: selectedOrder.tax_id,
+      };
+      for (let i = 1; i <= 3; i++) {
+        oldValues[`p${i}_name`] = (selectedOrder as any)[`p${i}_name`];
+        oldValues[`p${i}_phone`] = (selectedOrder as any)[`p${i}_phone`];
+        oldValues[`p${i}_email`] = (selectedOrder as any)[`p${i}_email`];
+      }
+
+      const { error } = await supabase.from("reg_orders" as any).update(updates as any).eq("id", selectedOrder.id);
+      if (error) throw error;
+
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "order", entity_id: selectedOrder.id, action: "update_fields",
+        old_value: oldValues, new_value: updates,
+        reason: "更新訂單資訊", operated_by: user.id,
+      } as any);
+
+      // Cascade person changes to reg_members for paid orders
+      if (selectedOrder.payment_status === "paid") {
+        const { data: enrollments } = await supabase
+          .from("reg_enrollments" as any)
+          .select("id, member_id, reg_members(id, name, phone, email)")
+          .eq("order_id", selectedOrder.id) as any;
+
+        if (enrollments && enrollments.length > 0) {
+          for (let i = 0; i < editPersons.length; i++) {
+            const origName = (selectedOrder as any)[`p${i + 1}_name`] || "";
+            const newP = editPersons[i];
+            if (newP.name === origName && newP.phone === ((selectedOrder as any)[`p${i + 1}_phone`] || "") && newP.email === ((selectedOrder as any)[`p${i + 1}_email`] || "")) continue;
+
+            // Find matching member by original name
+            const matchedEnrollments = enrollments.filter((e: any) => e.reg_members?.name === origName);
+            for (const enrollment of matchedEnrollments) {
+              if (!enrollment.member_id) continue;
+              const memberUpdates: Record<string, any> = {};
+              if (newP.name !== origName) memberUpdates.name = newP.name;
+              if (newP.phone !== ((selectedOrder as any)[`p${i + 1}_phone`] || "")) memberUpdates.phone = newP.phone || null;
+              if (newP.email !== ((selectedOrder as any)[`p${i + 1}_email`] || "")) memberUpdates.email = newP.email || null;
+
+              if (Object.keys(memberUpdates).length > 0) {
+                const { error: memberErr } = await supabase.from("reg_members" as any).update(memberUpdates as any).eq("id", enrollment.member_id);
+                if (memberErr) console.error("Cascade update member error:", memberErr);
+
+                await supabase.from("reg_operation_logs" as any).insert({
+                  entity_type: "member", entity_id: enrollment.member_id, action: "cascade_update",
+                  old_value: { name: enrollment.reg_members?.name, phone: enrollment.reg_members?.phone, email: enrollment.reg_members?.email },
+                  new_value: memberUpdates,
+                  reason: `訂單 ${selectedOrder.order_no} 人員資料異動連動更新`, operated_by: user.id,
+                } as any);
+              }
+            }
+          }
+        }
+      }
+
+      toast.success("訂單資訊已更新");
+      queryClient.invalidateQueries({ queryKey: ["reg-orders"] });
+      setSelectedOrder(null);
+    } catch (e: any) {
+      toast.error(e.message || "儲存失敗");
+    } finally {
+      setSavingFields(false);
+    }
+  };
+
   // Parse course_snapshot for order detail
   const getOrderCourses = (order: RegOrder) => {
     const snap = order.course_snapshot;
@@ -384,29 +498,52 @@ function OrdersTab() {
                 <div><span className="text-muted-foreground">折扣方案：</span>{selectedOrder.discount_plan || "—"}</div>
                 <div><span className="text-muted-foreground">付款方式：</span>{selectedOrder.payment_method || "—"}</div>
                 <div><span className="text-muted-foreground">付款狀態：</span>{paymentBadge(selectedOrder.payment_status)}</div>
+                <div><span className="text-muted-foreground">付款時間：</span>{selectedOrder.paid_at ? new Date(selectedOrder.paid_at).toLocaleString("zh-TW") : "—"}</div>
                 <div><span className="text-muted-foreground">經銷商：</span>{selectedOrder.dealer_id || "—"}</div>
-                <div><span className="text-muted-foreground">發票抬頭：</span>{selectedOrder.invoice_title || "—"}</div>
-                <div><span className="text-muted-foreground">統一編號：</span>{selectedOrder.tax_id || "—"}</div>
                 <div><span className="text-muted-foreground">報名人數：</span>{selectedOrder.person_count || "—"}</div>
                 <div><span className="text-muted-foreground">推薦人：</span>{selectedOrder.referrer || "—"}</div>
                 <div><span className="text-muted-foreground">複訓：</span>{selectedOrder.is_retrain ? "是" : "否"}</div>
+                <div><span className="text-muted-foreground">建立時間：</span>{new Date(selectedOrder.created_at).toLocaleString("zh-TW")}</div>
               </div>
 
-              {/* 報名人員 - 完整顯示所有人的聯絡資訊 */}
-              <div className="border-t border-border pt-2">
-                <p className="text-xs font-medium mb-1">報名人員</p>
-                {[
-                  { name: selectedOrder.p1_name, phone: selectedOrder.p1_phone, email: selectedOrder.p1_email },
-                  { name: selectedOrder.p2_name, phone: selectedOrder.p2_phone, email: selectedOrder.p2_email },
-                  { name: selectedOrder.p3_name, phone: selectedOrder.p3_phone, email: selectedOrder.p3_email },
-                ].filter(p => p.name).map((p, i) => (
-                  <div key={i} className="text-xs text-muted-foreground">
-                    P{i + 1}: {p.name}
-                    {p.phone ? ` / ${p.phone}` : ""}
-                    {p.email ? ` / ${p.email}` : ""}
+              {/* 發票抬頭 / 統一編號 - 可編輯 */}
+              <div className="border-t border-border pt-2 space-y-2">
+                <p className="text-xs font-medium">發票資訊</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">發票抬頭</label>
+                    <Input value={editInvoiceTitle} onChange={e => setEditInvoiceTitle(e.target.value)} placeholder="發票抬頭" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">統一編號</label>
+                    <Input value={editTaxId} onChange={e => setEditTaxId(e.target.value)} placeholder="統一編號" className="h-8 text-xs" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 報名人員 - 可編輯 */}
+              <div className="border-t border-border pt-2 space-y-2">
+                <p className="text-xs font-medium">報名人員</p>
+                {editPersons.map((p, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">P{i + 1}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input value={p.name} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], name: e.target.value }; setEditPersons(arr); }} placeholder="姓名" className="h-8 text-xs" />
+                      <Input value={p.phone} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], phone: e.target.value }; setEditPersons(arr); }} placeholder="電話" className="h-8 text-xs" />
+                      <Input value={p.email} onChange={e => { const arr = [...editPersons]; arr[i] = { ...arr[i], email: e.target.value }; setEditPersons(arr); }} placeholder="Email" className="h-8 text-xs" />
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {hasFieldChanges && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={saveFieldChanges} disabled={savingFields}>
+                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                    {savingFields ? "儲存中..." : "儲存訂單資訊"}
+                  </Button>
+                </div>
+              )}
 
               {/* 報名課程 */}
               {(() => {
