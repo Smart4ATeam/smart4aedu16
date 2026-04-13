@@ -314,6 +314,100 @@ function OrdersTab() {
     editInvoiceNumber !== (selectedOrder.invoice_number || "")
   );
 
+  // Check if editable fields have changed
+  const hasFieldChanges = selectedOrder && (
+    editInvoiceTitle !== (selectedOrder.invoice_title || "") ||
+    editTaxId !== (selectedOrder.tax_id || "") ||
+    editPersons.some((p, i) => {
+      const origName = (selectedOrder as any)[`p${i + 1}_name`] || "";
+      const origPhone = (selectedOrder as any)[`p${i + 1}_phone`] || "";
+      const origEmail = (selectedOrder as any)[`p${i + 1}_email`] || "";
+      return p.name !== origName || p.phone !== origPhone || p.email !== origEmail;
+    })
+  );
+
+  const saveFieldChanges = async () => {
+    if (!selectedOrder || !user) return;
+    setSavingFields(true);
+    try {
+      const updates: Record<string, any> = {
+        invoice_title: editInvoiceTitle || null,
+        tax_id: editTaxId || null,
+      };
+      for (let i = 0; i < 3; i++) {
+        const p = editPersons[i];
+        updates[`p${i + 1}_name`] = p?.name || null;
+        updates[`p${i + 1}_phone`] = p?.phone || null;
+        updates[`p${i + 1}_email`] = p?.email || null;
+      }
+
+      const oldValues: Record<string, any> = {
+        invoice_title: selectedOrder.invoice_title,
+        tax_id: selectedOrder.tax_id,
+      };
+      for (let i = 1; i <= 3; i++) {
+        oldValues[`p${i}_name`] = (selectedOrder as any)[`p${i}_name`];
+        oldValues[`p${i}_phone`] = (selectedOrder as any)[`p${i}_phone`];
+        oldValues[`p${i}_email`] = (selectedOrder as any)[`p${i}_email`];
+      }
+
+      const { error } = await supabase.from("reg_orders" as any).update(updates as any).eq("id", selectedOrder.id);
+      if (error) throw error;
+
+      await supabase.from("reg_operation_logs" as any).insert({
+        entity_type: "order", entity_id: selectedOrder.id, action: "update_fields",
+        old_value: oldValues, new_value: updates,
+        reason: "更新訂單資訊", operated_by: user.id,
+      } as any);
+
+      // Cascade person changes to reg_members for paid orders
+      if (selectedOrder.payment_status === "paid") {
+        const { data: enrollments } = await supabase
+          .from("reg_enrollments" as any)
+          .select("id, member_id, reg_members(id, name, phone, email)")
+          .eq("order_id", selectedOrder.id) as any;
+
+        if (enrollments && enrollments.length > 0) {
+          for (let i = 0; i < editPersons.length; i++) {
+            const origName = (selectedOrder as any)[`p${i + 1}_name`] || "";
+            const newP = editPersons[i];
+            if (newP.name === origName && newP.phone === ((selectedOrder as any)[`p${i + 1}_phone`] || "") && newP.email === ((selectedOrder as any)[`p${i + 1}_email`] || "")) continue;
+
+            // Find matching member by original name
+            const matchedEnrollments = enrollments.filter((e: any) => e.reg_members?.name === origName);
+            for (const enrollment of matchedEnrollments) {
+              if (!enrollment.member_id) continue;
+              const memberUpdates: Record<string, any> = {};
+              if (newP.name !== origName) memberUpdates.name = newP.name;
+              if (newP.phone !== ((selectedOrder as any)[`p${i + 1}_phone`] || "")) memberUpdates.phone = newP.phone || null;
+              if (newP.email !== ((selectedOrder as any)[`p${i + 1}_email`] || "")) memberUpdates.email = newP.email || null;
+
+              if (Object.keys(memberUpdates).length > 0) {
+                const { error: memberErr } = await supabase.from("reg_members" as any).update(memberUpdates as any).eq("id", enrollment.member_id);
+                if (memberErr) console.error("Cascade update member error:", memberErr);
+
+                await supabase.from("reg_operation_logs" as any).insert({
+                  entity_type: "member", entity_id: enrollment.member_id, action: "cascade_update",
+                  old_value: { name: enrollment.reg_members?.name, phone: enrollment.reg_members?.phone, email: enrollment.reg_members?.email },
+                  new_value: memberUpdates,
+                  reason: `訂單 ${selectedOrder.order_no} 人員資料異動連動更新`, operated_by: user.id,
+                } as any);
+              }
+            }
+          }
+        }
+      }
+
+      toast.success("訂單資訊已更新");
+      queryClient.invalidateQueries({ queryKey: ["reg-orders"] });
+      setSelectedOrder(null);
+    } catch (e: any) {
+      toast.error(e.message || "儲存失敗");
+    } finally {
+      setSavingFields(false);
+    }
+  };
+
   // Parse course_snapshot for order detail
   const getOrderCourses = (order: RegOrder) => {
     const snap = order.course_snapshot;
