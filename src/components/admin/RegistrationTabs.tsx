@@ -793,6 +793,17 @@ function EnrollmentsTab() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={selectedStatus} onValueChange={v => { setSelectedStatus(v); setPage(1); }}>
+          <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectValue placeholder="篩選狀態" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部狀態</SelectItem>
+            <SelectItem value="enrolled">已報名</SelectItem>
+            <SelectItem value="completed">已完成</SelectItem>
+            <SelectItem value="cancelled">已取消</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="搜尋學員、課程、信箱、電話..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9 h-9" />
