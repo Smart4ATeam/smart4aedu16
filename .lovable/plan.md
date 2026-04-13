@@ -1,58 +1,52 @@
 
 
-## Plan: 建立成就勳章管理機制
+# Plan: Real-time Updates for Trial Status and Message Notifications
 
-### 目標
-在管理後台的「學習中心」頁面新增「成就勳章」分頁，提供完整的 CRUD 管理功能，包括管理成就定義、查看學員獲得紀錄，以及手動頒發/撤銷勳章。
+## Problem
+1. **My Trials tab** -- When the callback API updates a trial's `api_key` and `webhook_status`, the Resources page doesn't reflect changes until manual refresh.
+2. **Message center notification** -- New system messages are created but there's no unread indicator on the sidebar nav, so users don't know they have new messages.
 
-### 功能範圍
+## Solution
 
-**1. 成就定義管理 (CRUD)**
-- 列表顯示所有成就（圖示、名稱、類別、描述）
-- 新增 / 編輯成就（名稱、圖示 emoji、類別、描述）
-- 刪除成就（含確認提示）
+### 1. Real-time subscription on `resource_trials` table (Resources.tsx)
 
-**2. 學員勳章紀錄查看**
-- 顯示已頒發的勳章記錄（學員名稱、成就名稱、獲得時間）
+Add a Supabase Realtime channel in the `useEffect` that fetches trials. Listen for `UPDATE` events on `resource_trials` filtered by the current user. When a change arrives, update the `trials` state in-place.
 
-**3. 手動頒發 / 撤銷勳章**
-- 選擇學員 + 選擇成就 → 手動頒發
-- 從紀錄中撤銷已頒發的勳章
-- 頒發時自動更新 `profiles.total_badges` 計數
+**File:** `src/pages/Resources.tsx`
+- After the initial `fetchTrials()` call, subscribe to `postgres_changes` on `resource_trials` for `UPDATE` events filtered by `user_id`.
+- On payload, replace the matching trial in state (or re-fetch all).
+- Cleanup: remove channel on unmount.
 
-### 技術細節
-
-**修改檔案：**
-- `src/pages/admin/AdminLearning.tsx` — 新增 `TabsTrigger` "成就勳章" 與對應的 `AchievementsTab` 組件
-
-**AchievementsTab 組件內容：**
-- 上半部：成就定義表格 + 新增/編輯/刪除 Dialog
-- 下半部：已頒發紀錄表格 + 手動頒發 Dialog + 撤銷按鈕
-- 使用 `@tanstack/react-query` 管理資料，與現有 Tab 風格一致
-- 類別選項：learning, automation, task, community, revenue（對應現有資料）
-- 撤銷勳章時透過 Supabase 刪除 `user_achievements` 記錄，`on_achievement_earned` trigger 會自動更新 `total_badges`
-
-**需新增 trigger：** 目前 `on_achievement_earned` 只在 INSERT 時觸發，需補一個 DELETE trigger 來扣減 `total_badges`。
-
-**資料庫遷移 (1 筆)：**
+**Database:** Enable Realtime on `resource_trials`:
 ```sql
-CREATE OR REPLACE FUNCTION public.on_achievement_removed()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'public' AS $$
-BEGIN
-  UPDATE public.profiles
-  SET total_badges = (SELECT COUNT(*) FROM public.user_achievements WHERE user_id = OLD.user_id)
-  WHERE id = OLD.user_id;
-  RETURN OLD;
-END;
-$$;
-
-CREATE TRIGGER trg_achievement_removed
-AFTER DELETE ON public.user_achievements
-FOR EACH ROW EXECUTE FUNCTION public.on_achievement_removed();
+ALTER PUBLICATION supabase_realtime ADD TABLE resource_trials;
 ```
 
-### 不涉及的部分
-- 不修改學員端顯示邏輯（`AchievementSection.tsx` 維持不變）
-- 不修改 RLS 政策（現有 admin ALL 政策已足夠）
+### 2. Unread message badge on sidebar (AppSidebar.tsx)
+
+Add a real-time unread count next to the "訊息中心" nav item.
+
+**File:** `src/components/AppSidebar.tsx`
+- Query `conversation_participants` where `user_id = auth.uid()` and `unread = true`, get count.
+- Subscribe to `postgres_changes` on `conversation_participants` for real-time updates.
+- Display a small red dot or count badge next to the "訊息中心" menu item when unread > 0.
+
+**Database:** Enable Realtime on `conversation_participants`:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE conversation_participants;
+```
+
+### 3. Real-time subscription on Messages page (Messages.tsx)
+
+The Messages page already has a real-time subscription for new messages in the selected conversation. Add an additional subscription for `conversation_participants` changes (new conversations appearing, unread status changes) so the conversation list updates automatically when a new system notification arrives.
+
+**File:** `src/pages/Messages.tsx`
+- Add a channel listening for `INSERT` on `conversation_participants` filtered by `user_id`.
+- On new participant record, re-fetch conversations to show the new notification.
+
+## Technical Details
+
+- **Migration:** One migration to add both tables to `supabase_realtime` publication.
+- **Frontend changes:** 3 files modified (`Resources.tsx`, `AppSidebar.tsx`, `Messages.tsx`).
+- All subscriptions cleaned up on component unmount via `supabase.removeChannel()`.
 
