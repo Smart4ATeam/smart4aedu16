@@ -628,6 +628,7 @@ function OrdersTab() {
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [selectedDate, setSelectedDate] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState>({ key: "", dir: null });
   const [page, setPage] = useState(1);
