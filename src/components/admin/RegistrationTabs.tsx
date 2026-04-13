@@ -183,12 +183,32 @@ function OrdersTab() {
   const [editNotes, setEditNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
+  // Editable fields for invoice & person info
+  const [editInvoiceTitle, setEditInvoiceTitle] = useState("");
+  const [editTaxId, setEditTaxId] = useState("");
+  const [editPersons, setEditPersons] = useState<{ name: string; phone: string; email: string }[]>([]);
+  const [savingFields, setSavingFields] = useState(false);
+
   const openOrderDetail = (o: RegOrder) => {
     setSelectedOrder(o);
     setEditInvoiceStatus(o.invoice_status);
     setEditInvoiceNumber(o.invoice_number || "");
     setEditReason("");
     setEditNotes(o.notes || "");
+    setEditInvoiceTitle(o.invoice_title || "");
+    setEditTaxId(o.tax_id || "");
+    const persons: { name: string; phone: string; email: string }[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const name = (o as any)[`p${i}_name`] || "";
+      if (name) {
+        persons.push({
+          name,
+          phone: (o as any)[`p${i}_phone`] || "",
+          email: (o as any)[`p${i}_email`] || "",
+        });
+      }
+    }
+    setEditPersons(persons);
   };
 
   const saveNotes = async () => {
