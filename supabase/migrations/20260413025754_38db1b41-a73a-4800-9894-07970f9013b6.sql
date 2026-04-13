@@ -1,0 +1,2 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE resource_trials;
+ALTER PUBLICATION supabase_realtime ADD TABLE conversation_participants;

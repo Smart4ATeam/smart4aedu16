@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -5,6 +6,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   Target,
@@ -18,6 +20,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 import logoFed from "@/assets/logo-fed.png";
 import logoW from "@/assets/logo-w.png";
 
@@ -37,12 +40,38 @@ const bottomNavItems = [
 
 export function AppSidebar() {
   const { theme } = useTheme();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { profile } = useProfile();
   const { isAdmin } = useAdminCheck();
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread message count + real-time subscription
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from("conversation_participants")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("unread", true);
+      setUnreadCount(count ?? 0);
+    };
+    fetchUnread();
+
+    const channel = supabase
+      .channel("sidebar_unread")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_participants", filter: `user_id=eq.${user.id}` },
+        () => { fetchUnread(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   const displayName = profile?.display_name || "使用者";
   const initials = displayName.slice(0, 1);
@@ -65,6 +94,7 @@ export function AppSidebar() {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.url;
+            const showBadge = item.url === "/messages" && unreadCount > 0;
             return (
               <NavLink
                 key={item.url}
@@ -78,7 +108,12 @@ export function AppSidebar() {
                 activeClassName="bg-accent/10 text-accent font-medium"
               >
                 <item.icon className="w-[18px] h-[18px]" />
-                <span>{item.title}</span>
+                <span className="flex-1">{item.title}</span>
+                {showBadge && (
+                  <Badge className="bg-destructive text-destructive-foreground text-[9px] px-1.5 py-0 h-4 min-w-[18px] justify-center border-0">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
               </NavLink>
             );
           })}

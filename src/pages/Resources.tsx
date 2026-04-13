@@ -418,7 +418,7 @@ export default function Resources() {
     load();
   }, []);
 
-  // Fetch trials for logged-in user
+  // Fetch trials for logged-in user + real-time subscription
   useEffect(() => {
     if (!user) return;
     const fetchTrials = async () => {
@@ -430,6 +430,29 @@ export default function Resources() {
       if (data) setTrials(data as Trial[]);
     };
     fetchTrials();
+
+    // Subscribe to real-time updates on resource_trials for this user
+    const channel = supabase
+      .channel("resource_trials_realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "resource_trials", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setTrials((prev) =>
+            prev.map((t) => (t.id === payload.new.id ? { ...t, ...payload.new } as Trial : t))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "resource_trials", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setTrials((prev) => [payload.new as Trial, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   // Reset sub-category when category changes
