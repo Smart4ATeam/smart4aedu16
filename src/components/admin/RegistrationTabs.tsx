@@ -628,6 +628,7 @@ function OrdersTab() {
 function EnrollmentsTab() {
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [selectedDate, setSelectedDate] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortState>({ key: "", dir: null });
   const [page, setPage] = useState(1);
@@ -728,6 +729,7 @@ function EnrollmentsTab() {
   const filtered = enrollments.filter(e => {
     if (selectedCourse !== "all" && e.course_id !== selectedCourse) return false;
     if (selectedDate !== "all" && e.session_date !== selectedDate) return false;
+    if (selectedStatus !== "all" && e.status !== selectedStatus) return false;
     if (search) {
       const s = search.toLowerCase();
       const memberName = (e.reg_members as any)?.name?.toLowerCase() || "";
@@ -789,6 +791,17 @@ function EnrollmentsTab() {
             {uniqueDates.map(d => (
               <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedStatus} onValueChange={v => { setSelectedStatus(v); setPage(1); }}>
+          <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectValue placeholder="篩選狀態" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部狀態</SelectItem>
+            <SelectItem value="enrolled">已報名</SelectItem>
+            <SelectItem value="completed">已完成</SelectItem>
+            <SelectItem value="cancelled">已取消</SelectItem>
           </SelectContent>
         </Select>
         <div className="relative flex-1 max-w-sm">
