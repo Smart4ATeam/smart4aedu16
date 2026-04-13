@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: userId,
         resource_id: resource.id,
-        member_no: profile.student_id || null,
+        member_no: memberNo,
         organization_id: profile.organization_id,
         app_id: resource.app_id,
         resource_category: resource.category,
