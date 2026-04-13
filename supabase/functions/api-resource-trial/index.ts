@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
         const webhookPayload = {
           organization_id: profile.organization_id,
           app_id: resource.app_id,
-          member_no: profile.student_id || null,
+          member_no: memberNo,
           category: resource.category,
           resource_title: resource.title,
           trial_id: trial.id,
