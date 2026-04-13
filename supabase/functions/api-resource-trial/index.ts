@@ -92,6 +92,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 2b. Resolve member_no: prefer profile.student_id, fallback to reg_members.member_no
+    let memberNo = profile.student_id || null;
+    if (!memberNo) {
+      const { data: regMember } = await adminClient
+        .from("reg_members")
+        .select("member_no")
+        .eq("user_id", userId)
+        .single();
+      if (regMember?.member_no) {
+        memberNo = regMember.member_no;
+      }
+    }
+
     // 3. Check daily limit (1 per category per day, Taiwan time UTC+8)
     const now = new Date();
     const taiwanOffset = 8 * 60 * 60 * 1000;
