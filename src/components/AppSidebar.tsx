@@ -94,6 +94,7 @@ export function AppSidebar() {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.url;
+            const showBadge = item.url === "/messages" && unreadCount > 0;
             return (
               <NavLink
                 key={item.url}
@@ -107,7 +108,12 @@ export function AppSidebar() {
                 activeClassName="bg-accent/10 text-accent font-medium"
               >
                 <item.icon className="w-[18px] h-[18px]" />
-                <span>{item.title}</span>
+                <span className="flex-1">{item.title}</span>
+                {showBadge && (
+                  <Badge className="bg-destructive text-destructive-foreground text-[9px] px-1.5 py-0 h-4 min-w-[18px] justify-center border-0">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
               </NavLink>
             );
           })}

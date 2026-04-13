@@ -123,6 +123,21 @@ export default function Messages() {
     fetchConversations();
   }, [fetchConversations]);
 
+  // Real-time subscription for new conversations (e.g. system notifications)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("conv_participants_realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversation_participants", filter: `user_id=eq.${user.id}` },
+        () => { fetchConversations(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchConversations]);
+
   // Fetch messages when selecting a conversation
   useEffect(() => {
     if (!selectedId) return;
