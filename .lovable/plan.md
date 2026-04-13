@@ -1,52 +1,41 @@
 
 
-# Plan: Real-time Updates for Trial Status and Message Notifications
+# Plan: Order Detail Editable Fields + Cascading Person Updates
 
-## Problem
-1. **My Trials tab** -- When the callback API updates a trial's `api_key` and `webhook_status`, the Resources page doesn't reflect changes until manual refresh.
-2. **Message center notification** -- New system messages are created but there's no unread indicator on the sidebar nav, so users don't know they have new messages.
+## What changes
 
-## Solution
+### 1. Show paid_at timestamp in order detail dialog
+Add a row displaying `paid_at` formatted as date+time in the order detail grid (currently only shown in the table list, not in the detail dialog).
 
-### 1. Real-time subscription on `resource_trials` table (Resources.tsx)
+### 2. Make invoice & person fields editable in order detail
+Convert the following read-only fields into editable inputs inside the order detail dialog:
 
-Add a Supabase Realtime channel in the `useEffect` that fetches trials. Listen for `UPDATE` events on `resource_trials` filtered by the current user. When a change arrives, update the `trials` state in-place.
+- **Invoice title** (`invoice_title`)
+- **Tax ID** (`tax_id`)
+- **Person 1-3 name/phone/email** (`p1_name`, `p1_phone`, `p1_email`, etc.)
 
-**File:** `src/pages/Resources.tsx`
-- After the initial `fetchTrials()` call, subscribe to `postgres_changes` on `resource_trials` for `UPDATE` events filtered by `user_id`.
-- On payload, replace the matching trial in state (or re-fetch all).
-- Cleanup: remove channel on unmount.
+Add a "Save Changes" button that:
+1. Updates `reg_orders` with the changed fields
+2. Logs the change to `reg_operation_logs`
 
-**Database:** Enable Realtime on `resource_trials`:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE resource_trials;
-```
+### 3. Cascade person changes to reg_enrollments (for paid orders)
+When a person's info (name/phone/email) is modified on a paid order:
 
-### 2. Unread message badge on sidebar (AppSidebar.tsx)
+1. Query `reg_enrollments` joined with `reg_members` for that `order_id`
+2. For each changed person (matched by original name), find the corresponding `reg_members` record linked through the enrollment
+3. Update the `reg_members` record's name/phone/email to match the new values
+4. Log the cascading update to `reg_operation_logs`
 
-Add a real-time unread count next to the "訊息中心" nav item.
+This ensures that when an order has already been split (paid → enrollments created → members created), editing person info on the order propagates to the member records.
 
-**File:** `src/components/AppSidebar.tsx`
-- Query `conversation_participants` where `user_id = auth.uid()` and `unread = true`, get count.
-- Subscribe to `postgres_changes` on `conversation_participants` for real-time updates.
-- Display a small red dot or count badge next to the "訊息中心" menu item when unread > 0.
+## Files to modify
 
-**Database:** Enable Realtime on `conversation_participants`:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE conversation_participants;
-```
+- **`src/components/admin/RegistrationTabs.tsx`** — Add edit state for invoice_title, tax_id, p1-p3 fields; add paid_at display; add save mutation with cascading logic
 
-### 3. Real-time subscription on Messages page (Messages.tsx)
+## Technical details
 
-The Messages page already has a real-time subscription for new messages in the selected conversation. Add an additional subscription for `conversation_participants` changes (new conversations appearing, unread status changes) so the conversation list updates automatically when a new system notification arrives.
-
-**File:** `src/pages/Messages.tsx`
-- Add a channel listening for `INSERT` on `conversation_participants` filtered by `user_id`.
-- On new participant record, re-fetch conversations to show the new notification.
-
-## Technical Details
-
-- **Migration:** One migration to add both tables to `supabase_realtime` publication.
-- **Frontend changes:** 3 files modified (`Resources.tsx`, `AppSidebar.tsx`, `Messages.tsx`).
-- All subscriptions cleaned up on component unmount via `supabase.removeChannel()`.
+- The cascade logic matches persons by their **original name** (before edit) against `reg_members.name` where the member is linked through `reg_enrollments.order_id = order.id`
+- All updates use the existing `supabase` client with admin RLS policies (admin users already have ALL access on both `reg_orders` and `reg_members`)
+- The dialog will use controlled `Input` components with local state, initialized when opening the detail
+- A single "Save" button handles both invoice field and person field changes together
 
