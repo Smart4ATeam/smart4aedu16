@@ -104,19 +104,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch full session dates for this course
-    const { data: sessions } = await adminClient
-      .from("course_sessions")
-      .select("start_date, end_date, location")
-      .eq("course_id", cert.course_id)
-      .order("start_date", { ascending: true });
-
-    const sessionDates = (sessions || []).map((s: any) => ({
-      start_date: s.start_date,
-      end_date: s.end_date,
-      location: s.location,
-    }));
-
     // Call Make.com webhook
     const webhookUrl = Deno.env.get("MAKE_CERT_WEBHOOK_URL");
     if (!webhookUrl) {
@@ -142,7 +129,6 @@ Deno.serve(async (req) => {
       course_name: cert.course_name,
       training_date: cert.training_date,
       total_hours: course?.total_hours || null,
-      session_dates: sessionDates,
       score: cert.score,
       callback_url: callbackUrl,
     };
