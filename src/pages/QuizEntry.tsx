@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ClipboardCheck, Clock, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 export default function QuizEntry() {
@@ -18,6 +18,7 @@ export default function QuizEntry() {
   const navigate = useNavigate();
   const [studentName, setStudentName] = useState("");
   const [trainingDate, setTrainingDate] = useState("");
+  const today = new Date().toISOString().split("T")[0];
 
   // Fetch quiz details
   const { data: quiz, isLoading: quizLoading } = useQuery({
@@ -34,19 +35,42 @@ export default function QuizEntry() {
     },
   });
 
-  // Fetch course sessions for training date selection
-  const { data: sessions = [] } = useQuery({
-    queryKey: ["quiz_sessions", quiz?.course_id],
-    enabled: !!quiz?.course_id,
+  // Fetch reg_members for this user
+  const { data: member } = useQuery({
+    queryKey: ["reg_member_for_quiz", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("course_sessions")
-        .select("id, start_date, end_date, location")
+      const { data } = await supabase
+        .from("reg_members" as any)
+        .select("id, name")
+        .eq("user_id", user!.id)
+        .limit(1)
+        .maybeSingle();
+      return data as unknown as { id: string; name: string } | null;
+    },
+  });
+
+  // Fetch user's enrollments for this course
+  const { data: courseEnrollments = [], isLoading: enrollLoading } = useQuery({
+    queryKey: ["quiz_course_enrollments", member?.id, quiz?.course_id],
+    enabled: !!member?.id && !!quiz?.course_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("reg_enrollments")
+        .select("id, session_date, status, payment_status")
+        .eq("member_id", member!.id)
         .eq("course_id", quiz!.course_id)
-        .order("start_date", { ascending: false });
-      if (error) throw error;
+        .neq("status", "cancelled")
+        .eq("payment_status", "paid");
       return data || [];
     },
+  });
+
+  // Filter enrollments: only session_date <= today
+  const eligibleEnrollments = courseEnrollments.filter((e: any) => {
+    if (!e.session_date) return false;
+    const firstDate = e.session_date.split("~")[0].trim();
+    return firstDate <= today;
   });
 
   // Check if user already passed (for no-retake quizzes)
@@ -67,27 +91,20 @@ export default function QuizEntry() {
     },
   });
 
-  // Pre-fill name from profile
-  const { data: profile } = useQuery({
-    queryKey: ["profile_name", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("display_name")
-        .eq("id", user!.id)
-        .single();
-      return data;
-    },
-  });
-
+  // Set name from reg_members (locked)
   useEffect(() => {
-    if (profile?.display_name) setStudentName(profile.display_name);
-  }, [profile]);
+    if (member?.name) setStudentName(member.name);
+  }, [member]);
 
   const questions = (quiz?.questions as any[]) || [];
   const totalPoints = questions.reduce((sum, q) => sum + (q.points || 5), 0);
   const alreadyPassed = !quiz?.allow_retake && !!existingPass;
+
+  // Enrollment validation states
+  const hasNoMember = !member && !enrollLoading && !!user;
+  const hasNoEnrollment = !!member && courseEnrollments.length === 0 && !enrollLoading && !!quiz;
+  const hasNoPastSession = !!member && courseEnrollments.length > 0 && eligibleEnrollments.length === 0 && !enrollLoading;
+  const blocked = hasNoMember || hasNoEnrollment || hasNoPastSession;
 
   const handleStart = () => {
     if (!studentName.trim()) {
@@ -102,7 +119,6 @@ export default function QuizEntry() {
       toast.error("此測驗尚無題目");
       return;
     }
-    // Navigate to exam page with state
     navigate(`/quiz/${quizId}/exam`, {
       state: { studentName, trainingDate },
     });
@@ -155,8 +171,21 @@ export default function QuizEntry() {
         </CardContent>
       </Card>
 
-      {/* Already Passed */}
-      {alreadyPassed ? (
+      {/* Blocked: no enrollment */}
+      {blocked ? (
+        <Card className="border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/30">
+          <CardContent className="pt-6 text-center space-y-3">
+            <ShieldAlert className="w-10 h-10 text-orange-500 mx-auto" />
+            <p className="font-semibold text-foreground">
+              {hasNoPastSession ? "課程尚未開始，無法進行測驗" : "您尚未報名此課程，無法進行測驗"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {hasNoPastSession ? "請在上課當天或之後再進行測驗" : "請先完成課程報名並繳費"}
+            </p>
+            <Button variant="outline" onClick={() => navigate("/learning")}>返回學習中心</Button>
+          </CardContent>
+        </Card>
+      ) : alreadyPassed ? (
         <Card className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30">
           <CardContent className="pt-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
@@ -173,13 +202,14 @@ export default function QuizEntry() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="studentName">學員姓名 *</Label>
+              <Label htmlFor="studentName">學員姓名</Label>
               <Input
                 id="studentName"
-                placeholder="請填寫中文全名"
                 value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
+                readOnly
+                className="bg-muted cursor-not-allowed"
               />
+              <p className="text-xs text-muted-foreground">姓名由報名資料自動帶入，無法修改</p>
             </div>
             <div className="space-y-2">
               <Label>訓練日期 *</Label>
@@ -188,19 +218,13 @@ export default function QuizEntry() {
                   <SelectValue placeholder="請選擇訓練日期" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sessions.map((s: any) => {
-                    const dateVal = s.start_date && s.end_date && s.end_date !== s.start_date
-                      ? `${s.start_date}~${s.end_date}`
-                      : (s.start_date || s.id);
-                    return (
-                    <SelectItem key={s.id} value={dateVal}>
-                      {s.start_date}{s.end_date && s.end_date !== s.start_date ? ` ~ ${s.end_date}` : ""}
-                      {s.location ? ` (${s.location})` : ""}
+                  {eligibleEnrollments.map((e: any) => (
+                    <SelectItem key={e.id} value={e.session_date}>
+                      {e.session_date}
                     </SelectItem>
-                    );
-                  })}
-                  {sessions.length === 0 && (
-                    <SelectItem value="no-session" disabled>尚無訓練梯次</SelectItem>
+                  ))}
+                  {eligibleEnrollments.length === 0 && (
+                    <SelectItem value="no-session" disabled>尚無可選梯次</SelectItem>
                   )}
                 </SelectContent>
               </Select>
