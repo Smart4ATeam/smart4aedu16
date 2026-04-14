@@ -258,9 +258,11 @@ function DynamicFields({ res, onChange, subCategories
         </div>
       }
 
-      {/* Templates: flow_count, usage_count, industry_tag */}
+      {/* Templates: file upload, flow_count, usage_count, industry_tag */}
       {res.category === "templates" &&
-      <div className="flex gap-3">
+      <>
+        <TemplateFileUpload filePath={(res as any).template_file_path || ""} onChange={(path) => onChange("template_file_path" as any, path)} />
+        <div className="flex gap-3">
           <div className="flex-1">
             <Label className="text-xs">流程數</Label>
             <Input className="h-8 text-xs mt-1" type="number" value={res.flow_count} onChange={(e) => onChange("flow_count", e.target.value)} />
@@ -274,6 +276,7 @@ function DynamicFields({ res, onChange, subCategories
             <Input className="h-8 text-xs mt-1" placeholder="電商專用" value={res.industry_tag} onChange={(e) => onChange("industry_tag", e.target.value)} />
           </div>
         </div>
+      </>
       }
 
       {/* Videos: duration, video_type */}
