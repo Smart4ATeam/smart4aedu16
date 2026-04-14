@@ -57,6 +57,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
     time_limit_minutes: 30,
     allow_retake: true,
     description: "",
+    reward_points: 20,
   });
 
   const { data: quizzes = [] } = useQuery({
