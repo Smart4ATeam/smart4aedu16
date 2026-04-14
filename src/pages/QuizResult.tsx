@@ -13,6 +13,8 @@ export default function QuizResult() {
   const { quizId, attemptId } = useParams<{ quizId: string; attemptId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { studentName: entryName, trainingDate: entryTrainingDate } = (location.state as any) || {};
   const queryClient = useQueryClient();
 
   // Fetch attempt
