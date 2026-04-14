@@ -53,17 +53,25 @@ Deno.serve(async (req) => {
 
     const { data: cert, error: certError } = await adminClient
       .from("certificates")
-      .select("*, courses(total_hours)")
+      .select("*")
       .eq("id", certificate_id)
       .eq("user_id", user.id)
       .single();
 
     if (certError || !cert) {
+      console.error("Certificate lookup failed:", certError?.message, "cert_id:", certificate_id, "user_id:", user.id);
       return new Response(JSON.stringify({ error: "Certificate not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Fetch course total_hours separately (no FK relationship)
+    const { data: course } = await adminClient
+      .from("courses")
+      .select("total_hours")
+      .eq("id", cert.course_id)
+      .maybeSingle();
 
     if (cert.status !== "pending") {
       return new Response(JSON.stringify({ error: "Certificate already processed" }), {
