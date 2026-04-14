@@ -215,6 +215,7 @@ export type Database = {
           id: string
           passing_score: number
           questions: Json
+          reward_points: number
           time_limit_minutes: number | null
           title: string
         }
@@ -225,6 +226,7 @@ export type Database = {
           id?: string
           passing_score?: number
           questions?: Json
+          reward_points?: number
           time_limit_minutes?: number | null
           title: string
         }
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           passing_score?: number
           questions?: Json
+          reward_points?: number
           time_limit_minutes?: number | null
           title?: string
         }
