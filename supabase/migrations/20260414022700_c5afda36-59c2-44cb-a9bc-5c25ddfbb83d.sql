@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.profiles.total_points IS 'DEPRECATED: Do not use. Points are now managed via reg_members.points + reg_point_transactions. This column is retained for backward compatibility and will be removed in a future migration.';
