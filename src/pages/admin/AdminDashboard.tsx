@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface StudentRow {
   display_name: string;
   learning_days: number;
-  total_points: number;
+  member_points: number;
   total_revenue: number;
 }
 
