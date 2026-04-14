@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, Download, ArrowLeft, AlertCircle, RefreshCw, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CertificateView() {
   const { certificateId } = useParams<{ certificateId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [retrying, setRetrying] = useState(false);
 
   const { data: cert, refetch } = useQuery({
@@ -23,6 +25,25 @@ export default function CertificateView() {
         .eq("id", certificateId!)
         .single();
       if (error) throw error;
+      return data;
+    },
+  });
+
+  // If replaced, find the newest cert for the same user+course+training_date
+  const { data: newestCert } = useQuery({
+    queryKey: ["newest_cert_replacement", cert?.user_id, cert?.course_id, cert?.training_date],
+    enabled: cert?.status === "replaced" && !!cert?.user_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("certificates")
+        .select("id, score, status")
+        .eq("user_id", cert!.user_id)
+        .eq("course_id", cert!.course_id)
+        .eq("training_date", cert!.training_date)
+        .not("status", "in", '("failed","replaced")')
+        .order("score", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       return data;
     },
   });
@@ -56,6 +77,22 @@ export default function CertificateView() {
     <div className="max-w-lg mx-auto space-y-6 py-8">
       <Card>
         <CardContent className="pt-6 text-center space-y-4">
+          {cert.status === "replaced" && (
+            <>
+              <AlertCircle className="w-12 h-12 text-orange-500 mx-auto" />
+              <p className="font-semibold text-foreground">此證書已被更高分的版本取代</p>
+              <p className="text-sm text-muted-foreground">
+                原始分數：{cert.score} 分
+                {newestCert && ` → 新證書：${newestCert.score} 分`}
+              </p>
+              {newestCert && (
+                <Button className="gap-2" onClick={() => navigate(`/certificate/${newestCert.id}`)}>
+                  <ArrowRight className="w-4 h-4" /> 查看最新證書
+                </Button>
+              )}
+            </>
+          )}
+
           {cert.status === "pending" && (
             <>
               <Loader2 className="w-12 h-12 text-primary mx-auto animate-spin" />

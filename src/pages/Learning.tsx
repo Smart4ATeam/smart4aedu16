@@ -13,24 +13,63 @@ import { useNavigate } from "react-router-dom";
 import { categoryLabels, categoryColors } from "@/lib/category-colors";
 
 function AvailableQuizzes({ userId, navigate }: { userId?: string; navigate: (path: string) => void }) {
-  const { data: quizzes = [], isLoading } = useQuery({
-    queryKey: ["available_quizzes"],
+  const today = new Date().toISOString().split("T")[0];
+
+  // Fetch user's paid enrollments via reg_members
+  const { data: enrolledCourseIds = [], isLoading: enrollLoading } = useQuery({
+    queryKey: ["my_enrolled_course_ids_for_quiz", userId],
+    enabled: !!userId,
     queryFn: async () => {
+      // Get member ids
+      const { data: members } = await supabase
+        .from("reg_members" as any)
+        .select("id")
+        .eq("user_id", userId!);
+      const memberIds = (members || []).map((m: any) => m.id);
+      if (memberIds.length === 0) return [];
+
+      // Get paid, non-cancelled enrollments with session_date <= today
+      const { data: enrollments } = await supabase
+        .from("reg_enrollments")
+        .select("course_id, session_date")
+        .in("member_id", memberIds)
+        .neq("status", "cancelled")
+        .eq("payment_status", "paid");
+
+      // Filter: session_date <= today
+      return (enrollments || [])
+        .filter((e: any) => {
+          if (!e.session_date) return false;
+          // session_date may contain "~", take the first date
+          const firstDate = e.session_date.split("~")[0].trim();
+          return firstDate <= today;
+        })
+        .map((e: any) => e.course_id)
+        .filter(Boolean);
+    },
+  });
+
+  const { data: quizzes = [], isLoading } = useQuery({
+    queryKey: ["available_quizzes", enrolledCourseIds],
+    enabled: !enrollLoading,
+    queryFn: async () => {
+      if (enrolledCourseIds.length === 0) return [];
       const { data, error } = await supabase
         .from("course_quizzes")
         .select("id, title, description, passing_score, time_limit_minutes, allow_retake, questions, courses(title, category)")
+        .in("course_id", enrolledCourseIds)
         .order("title");
       if (error) throw error;
       return data || [];
     },
   });
 
-  if (isLoading) return <div className="text-center py-8 text-muted-foreground text-sm">載入中...</div>;
+  if (isLoading || enrollLoading) return <div className="text-center py-8 text-muted-foreground text-sm">載入中...</div>;
   if (quizzes.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <ClipboardCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
-        <p>目前沒有可用的測驗</p>
+        <p>完成課程報名並上課後即可進行測驗</p>
       </div>
     );
   }
