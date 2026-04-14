@@ -49,15 +49,16 @@ export default function QuizResult() {
     mutationFn: async () => {
       if (!attempt || !user) throw new Error("缺少資料");
       const quiz = attempt.course_quizzes as any;
-      const answers = attempt.answers as Record<string, string>;
-      // Get student name from answers metadata or profile
+
+      // Get student name from profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name")
         .eq("id", user.id)
         .single();
 
-      const { data, error } = await supabase
+      // 1. Insert certificate record
+      const { data: certData, error } = await supabase
         .from("certificates")
         .insert({
           user_id: user.id,
@@ -72,7 +73,17 @@ export default function QuizResult() {
         .select("id")
         .single();
       if (error) throw error;
-      return data;
+
+      // 2. Call Edge Function to trigger Make.com webhook
+      const { error: fnError } = await supabase.functions.invoke("request-certificate", {
+        body: { certificate_id: certData.id },
+      });
+      if (fnError) {
+        console.error("Edge function error:", fnError);
+        // Certificate is already created, just warn — user can still see it
+      }
+
+      return certData;
     },
     onSuccess: (data) => {
       toast.success("已申請結訓證明！");

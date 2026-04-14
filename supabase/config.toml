@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.api-reg-pre-notification]
 verify_jwt = false
+
+[functions.request-certificate]
+verify_jwt = false
+
+[functions.api-certificate-callback]
+verify_jwt = false
