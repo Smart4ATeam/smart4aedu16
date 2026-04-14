@@ -663,11 +663,21 @@ export default function Resources() {
 
             {/* Sub-category filter for extensions & templates */}
             {(activeCategory === "extensions" || activeCategory === "templates") && (
-              <SubCategoryFilter
-                subCategories={currentSubCategories}
-                active={activeSubCategory}
-                onChange={setActiveSubCategory}
-              />
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <SubCategoryFilter
+                  subCategories={currentSubCategories}
+                  active={activeSubCategory}
+                  onChange={setActiveSubCategory}
+                />
+                <button
+                  onClick={() => setTrialOnly(!trialOnly)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                    trialOnly ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                  }`}
+                >
+                  🧪 可試用
+                </button>
+              </div>
             )}
 
             {renderCards()}
