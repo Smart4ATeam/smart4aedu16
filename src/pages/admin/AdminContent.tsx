@@ -872,9 +872,20 @@ const AdminContent = () => {
                           <TableCell className="text-xs text-muted-foreground">{t.organization_id}</TableCell>
                           <TableCell className="text-xs font-mono text-muted-foreground">{t.app_id}</TableCell>
                           <TableCell>
-                            <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
-                              {t.webhook_status === "completed" ? "✅ 已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
-                            </Badge>
+                            {(() => {
+                              const isTemplate = t.resource_category === "templates";
+                              const isExpired = isTemplate && t.created_at
+                                ? new Date().getTime() - new Date(t.created_at).getTime() > 24 * 60 * 60 * 1000
+                                : false;
+                              if (isExpired) {
+                                return <Badge variant="destructive" className="text-[10px]">⏰ 已過期</Badge>;
+                              }
+                              return (
+                                <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
+                                  {t.webhook_status === "completed" ? "✅ 已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-xs">
                             <AdminCallbackValueCell apiKey={t.api_key} category={t.resource_category} />
