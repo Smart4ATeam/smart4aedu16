@@ -34,7 +34,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [membersRes, profilesRes, loginRes, tasksRes, revenueRes] = await Promise.all([
+      const [membersRes, profilesRes, loginRes, tasksRes, revenueRes, regMembersRes] = await Promise.all([
         // Total students = reg_members count
         supabase.from("reg_members").select("id", { count: "exact", head: true }),
         // All activated profiles for active student check & progress table
@@ -44,10 +44,20 @@ const AdminDashboard = () => {
           .gte("login_date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
         supabase.from("tasks").select("id, created_at"),
         supabase.from("revenue_records").select("amount, recorded_at"),
+        // reg_members with points for the progress table
+        supabase.from("reg_members").select("user_id, points"),
       ]);
 
       // Total students from reg_members
       setTotalStudents(membersRes.count || 0);
+
+      // Build member points map (user_id -> points)
+      const memberPointsMap = new Map<string, number>();
+      if (regMembersRes.data) {
+        for (const m of regMembersRes.data) {
+          if (m.user_id) memberPointsMap.set(m.user_id, m.points || 0);
+        }
+      }
 
       // Active students: activated profiles with login in last 3 months
       if (profilesRes.data) {
@@ -58,11 +68,11 @@ const AdminDashboard = () => {
         const activeCount = activatedProfiles.filter(p => recentLoginUserIds.has(p.id)).length;
         setActiveStudents(activeCount);
 
-        // Student progress table: show all activated profiles
+        // Student progress table: show all activated profiles with member points
         setStudents(activatedProfiles.map(p => ({
           display_name: p.display_name,
           learning_days: p.learning_days,
-          total_points: p.total_points,
+          member_points: memberPointsMap.get(p.id) || 0,
           total_revenue: p.total_revenue,
         })));
       }
