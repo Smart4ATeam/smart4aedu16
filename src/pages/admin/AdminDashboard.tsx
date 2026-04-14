@@ -68,13 +68,15 @@ const AdminDashboard = () => {
         const activeCount = activatedProfiles.filter(p => recentLoginUserIds.has(p.id)).length;
         setActiveStudents(activeCount);
 
-        // Student progress table: show all activated profiles with member points
-        setStudents(activatedProfiles.map(p => ({
-          display_name: p.display_name,
-          learning_days: p.learning_days,
-          member_points: memberPointsMap.get(p.id) || 0,
-          total_revenue: p.total_revenue,
-        })));
+        // Student progress table: only show activated profiles that have a reg_members record
+        setStudents(activatedProfiles
+          .filter(p => memberPointsMap.has(p.id))
+          .map(p => ({
+            display_name: p.display_name,
+            learning_days: p.learning_days,
+            member_points: memberPointsMap.get(p.id) || 0,
+            total_revenue: p.total_revenue,
+          })));
       }
 
       if (tasksRes.data) {
