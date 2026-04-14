@@ -747,13 +747,25 @@ export default function AdminIntegrations() {
         </div>
       </div>
 
-      {/* Webhook URL Setting */}
-      <div className="glass-card p-4">
-        <div className="flex items-center gap-2 mb-2">
+      {/* Webhook URL Settings */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-center gap-2">
           <div className="w-1 h-5 rounded-full bg-accent" />
           <h2 className="text-sm font-semibold text-foreground">Webhook URL 設定</h2>
         </div>
-        <WebhookUrlSetting />
+        <WebhookUrlSettingItem
+          keyName="trial_webhook_url"
+          label="資源試用 Webhook URL"
+          description="學員領用試用資源（套件 / 範本）時，系統會自動 POST 到此 URL，對應端點：api-resource-trial-callback"
+          placeholder="https://hook.example.com/trial"
+        />
+        <div className="border-t border-border" />
+        <WebhookUrlSettingItem
+          keyName="cert_webhook_url"
+          label="證書產生 Webhook URL"
+          description="學員申請結訓證書時，系統會 POST 到此 URL 請求產生證書，對應端點：api-certificate-callback"
+          placeholder="https://hook.example.com/certificate"
+        />
       </div>
 
 
