@@ -1,0 +1,1 @@
+ALTER TABLE public.certificates ALTER COLUMN training_date TYPE text;
