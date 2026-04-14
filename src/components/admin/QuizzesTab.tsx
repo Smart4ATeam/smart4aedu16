@@ -82,6 +82,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
             time_limit_minutes: quiz.time_limit_minutes,
             allow_retake: quiz.allow_retake,
             description: quiz.description,
+            reward_points: quiz.reward_points,
           })
           .eq("id", quiz.id);
         if (error) throw error;
@@ -93,6 +94,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
           time_limit_minutes: quiz.time_limit_minutes,
           allow_retake: quiz.allow_retake,
           description: quiz.description,
+          reward_points: quiz.reward_points,
           questions: [],
         });
         if (error) throw error;
@@ -135,7 +137,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
 
   const openCreateDialog = () => {
     setEditingQuiz(null);
-    setForm({ title: "", course_id: "", passing_score: 60, time_limit_minutes: 30, allow_retake: true, description: "" });
+    setForm({ title: "", course_id: "", passing_score: 60, time_limit_minutes: 30, allow_retake: true, description: "", reward_points: 20 });
     setShowDialog(true);
   };
 
@@ -148,6 +150,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
       time_limit_minutes: quiz.time_limit_minutes || 30,
       allow_retake: quiz.allow_retake ?? true,
       description: quiz.description || "",
+      reward_points: quiz.reward_points ?? 20,
     });
     setShowDialog(true);
   };
