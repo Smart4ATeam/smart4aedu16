@@ -456,8 +456,8 @@ export default function Resources() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Reset sub-category when category changes
-  useEffect(() => { setActiveSubCategory(""); }, [activeCategory]);
+  // Reset sub-category and trial filter when category changes
+  useEffect(() => { setActiveSubCategory(""); setTrialOnly(false); }, [activeCategory]);
 
   const trialMap = new Map(trials.map(t => [t.resource_id, t]));
 
