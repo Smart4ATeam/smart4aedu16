@@ -17,6 +17,7 @@ import { CourseContentEditor } from "@/components/admin/CourseContentEditor";
 import { toast } from "sonner";
 import { categoryLabels, categoryColors } from "@/lib/category-colors";
 import { AchievementsTab } from "@/components/admin/AchievementsTab";
+import { QuizzesTab } from "@/components/admin/QuizzesTab";
 
 // ===== Stat Card =====
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) {
