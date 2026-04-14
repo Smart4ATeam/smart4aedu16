@@ -95,6 +95,56 @@ export type Database = {
         }
         Relationships: []
       }
+      certificates: {
+        Row: {
+          course_id: string
+          course_name: string
+          id: string
+          image_url: string | null
+          issued_at: string
+          quiz_attempt_id: string | null
+          score: number
+          status: string
+          student_name: string
+          training_date: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          course_name: string
+          id?: string
+          image_url?: string | null
+          issued_at?: string
+          quiz_attempt_id?: string | null
+          score: number
+          status?: string
+          student_name: string
+          training_date: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          course_name?: string
+          id?: string
+          image_url?: string | null
+          issued_at?: string
+          quiz_attempt_id?: string | null
+          score?: number
+          status?: string
+          student_name?: string
+          training_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_quiz_attempt_id_fkey"
+            columns: ["quiz_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           archived: boolean
@@ -159,7 +209,9 @@ export type Database = {
       }
       course_quizzes: {
         Row: {
+          allow_retake: boolean
           course_id: string
+          description: string
           id: string
           passing_score: number
           questions: Json
@@ -167,7 +219,9 @@ export type Database = {
           title: string
         }
         Insert: {
+          allow_retake?: boolean
           course_id: string
+          description?: string
           id?: string
           passing_score?: number
           questions?: Json
@@ -175,7 +229,9 @@ export type Database = {
           title: string
         }
         Update: {
+          allow_retake?: boolean
           course_id?: string
+          description?: string
           id?: string
           passing_score?: number
           questions?: Json
