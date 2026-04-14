@@ -158,7 +158,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
 
   // Questions management
   const currentQuiz = quizzes.find((q: any) => q.id === showQuestionsPanel);
-  const currentQuestions: Question[] = (currentQuiz?.questions as Question[]) || [];
+  const currentQuestions: Question[] = (currentQuiz?.questions as unknown as Question[]) || [];
 
   const handleSaveQuestion = () => {
     if (!editingQuestion || !showQuestionsPanel) return;
