@@ -485,7 +485,6 @@ const AdminTasks = () => {
                 <InfoItem label="徽章數" value={`${selectedApplicant.applicant.total_badges} 枚`} />
                 <InfoItem label="難度偏好" value={selectedApplicant.applicant.difficulty_preference || "—"} />
                 <InfoItem label="電話" value={selectedApplicant.applicant.phone || "—"} />
-                <InfoItem label="累計收益" value={`$${Number(selectedApplicant.applicant.total_revenue).toLocaleString()}`} />
               </div>
 
               {/* Bio */}
