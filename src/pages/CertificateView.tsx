@@ -70,23 +70,38 @@ export default function CertificateView() {
             </>
           )}
 
-          {cert.status === "issued" && cert.image_url && (
-            <>
-              <Badge className="bg-green-500">已發行</Badge>
-              <img
-                src={cert.image_url}
-                alt="結訓證書"
-                className="w-full rounded-lg border border-border shadow-sm"
-              />
-              <div className="flex gap-2">
-                <Button className="flex-1 gap-2" asChild>
-                  <a href={cert.image_url} download={`certificate-${cert.student_name}.png`} target="_blank" rel="noopener noreferrer">
-                    <Download className="w-4 h-4" /> 下載證書
-                  </a>
-                </Button>
-              </div>
-            </>
-          )}
+          {cert.status === "issued" && cert.image_url && (() => {
+            const isPdf = cert.image_url!.toLowerCase().endsWith(".pdf") ||
+              cert.image_url!.includes("/pdf") ||
+              cert.image_url!.includes("content-type=application%2Fpdf");
+            const fileName = `certificate-${cert.student_name}${isPdf ? ".pdf" : ".png"}`;
+            return (
+              <>
+                <Badge className="bg-green-500">已發行</Badge>
+                {isPdf ? (
+                  <iframe
+                    src={cert.image_url!}
+                    title="結訓證書"
+                    className="w-full rounded-lg border border-border shadow-sm"
+                    style={{ height: "500px" }}
+                  />
+                ) : (
+                  <img
+                    src={cert.image_url!}
+                    alt="結訓證書"
+                    className="w-full rounded-lg border border-border shadow-sm"
+                  />
+                )}
+                <div className="flex gap-2">
+                  <Button className="flex-1 gap-2" asChild>
+                    <a href={cert.image_url!} download={fileName} target="_blank" rel="noopener noreferrer">
+                      <Download className="w-4 h-4" /> 下載證書
+                    </a>
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
 
           {cert.status === "failed" && (
             <>
