@@ -57,6 +57,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
     time_limit_minutes: 30,
     allow_retake: true,
     description: "",
+    reward_points: 20,
   });
 
   const { data: quizzes = [] } = useQuery({
@@ -81,6 +82,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
             time_limit_minutes: quiz.time_limit_minutes,
             allow_retake: quiz.allow_retake,
             description: quiz.description,
+            reward_points: quiz.reward_points,
           })
           .eq("id", quiz.id);
         if (error) throw error;
@@ -92,6 +94,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
           time_limit_minutes: quiz.time_limit_minutes,
           allow_retake: quiz.allow_retake,
           description: quiz.description,
+          reward_points: quiz.reward_points,
           questions: [],
         });
         if (error) throw error;
@@ -134,7 +137,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
 
   const openCreateDialog = () => {
     setEditingQuiz(null);
-    setForm({ title: "", course_id: "", passing_score: 60, time_limit_minutes: 30, allow_retake: true, description: "" });
+    setForm({ title: "", course_id: "", passing_score: 60, time_limit_minutes: 30, allow_retake: true, description: "", reward_points: 20 });
     setShowDialog(true);
   };
 
@@ -147,6 +150,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
       time_limit_minutes: quiz.time_limit_minutes || 30,
       allow_retake: quiz.allow_retake ?? true,
       description: quiz.description || "",
+      reward_points: quiz.reward_points ?? 20,
     });
     setShowDialog(true);
   };
@@ -405,6 +409,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
               <TableHead>所屬課程</TableHead>
               <TableHead>題數</TableHead>
               <TableHead>及格分</TableHead>
+              <TableHead>獎勵點數</TableHead>
               <TableHead>時間限制</TableHead>
               <TableHead>重考</TableHead>
               <TableHead className="text-right">操作</TableHead>
@@ -419,6 +424,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
                   <TableCell className="text-sm">{q.courses?.title || "-"}</TableCell>
                   <TableCell className="text-sm">{qCount} 題</TableCell>
                   <TableCell className="text-sm">{q.passing_score} 分</TableCell>
+                  <TableCell className="text-sm font-medium text-primary">{q.reward_points ?? 20} 點</TableCell>
                   <TableCell className="text-sm">{q.time_limit_minutes || "-"} 分鐘</TableCell>
                   <TableCell><Badge variant={q.allow_retake ? "default" : "secondary"} className="text-xs">{q.allow_retake ? "允許" : "不可"}</Badge></TableCell>
                   <TableCell className="text-right">
@@ -438,7 +444,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
               );
             })}
             {quizzes.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">尚未建立測驗</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚未建立測驗</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -468,7 +474,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
               <Label>測驗說明</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="測驗注意事項..." />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label>及格分數</Label>
                 <Input type="number" value={form.passing_score} onChange={(e) => setForm({ ...form, passing_score: Number(e.target.value) })} />
@@ -476,6 +482,10 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
               <div>
                 <Label>時間限制（分鐘）</Label>
                 <Input type="number" value={form.time_limit_minutes} onChange={(e) => setForm({ ...form, time_limit_minutes: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>通過獎勵點數</Label>
+                <Input type="number" value={form.reward_points} onChange={(e) => setForm({ ...form, reward_points: Number(e.target.value) })} />
               </div>
             </div>
             <div className="flex items-center gap-2">
