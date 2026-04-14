@@ -58,7 +58,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
 }) {
   if (!subCategories.length) return null;
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
+    <>
       <button
         onClick={() => onChange("")}
         className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
@@ -78,7 +78,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
           {sc.label}
         </button>
       ))}
-    </div>
+    </>
   );
 }
 
