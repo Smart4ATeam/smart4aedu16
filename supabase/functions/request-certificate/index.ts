@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     // Build suggested filename using course_code + training_date (ASCII-safe)
     const courseCode = course?.course_code || "CERT";
     const safeDate = (cert.training_date || "").replace(/~/g, "--");
-    const suggestedFilename = `${courseCode}-${cert.student_name}-${safeDate}.pdf`;
+    const suggestedFilename = `${courseCode}-${safeDate}.pdf`;
 
     const webhookPayload = {
       action: "generate_certificate",
