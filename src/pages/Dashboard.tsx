@@ -75,7 +75,7 @@ const Dashboard = () => {
         />
         <StatCard
           icon={<Zap className="w-5 h-5" />}
-          value={(profile?.total_points ?? 0).toLocaleString()}
+          value={memberPoints.toLocaleString()}
           label="累計點數"
           variant="info"
           delay={0.05}
