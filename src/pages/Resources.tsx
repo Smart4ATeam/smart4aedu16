@@ -542,6 +542,7 @@ export default function Resources() {
   const filtered = resources.filter(r => {
     if (r.category !== activeCategory) return false;
     if (activeSubCategory && (r as any).sub_category !== activeSubCategory) return false;
+    if (trialOnly && !r.trial_enabled) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
