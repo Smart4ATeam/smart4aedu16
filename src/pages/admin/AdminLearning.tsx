@@ -885,45 +885,4 @@ function InstructorsTab({ instructors, partners, queryClient }: { instructors: a
 }
 
 
-// ========== Quizzes Tab ==========
-function QuizzesTab({ courses }: { courses: any[] }) {
-  const { data: quizzes = [] } = useQuery({
-    queryKey: ["admin_quizzes"],
-    queryFn: async () => {
-      const { data } = await supabase.from("course_quizzes").select("*, courses(title)");
-      return data || [];
-    },
-  });
-
-  return (
-    <>
-      <h2 className="font-semibold text-foreground mb-4">測驗管理</h2>
-      <div className="glass-card rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>測驗標題</TableHead>
-              <TableHead>所屬課程</TableHead>
-              <TableHead>及格分</TableHead>
-              <TableHead>時間限制</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quizzes.map((q: any) => (
-              <TableRow key={q.id}>
-                <TableCell className="font-medium">{q.title}</TableCell>
-                <TableCell className="text-sm">{q.courses?.title || "-"}</TableCell>
-                <TableCell className="text-sm">{q.passing_score} 分</TableCell>
-                <TableCell className="text-sm">{q.time_limit_minutes} 分鐘</TableCell>
-              </TableRow>
-            ))}
-            {quizzes.length === 0 && (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">尚未建立測驗</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <p className="text-xs text-muted-foreground mt-2">💡 測驗建立功能即將推出</p>
-    </>
-  );
-}
+// QuizzesTab moved to src/components/admin/QuizzesTab.tsx
