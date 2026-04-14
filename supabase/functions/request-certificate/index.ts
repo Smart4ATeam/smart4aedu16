@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const { data: cert, error: certError } = await adminClient
       .from("certificates")
-      .select("*")
+      .select("*, courses(total_hours)")
       .eq("id", certificate_id)
       .eq("user_id", user.id)
       .single();
@@ -71,6 +71,19 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Fetch full session dates for this course
+    const { data: sessions } = await adminClient
+      .from("course_sessions")
+      .select("start_date, end_date, location")
+      .eq("course_id", cert.course_id)
+      .order("start_date", { ascending: true });
+
+    const sessionDates = (sessions || []).map((s: any) => ({
+      start_date: s.start_date,
+      end_date: s.end_date,
+      location: s.location,
+    }));
 
     // Call Make.com webhook
     const webhookUrl = Deno.env.get("MAKE_CERT_WEBHOOK_URL");
@@ -91,10 +104,13 @@ Deno.serve(async (req) => {
     const callbackUrl = `${supabaseUrl}/functions/v1/api-certificate-callback`;
 
     const webhookPayload = {
+      action: "generate_certificate",
       certificate_id: cert.id,
       student_name: cert.student_name,
       course_name: cert.course_name,
       training_date: cert.training_date,
+      total_hours: (cert as any).courses?.total_hours || null,
+      session_dates: sessionDates,
       score: cert.score,
       callback_url: callbackUrl,
     };
