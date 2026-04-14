@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, Pencil, Trash2, ListPlus, ClipboardCheck, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -21,8 +22,9 @@ interface Question {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_answer: string;
+  correct_answer: string; // single: "B", multi: "A,C"
   points: number;
+  multi_select?: boolean;
 }
 
 const emptyQuestion: Question = {
@@ -34,6 +36,7 @@ const emptyQuestion: Question = {
   option_d: "",
   correct_answer: "A",
   points: 5,
+  multi_select: false,
 };
 
 export function QuizzesTab({ courses }: { courses: any[] }) {
@@ -200,6 +203,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
         option_d: q.option_d || "",
         correct_answer: (q.correct_answer || "A").toUpperCase(),
         points: q.points || 5,
+        multi_select: q.multi_select || false,
       }));
       // Merge: replace by question_no, append new
       const existing = [...currentQuestions];
@@ -259,6 +263,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
                   </span>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="text-xs">{q.points} 分</Badge>
+                    {q.multi_select && <Badge variant="secondary" className="text-xs">複選</Badge>}
                     <Badge className="text-xs">答：{q.correct_answer}</Badge>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(idx); }}>
                       <Trash2 className="w-3 h-3 text-destructive" />
@@ -291,16 +296,51 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
                     </div>
                   ))}
                 </div>
+                <div className="flex items-center gap-3">
+                  <Label>複選題</Label>
+                  <Switch
+                    checked={editingQuestion.multi_select || false}
+                    onCheckedChange={(checked) => setEditingQuestion({
+                      ...editingQuestion,
+                      multi_select: checked,
+                      correct_answer: checked ? "" : "A",
+                    })}
+                  />
+                </div>
                 <div>
-                  <Label>正確答案</Label>
-                  <RadioGroup value={editingQuestion.correct_answer} onValueChange={(v) => setEditingQuestion({ ...editingQuestion, correct_answer: v })} className="flex gap-4 mt-1">
-                    {["A", "B", "C", "D"].map((opt) => (
-                      <div key={opt} className="flex items-center gap-1">
-                        <RadioGroupItem value={opt} id={`ans-${opt}`} />
-                        <Label htmlFor={`ans-${opt}`} className="text-sm">{opt}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <Label>正確答案{editingQuestion.multi_select ? "（可複選）" : ""}</Label>
+                  {editingQuestion.multi_select ? (
+                    <div className="flex gap-4 mt-1">
+                      {["A", "B", "C", "D"].map((opt) => {
+                        const selected = editingQuestion.correct_answer.split(",").includes(opt);
+                        return (
+                          <div key={opt} className="flex items-center gap-1">
+                            <Checkbox
+                              id={`ans-multi-${opt}`}
+                              checked={selected}
+                              onCheckedChange={(checked) => {
+                                const current = editingQuestion.correct_answer ? editingQuestion.correct_answer.split(",").filter(Boolean) : [];
+                                const next = checked
+                                  ? [...current, opt].sort()
+                                  : current.filter((v) => v !== opt);
+                                setEditingQuestion({ ...editingQuestion, correct_answer: next.join(",") });
+                              }}
+                            />
+                            <Label htmlFor={`ans-multi-${opt}`} className="text-sm">{opt}</Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <RadioGroup value={editingQuestion.correct_answer} onValueChange={(v) => setEditingQuestion({ ...editingQuestion, correct_answer: v })} className="flex gap-4 mt-1">
+                      {["A", "B", "C", "D"].map((opt) => (
+                        <div key={opt} className="flex items-center gap-1">
+                          <RadioGroupItem value={opt} id={`ans-${opt}`} />
+                          <Label htmlFor={`ans-${opt}`} className="text-sm">{opt}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
                 </div>
                 <div>
                   <Label>分數</Label>
@@ -334,7 +374,8 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
   "option_c": "選項C",
   "option_d": "選項D",
   "correct_answer": "B",
-  "points": 5
+  "points": 5,
+  "multi_select": false
 }]`}</pre>
               <Textarea value={importJson} onChange={(e) => setImportJson(e.target.value)} rows={8} placeholder="貼上 JSON..." />
             </div>
