@@ -66,6 +66,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // If certificate has a quiz_attempt_id, check for _meta overrides
+    if (cert.quiz_attempt_id) {
+      const { data: attemptData } = await adminClient
+        .from("quiz_attempts")
+        .select("answers")
+        .eq("id", cert.quiz_attempt_id)
+        .maybeSingle();
+      
+      const meta = (attemptData?.answers as any)?._meta;
+      if (meta) {
+        const updates: any = {};
+        if (meta.trainingDate && cert.training_date !== meta.trainingDate) {
+          updates.training_date = meta.trainingDate;
+        }
+        if (meta.studentName && cert.student_name !== meta.studentName) {
+          updates.student_name = meta.studentName;
+        }
+        if (Object.keys(updates).length > 0) {
+          await adminClient.from("certificates").update(updates).eq("id", certificate_id);
+          Object.assign(cert, updates);
+        }
+      }
+    }
+
     // Fetch course total_hours separately (no FK relationship)
     const { data: course } = await adminClient
       .from("courses")

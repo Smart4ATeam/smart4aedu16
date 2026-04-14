@@ -15,6 +15,12 @@ export default function QuizResult() {
   const navigate = useNavigate();
   const location = useLocation();
   const { studentName: entryName, trainingDate: entryTrainingDate } = (location.state as any) || {};
+
+  // Fallback: read from attempt answers._meta if nav state is missing
+  const getMetaField = (field: string) => {
+    const meta = (attempt?.answers as any)?._meta;
+    return meta?.[field] || null;
+  };
   const queryClient = useQueryClient();
 
   // Fetch attempt
@@ -67,8 +73,8 @@ export default function QuizResult() {
           quiz_attempt_id: attempt.id,
           course_id: quiz.course_id,
           course_name: quiz.courses?.title || quiz.title,
-          student_name: entryName || profile?.display_name || "學員",
-          training_date: entryTrainingDate || new Date().toISOString().split("T")[0],
+          student_name: entryName || getMetaField("studentName") || profile?.display_name || "學員",
+          training_date: entryTrainingDate || getMetaField("trainingDate") || new Date().toISOString().split("T")[0],
           score: attempt.score,
           status: "pending",
         })
