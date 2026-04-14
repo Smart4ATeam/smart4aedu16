@@ -188,8 +188,12 @@ export default function QuizEntry() {
                   <SelectValue placeholder="請選擇訓練日期" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sessions.map((s: any) => (
-                    <SelectItem key={s.id} value={s.start_date || s.id}>
+                  {sessions.map((s: any) => {
+                    const dateVal = s.start_date && s.end_date && s.end_date !== s.start_date
+                      ? `${s.start_date}~${s.end_date}`
+                      : (s.start_date || s.id);
+                    return (
+                    <SelectItem key={s.id} value={dateVal}>
                       {s.start_date}{s.end_date && s.end_date !== s.start_date ? ` ~ ${s.end_date}` : ""}
                       {s.location ? ` (${s.location})` : ""}
                     </SelectItem>
