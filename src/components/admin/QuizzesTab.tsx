@@ -21,8 +21,9 @@ interface Question {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_answer: string;
+  correct_answer: string; // single: "B", multi: "A,C"
   points: number;
+  multi_select?: boolean;
 }
 
 const emptyQuestion: Question = {
@@ -34,6 +35,7 @@ const emptyQuestion: Question = {
   option_d: "",
   correct_answer: "A",
   points: 5,
+  multi_select: false,
 };
 
 export function QuizzesTab({ courses }: { courses: any[] }) {
