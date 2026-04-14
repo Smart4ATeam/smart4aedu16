@@ -197,7 +197,8 @@ export default function QuizEntry() {
                       {s.start_date}{s.end_date && s.end_date !== s.start_date ? ` ~ ${s.end_date}` : ""}
                       {s.location ? ` (${s.location})` : ""}
                     </SelectItem>
-                  ))}
+                    );
+                  })}
                   {sessions.length === 0 && (
                     <SelectItem value="no-session" disabled>尚無訓練梯次</SelectItem>
                   )}
