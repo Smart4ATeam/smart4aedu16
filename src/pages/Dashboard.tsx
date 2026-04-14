@@ -18,7 +18,6 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<{
     display_name: string;
     learning_days: number;
-    total_points: number;
     total_badges: number;
     total_revenue: number;
   } | null>(null);

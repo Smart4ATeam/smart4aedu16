@@ -480,12 +480,12 @@ const AdminTasks = () => {
               <div className="grid grid-cols-2 gap-3">
                 <InfoItem label="學號" value={selectedApplicant.applicant.student_id || "—"} />
                 <InfoItem label="組織" value={selectedApplicant.applicant.organization_id || "—"} />
-                <InfoItem label="累計積分" value={`${selectedApplicant.applicant.total_points} 分`} />
                 <InfoItem label="累計收益" value={`$${Number(selectedApplicant.applicant.total_revenue).toLocaleString()}`} />
                 <InfoItem label="學習天數" value={`${selectedApplicant.applicant.learning_days} 天`} />
                 <InfoItem label="徽章數" value={`${selectedApplicant.applicant.total_badges} 枚`} />
                 <InfoItem label="難度偏好" value={selectedApplicant.applicant.difficulty_preference || "—"} />
                 <InfoItem label="電話" value={selectedApplicant.applicant.phone || "—"} />
+                <InfoItem label="累計收益" value={`$${Number(selectedApplicant.applicant.total_revenue).toLocaleString()}`} />
               </div>
 
               {/* Bio */}
