@@ -1,41 +1,56 @@
 
 
-# Plan: Order Detail Editable Fields + Cascading Person Updates
+## Plan: Unify All Point Operations to `reg_members.points` + `reg_point_transactions`
 
-## What changes
+### Problem
 
-### 1. Show paid_at timestamp in order detail dialog
-Add a row displaying `paid_at` formatted as date+time in the order detail grid (currently only shown in the table list, not in the detail dialog).
+The system has a dual point system:
+- **`profiles.total_points`** — updated by database triggers (task approval, quiz pass, attendance) and manually via EditDataDialog
+- **`reg_members.points`** — updated by `sync_member_points` trigger from `reg_point_transactions`
 
-### 2. Make invoice & person fields editable in order detail
-Convert the following read-only fields into editable inputs inside the order detail dialog:
+Per your directive, **all points should come from `reg_members.points`** managed through `reg_point_transactions`. The `profiles.total_points` field and its related triggers are now stale/conflicting sources.
 
-- **Invoice title** (`invoice_title`)
-- **Tax ID** (`tax_id`)
-- **Person 1-3 name/phone/email** (`p1_name`, `p1_phone`, `p1_email`, etc.)
+### Affected Areas
 
-Add a "Save Changes" button that:
-1. Updates `reg_orders` with the changed fields
-2. Logs the change to `reg_operation_logs`
+**Database triggers that write to `profiles.total_points` (need removal or redirection):**
+1. `on_task_application_approved` — adds task amount to `profiles.total_points`
+2. `on_quiz_passed` — adds 20 to `profiles.total_points`
+3. `on_attendance_recorded` — adds 10 to `profiles.total_points`
+4. `check_and_grant_achievements` — reads `profiles.total_points` for the "百分先鋒" badge check
 
-### 3. Cascade person changes to reg_enrollments (for paid orders)
-When a person's info (name/phone/email) is modified on a paid order:
+**Frontend code reading `profiles.total_points`:**
+1. `Dashboard.tsx` — already uses `memberPoints` from `reg_members`, but still fetches `total_points` from profiles (minor cleanup)
+2. `AdminStudents.tsx` — Platform Users table displays `p.total_points` from profiles
+3. `StudentDetailDialog.tsx` — shows `detail.profile.total_points`
+4. `EditDataDialog.tsx` — allows manual editing of `profiles.total_points`
+5. `AdminDashboard.tsx` — fetches `total_points` from profiles (already uses `member_points` for display)
 
-1. Query `reg_enrollments` joined with `reg_members` for that `order_id`
-2. For each changed person (matched by original name), find the corresponding `reg_members` record linked through the enrollment
-3. Update the `reg_members` record's name/phone/email to match the new values
-4. Log the cascading update to `reg_operation_logs`
+### Implementation Steps
 
-This ensures that when an order has already been split (paid → enrollments created → members created), editing person info on the order propagates to the member records.
+#### Step 1: Database Migration — Remove/Redirect Triggers
+- **Drop or replace** `on_task_application_approved`: Instead of updating `profiles.total_points`, insert a row into `reg_point_transactions` (requires finding the member_id for the user)
+- **Drop or replace** `on_quiz_passed`: Same — insert into `reg_point_transactions` instead
+- **Drop or replace** `on_attendance_recorded`: Same pattern
+- **Update** `check_and_grant_achievements`: Read from `reg_members.points` instead of `profiles.total_points`
 
-## Files to modify
+#### Step 2: Update Admin Student List (`AdminStudents.tsx`)
+- In the Platform Users tab, replace `p.total_points` display with a lookup from `reg_members` (similar to what AdminDashboard already does)
 
-- **`src/components/admin/RegistrationTabs.tsx`** — Add edit state for invoice_title, tax_id, p1-p3 fields; add paid_at display; add save mutation with cascading logic
+#### Step 3: Update Student Detail Dialog (`StudentDetailDialog.tsx`)
+- Change "積分" display to show `reg_members.points` instead of `profile.total_points`
 
-## Technical details
+#### Step 4: Update Edit Data Dialog (`EditDataDialog.tsx`)
+- Remove the "積分" (`total_points`) field from this dialog since points should only be managed through the Points management tab (which uses `reg_point_transactions`)
+- Keep badges, learning days, and revenue fields
 
-- The cascade logic matches persons by their **original name** (before edit) against `reg_members.name` where the member is linked through `reg_enrollments.order_id = order.id`
-- All updates use the existing `supabase` client with admin RLS policies (admin users already have ALL access on both `reg_orders` and `reg_members`)
-- The dialog will use controlled `Input` components with local state, initialized when opening the detail
-- A single "Save" button handles both invoice field and person field changes together
+#### Step 5: Update Dashboard (`Dashboard.tsx`)
+- Remove the unused `total_points` from the profiles fetch (cosmetic cleanup, already displays `memberPoints`)
+
+#### Step 6: Update AdminDashboard (`AdminDashboard.tsx`)
+- Remove `total_points` from profiles fetch (already uses `member_points` from reg_members)
+
+### Technical Notes
+- The triggers for task/quiz/attendance need to resolve `user_id → member_id` via `reg_members.user_id`. If a user has no `reg_members` record, the point award will be skipped (or we can auto-create a transaction note).
+- The `sync_member_points` trigger on `reg_point_transactions` will automatically keep `reg_members.points` in sync.
+- The `check_and_grant_achievements` function will need to join `reg_members` to get the user's points.
 
