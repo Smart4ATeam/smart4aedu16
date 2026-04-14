@@ -219,7 +219,7 @@ export default function Learning() {
                       )}
                     </div>
                   </div>
-                  {enrollment.payment_status === "paid" && courseId && (
+                  {enrollment.payment_status === "paid" && enrollment.status !== "cancelled" && courseId && (
                     <Button size="sm" onClick={() => navigate(`/learning/course/${courseId}`)} className="shrink-0 gap-1">
                       查看內容 <ArrowRight className="w-3 h-3" />
                     </Button>
