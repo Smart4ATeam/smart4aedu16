@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Download, ArrowLeft, AlertCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export default function CertificateView() {
   const { certificateId } = useParams<{ certificateId: string }>();
   const navigate = useNavigate();
   const [pollCount, setPollCount] = useState(0);
+  const [retrying, setRetrying] = useState(false);
 
   const { data: cert, refetch } = useQuery({
     queryKey: ["certificate_view", certificateId],
@@ -36,6 +38,24 @@ export default function CertificateView() {
     return () => clearTimeout(timer);
   }, [cert?.status, pollCount, refetch]);
 
+  const handleRetry = async () => {
+    if (!certificateId) return;
+    setRetrying(true);
+    try {
+      const { error } = await supabase.functions.invoke("request-certificate", {
+        body: { certificate_id: certificateId },
+      });
+      if (error) throw error;
+      toast.success("已重新發送證書產生請求");
+      setPollCount(0);
+    } catch (e: any) {
+      console.error("Retry error:", e);
+      toast.error("重新發送失敗：" + (e.message || "未知錯誤"));
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   if (!cert) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -57,6 +77,10 @@ export default function CertificateView() {
                   ? "產生時間較長，請稍後至學習中心查看"
                   : `正在處理中（${pollCount}/20）`}
               </p>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleRetry} disabled={retrying}>
+                {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                重新發送請求
+              </Button>
             </>
           )}
 
@@ -83,6 +107,10 @@ export default function CertificateView() {
               <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
               <p className="font-semibold text-foreground">證書產生失敗</p>
               <p className="text-sm text-muted-foreground">請聯繫管理員或重新申請</p>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleRetry} disabled={retrying}>
+                {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                重新發送請求
+              </Button>
             </>
           )}
 
