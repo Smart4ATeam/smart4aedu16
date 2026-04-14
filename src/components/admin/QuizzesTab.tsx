@@ -262,6 +262,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
                   </span>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="text-xs">{q.points} 分</Badge>
+                    {q.multi_select && <Badge variant="secondary" className="text-xs">複選</Badge>}
                     <Badge className="text-xs">答：{q.correct_answer}</Badge>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(idx); }}>
                       <Trash2 className="w-3 h-3 text-destructive" />
