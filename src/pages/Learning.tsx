@@ -239,27 +239,31 @@ export default function Learning() {
         {/* Tab 3: Quizzes */}
         <TabsContent value="quiz">
           <div className="space-y-4">
-            {quizAttempts.length > 0 ? quizAttempts.map((attempt: any) => (
-              <div key={attempt.id} className="glass-card rounded-xl p-5 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-foreground">{attempt.course_quizzes?.title}</h3>
-                  <p className="text-xs text-muted-foreground">{attempt.course_quizzes?.courses?.title} · {new Date(attempt.attempted_at).toLocaleDateString("zh-TW")}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-lg font-bold ${attempt.passed ? "text-green-500" : "text-destructive"}`}>{attempt.score} 分</span>
-                  <Badge variant={attempt.passed ? "default" : "destructive"}>{attempt.passed ? "通過" : "未通過"}</Badge>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <ClipboardCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p>尚無測驗紀錄</p>
+            {/* Available quizzes */}
+            <AvailableQuizzes userId={user?.id} navigate={navigate} />
+
+            {/* Past attempts */}
+            {quizAttempts.length > 0 && (
+              <div className="space-y-2 mt-6">
+                <h3 className="text-sm font-semibold text-muted-foreground">歷史測驗紀錄</h3>
+                {quizAttempts.map((attempt: any) => (
+                  <div
+                    key={attempt.id}
+                    className="glass-card rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => navigate(`/quiz/${attempt.quiz_id}/result/${attempt.id}`)}
+                  >
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">{attempt.course_quizzes?.title}</h4>
+                      <p className="text-xs text-muted-foreground">{attempt.course_quizzes?.courses?.title} · {new Date(attempt.attempted_at).toLocaleDateString("zh-TW")}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-bold ${attempt.passed ? "text-green-500" : "text-destructive"}`}>{attempt.score} 分</span>
+                      <Badge variant={attempt.passed ? "default" : "destructive"}>{attempt.passed ? "通過" : "未通過"}</Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-            <div className="glass-card rounded-xl p-5 text-center border-dashed border-2 border-border">
-              <Award className="w-8 h-8 mx-auto mb-2 text-primary/40" />
-              <p className="text-sm text-muted-foreground">🎓 證書下載功能即將推出</p>
-            </div>
           </div>
         </TabsContent>
       </Tabs>
