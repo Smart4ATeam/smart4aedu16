@@ -34,23 +34,32 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [profilesRes, rolesRes, tasksRes, revenueRes] = await Promise.all([
-        supabase.from("profiles").select("id, display_name, learning_days, total_points, total_revenue, total_badges"),
-        supabase.from("user_roles").select("user_id, role"),
+      const [membersRes, profilesRes, loginRes, tasksRes, revenueRes] = await Promise.all([
+        // Total students = reg_members count
+        supabase.from("reg_members").select("id", { count: "exact", head: true }),
+        // All activated profiles for active student check & progress table
+        supabase.from("profiles").select("id, display_name, learning_days, total_points, total_revenue, activated"),
+        // Login tracks in last 3 months
+        supabase.from("login_tracks").select("user_id, login_date")
+          .gte("login_date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
         supabase.from("tasks").select("id, created_at"),
         supabase.from("revenue_records").select("amount, recorded_at"),
       ]);
 
+      // Total students from reg_members
+      setTotalStudents(membersRes.count || 0);
+
+      // Active students: activated profiles with login in last 3 months
       if (profilesRes.data) {
-        const adminIds = new Set(
-          (rolesRes.data || [])
-            .filter(r => r.role === "admin" || r.role === "moderator")
-            .map(r => r.user_id)
+        const recentLoginUserIds = new Set(
+          (loginRes.data || []).map((l: any) => l.user_id)
         );
-        const studentProfiles = profilesRes.data.filter(p => !adminIds.has(p.id));
-        setTotalStudents(studentProfiles.length);
-        setActiveStudents(studentProfiles.filter(p => p.learning_days > 0).length);
-        setStudents(studentProfiles.map(p => ({
+        const activatedProfiles = profilesRes.data.filter(p => p.activated);
+        const activeCount = activatedProfiles.filter(p => recentLoginUserIds.has(p.id)).length;
+        setActiveStudents(activeCount);
+
+        // Student progress table: show all activated profiles
+        setStudents(activatedProfiles.map(p => ({
           display_name: p.display_name,
           learning_days: p.learning_days,
           total_points: p.total_points,
