@@ -463,10 +463,16 @@ const endpoints: ApiEndpoint[] = [
       {
         title: "系統發送至 Make.com 的 Webhook Payload 範例（Make.com 會收到）",
         body: {
+          action: "generate_certificate",
           certificate_id: "uuid-xxx",
           student_name: "王小明",
           course_name: "AI 實戰工作坊",
           training_date: "2026-04-14",
+          total_hours: 6,
+          session_dates: [
+            { start_date: "2026-04-10", end_date: "2026-04-10", location: "台北教室" },
+            { start_date: "2026-04-14", end_date: "2026-04-14", location: "線上" },
+          ],
           score: 85,
           callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/api-certificate-callback",
         },
