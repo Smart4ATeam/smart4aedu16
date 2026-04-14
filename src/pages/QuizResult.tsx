@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,8 @@ export default function QuizResult() {
   const { quizId, attemptId } = useParams<{ quizId: string; attemptId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { studentName: entryName, trainingDate: entryTrainingDate } = (location.state as any) || {};
   const queryClient = useQueryClient();
 
   // Fetch attempt
@@ -65,8 +67,8 @@ export default function QuizResult() {
           quiz_attempt_id: attempt.id,
           course_id: quiz.course_id,
           course_name: quiz.courses?.title || quiz.title,
-          student_name: profile?.display_name || "學員",
-          training_date: new Date().toISOString().split("T")[0],
+          student_name: entryName || profile?.display_name || "學員",
+          training_date: entryTrainingDate || new Date().toISOString().split("T")[0],
           score: attempt.score,
           status: "pending",
         })

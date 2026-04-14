@@ -159,7 +159,7 @@ export default function QuizExam() {
       return { attemptId: data.id, score, passed };
     },
     onSuccess: ({ attemptId }) => {
-      navigate(`/quiz/${quizId}/result/${attemptId}`, { replace: true });
+      navigate(`/quiz/${quizId}/result/${attemptId}`, { replace: true, state: { studentName, trainingDate } });
     },
     onError: (e: Error) => {
       toast.error(e.message);
