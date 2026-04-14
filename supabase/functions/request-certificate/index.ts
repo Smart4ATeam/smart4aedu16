@@ -1,0 +1,137 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    // Verify JWT from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Create user-scoped client to verify the JWT
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const { certificate_id } = body;
+
+    if (!certificate_id) {
+      return new Response(JSON.stringify({ error: "certificate_id is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Use admin client to fetch certificate
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: cert, error: certError } = await adminClient
+      .from("certificates")
+      .select("*")
+      .eq("id", certificate_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (certError || !cert) {
+      return new Response(JSON.stringify({ error: "Certificate not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (cert.status !== "pending") {
+      return new Response(JSON.stringify({ error: "Certificate already processed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Call Make.com webhook
+    const webhookUrl = Deno.env.get("MAKE_CERT_WEBHOOK_URL");
+    if (!webhookUrl) {
+      // No webhook configured — mark as failed
+      await adminClient
+        .from("certificates")
+        .update({ status: "failed" })
+        .eq("id", certificate_id);
+
+      return new Response(JSON.stringify({ error: "Webhook URL not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Build callback URL for Make.com to call back
+    const callbackUrl = `${supabaseUrl}/functions/v1/api-certificate-callback`;
+
+    const webhookPayload = {
+      certificate_id: cert.id,
+      student_name: cert.student_name,
+      course_name: cert.course_name,
+      training_date: cert.training_date,
+      score: cert.score,
+      callback_url: callbackUrl,
+    };
+
+    const webhookRes = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(webhookPayload),
+    });
+
+    if (!webhookRes.ok) {
+      const errText = await webhookRes.text();
+      console.error("Make.com webhook error:", errText);
+      await adminClient
+        .from("certificates")
+        .update({ status: "failed" })
+        .eq("id", certificate_id);
+
+      return new Response(JSON.stringify({ error: "Webhook call failed" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Consume response body
+    await webhookRes.text();
+
+    return new Response(JSON.stringify({ success: true, certificate_id: cert.id }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: unknown) {
+    console.error("request-certificate error:", err);
+    const message = err instanceof Error ? err.message : JSON.stringify(err);
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
