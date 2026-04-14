@@ -43,8 +43,8 @@ type Trial = {
 };
 
 const categoryMeta = [
-  { id: "plugins", label: "應用插件", icon: Wrench },
   { id: "extensions", label: "應用套件", icon: Puzzle },
+  { id: "plugins", label: "應用插件", icon: Wrench },
   { id: "templates", label: "場景範本", icon: LayoutTemplate },
   { id: "videos", label: "教學影片", icon: Video },
 ];
@@ -391,7 +391,7 @@ function MyTrialsTab({ trials, resources }: { trials: Trial[]; resources: Resour
 
 export default function Resources() {
   const { user } = useAuth();
-  const [activeCategory, setActiveCategory] = useState("plugins");
+  const [activeCategory, setActiveCategory] = useState("extensions");
   const [searchQuery, setSearchQuery] = useState("");
   const [resources, setResources] = useState<Resource[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
