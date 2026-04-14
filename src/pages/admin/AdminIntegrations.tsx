@@ -658,30 +658,40 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   );
 }
 
-function WebhookUrlSetting() {
+function WebhookUrlSettingItem({
+  keyName,
+  label,
+  description,
+  placeholder,
+}: {
+  keyName: string;
+  label: string;
+  description: string;
+  placeholder: string;
+}) {
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.from("system_settings").select("value").eq("key_name", "trial_webhook_url").maybeSingle().then(({ data }) => {
+    supabase.from("system_settings").select("value").eq("key_name", keyName).maybeSingle().then(({ data }) => {
       if (data) setUrl(data.value);
       setLoaded(true);
     });
-  }, []);
+  }, [keyName]);
 
   const handleSave = async () => {
     setSaving(true);
-    const { data: existing } = await supabase.from("system_settings").select("id").eq("key_name", "trial_webhook_url").maybeSingle();
+    const { data: existing } = await supabase.from("system_settings").select("id").eq("key_name", keyName).maybeSingle();
     const trimmed = url.trim();
     if (existing) {
-      const { error } = await supabase.from("system_settings").update({ value: trimmed }).eq("key_name", "trial_webhook_url");
+      const { error } = await supabase.from("system_settings").update({ value: trimmed }).eq("key_name", keyName);
       if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
     } else {
-      const { error } = await supabase.from("system_settings").insert({ key_name: "trial_webhook_url", value: trimmed, description: "資源試用領用 Webhook URL" });
+      const { error } = await supabase.from("system_settings").insert({ key_name: keyName, value: trimmed, description: label });
       if (error) { toast.error("儲存失敗：" + error.message); setSaving(false); return; }
     }
-    toast.success("Webhook URL 已儲存");
+    toast.success(`${label}已儲存`);
     setSaving(false);
   };
 
@@ -689,10 +699,10 @@ function WebhookUrlSetting() {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-foreground">Webhook URL 設定</p>
-      <p className="text-xs text-muted-foreground">學員領用試用資源時，系統會自動 POST 到此 URL</p>
+      <p className="text-xs font-medium text-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
       <div className="flex gap-2">
-        <Input placeholder="https://hook.example.com/trial" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1 text-xs" />
+        <Input placeholder={placeholder} value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1 text-xs" />
         <Button onClick={handleSave} disabled={saving} size="sm" className="gap-1.5">
           <Save className="w-3.5 h-3.5" /> {saving ? "儲存中..." : "儲存"}
         </Button>
@@ -737,13 +747,25 @@ export default function AdminIntegrations() {
         </div>
       </div>
 
-      {/* Webhook URL Setting */}
-      <div className="glass-card p-4">
-        <div className="flex items-center gap-2 mb-2">
+      {/* Webhook URL Settings */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-center gap-2">
           <div className="w-1 h-5 rounded-full bg-accent" />
           <h2 className="text-sm font-semibold text-foreground">Webhook URL 設定</h2>
         </div>
-        <WebhookUrlSetting />
+        <WebhookUrlSettingItem
+          keyName="trial_webhook_url"
+          label="資源試用 Webhook URL"
+          description="學員領用試用資源（套件 / 範本）時，系統會自動 POST 到此 URL，對應端點：api-resource-trial-callback"
+          placeholder="https://hook.example.com/trial"
+        />
+        <div className="border-t border-border" />
+        <WebhookUrlSettingItem
+          keyName="cert_webhook_url"
+          label="證書產生 Webhook URL"
+          description="學員申請結訓證書時，系統會 POST 到此 URL 請求產生證書，對應端點：api-certificate-callback"
+          placeholder="https://hook.example.com/certificate"
+        />
       </div>
 
 
