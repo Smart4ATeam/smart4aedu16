@@ -12,6 +12,62 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { categoryLabels, categoryColors } from "@/lib/category-colors";
 
+function AvailableQuizzes({ userId, navigate }: { userId?: string; navigate: (path: string) => void }) {
+  const { data: quizzes = [], isLoading } = useQuery({
+    queryKey: ["available_quizzes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_quizzes")
+        .select("id, title, description, passing_score, time_limit_minutes, allow_retake, questions, courses(title, category)")
+        .order("title");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  if (isLoading) return <div className="text-center py-8 text-muted-foreground text-sm">載入中...</div>;
+  if (quizzes.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <ClipboardCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
+        <p>目前沒有可用的測驗</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {quizzes.map((q: any) => {
+        const questionCount = (q.questions as any[])?.length || 0;
+        return (
+          <div
+            key={q.id}
+            className="glass-card rounded-xl p-5 cursor-pointer hover:shadow-lg transition-all group"
+            onClick={() => navigate(`/quiz/${q.id}`)}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <ClipboardCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors text-sm">{q.title}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{(q.courses as any)?.title}</p>
+                {q.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{q.description}</p>}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Badge variant="secondary" className="text-xs">{questionCount} 題</Badge>
+                  <Badge variant="secondary" className="text-xs">及格 {q.passing_score} 分</Badge>
+                  {q.time_limit_minutes && <Badge variant="outline" className="text-xs">{q.time_limit_minutes} 分鐘</Badge>}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Learning() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -239,27 +295,31 @@ export default function Learning() {
         {/* Tab 3: Quizzes */}
         <TabsContent value="quiz">
           <div className="space-y-4">
-            {quizAttempts.length > 0 ? quizAttempts.map((attempt: any) => (
-              <div key={attempt.id} className="glass-card rounded-xl p-5 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-foreground">{attempt.course_quizzes?.title}</h3>
-                  <p className="text-xs text-muted-foreground">{attempt.course_quizzes?.courses?.title} · {new Date(attempt.attempted_at).toLocaleDateString("zh-TW")}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-lg font-bold ${attempt.passed ? "text-green-500" : "text-destructive"}`}>{attempt.score} 分</span>
-                  <Badge variant={attempt.passed ? "default" : "destructive"}>{attempt.passed ? "通過" : "未通過"}</Badge>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <ClipboardCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p>尚無測驗紀錄</p>
+            {/* Available quizzes */}
+            <AvailableQuizzes userId={user?.id} navigate={navigate} />
+
+            {/* Past attempts */}
+            {quizAttempts.length > 0 && (
+              <div className="space-y-2 mt-6">
+                <h3 className="text-sm font-semibold text-muted-foreground">歷史測驗紀錄</h3>
+                {quizAttempts.map((attempt: any) => (
+                  <div
+                    key={attempt.id}
+                    className="glass-card rounded-xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => navigate(`/quiz/${attempt.quiz_id}/result/${attempt.id}`)}
+                  >
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">{attempt.course_quizzes?.title}</h4>
+                      <p className="text-xs text-muted-foreground">{attempt.course_quizzes?.courses?.title} · {new Date(attempt.attempted_at).toLocaleDateString("zh-TW")}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-bold ${attempt.passed ? "text-green-500" : "text-destructive"}`}>{attempt.score} 分</span>
+                      <Badge variant={attempt.passed ? "default" : "destructive"}>{attempt.passed ? "通過" : "未通過"}</Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-            <div className="glass-card rounded-xl p-5 text-center border-dashed border-2 border-border">
-              <Award className="w-8 h-8 mx-auto mb-2 text-primary/40" />
-              <p className="text-sm text-muted-foreground">🎓 證書下載功能即將推出</p>
-            </div>
           </div>
         </TabsContent>
       </Tabs>

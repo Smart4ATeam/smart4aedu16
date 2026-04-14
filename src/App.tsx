@@ -31,6 +31,10 @@ import AdminImport from "./pages/admin/AdminImport";
 import Learning from "./pages/Learning";
 import CourseDetail from "./pages/CourseDetail";
 import Points from "./pages/Points";
+import QuizEntry from "./pages/QuizEntry";
+import QuizExam from "./pages/QuizExam";
+import QuizResult from "./pages/QuizResult";
+import CertificateView from "./pages/CertificateView";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +61,10 @@ const App = () => (
             <Route path="/learning" element={<ProtectedRoute><AppLayout><Learning /></AppLayout></ProtectedRoute>} />
             <Route path="/learning/course/:courseId" element={<ProtectedRoute><AppLayout><CourseDetail /></AppLayout></ProtectedRoute>} />
             <Route path="/points" element={<ProtectedRoute><AppLayout><Points /></AppLayout></ProtectedRoute>} />
+            <Route path="/quiz/:quizId" element={<ProtectedRoute><AppLayout><QuizEntry /></AppLayout></ProtectedRoute>} />
+            <Route path="/quiz/:quizId/exam" element={<ProtectedRoute><AppLayout><QuizExam /></AppLayout></ProtectedRoute>} />
+            <Route path="/quiz/:quizId/result/:attemptId" element={<ProtectedRoute><AppLayout><QuizResult /></AppLayout></ProtectedRoute>} />
+            <Route path="/certificate/:certificateId" element={<ProtectedRoute><AppLayout><CertificateView /></AppLayout></ProtectedRoute>} />
 
             {/* Protected admin routes */}
             <Route path="/admin" element={<AdminProtectedRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminProtectedRoute>} />
