@@ -129,7 +129,6 @@ Deno.serve(async (req) => {
       course_name: cert.course_name,
       training_date: cert.training_date,
       total_hours: course?.total_hours || null,
-      session_dates: sessionDates,
       score: cert.score,
       callback_url: callbackUrl,
     };
