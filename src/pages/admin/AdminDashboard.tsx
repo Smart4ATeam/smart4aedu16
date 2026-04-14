@@ -164,7 +164,7 @@ const AdminDashboard = () => {
               <TableRow key={s.display_name}>
                 <TableCell className="font-medium">{s.display_name}</TableCell>
                 <TableCell>{s.learning_days} 天</TableCell>
-                <TableCell>{s.total_points.toLocaleString()}</TableCell>
+                <TableCell>{s.member_points.toLocaleString()}</TableCell>
                 <TableCell>${Number(s.total_revenue).toLocaleString()}</TableCell>
               </TableRow>
             ))}
