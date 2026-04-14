@@ -46,7 +46,7 @@ export default function QuizEntry() {
         .eq("user_id", user!.id)
         .limit(1)
         .maybeSingle();
-      return data as { id: string; name: string } | null;
+      return data as unknown as { id: string; name: string } | null;
     },
   });
 
