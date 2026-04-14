@@ -39,7 +39,7 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
             <div className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-muted-foreground" /> {detail.profile.email || "—"}</div>
             <div><span className="text-muted-foreground">學號：</span>{detail.profile.student_id || "—"}</div>
             <div><span className="text-muted-foreground">機構：</span>{detail.profile.organization_id || "—"}</div>
-            <div><span className="text-muted-foreground">積分：</span>{detail.profile.total_points}</div>
+            <div><span className="text-muted-foreground">積分：</span>{detail.memberPoints?.toLocaleString() ?? 0}</div>
             <div><span className="text-muted-foreground">徽章：</span>{detail.profile.total_badges}</div>
             <div><span className="text-muted-foreground">學習天數：</span>{detail.profile.learning_days} 天</div>
             <div><span className="text-muted-foreground">營收：</span>NT${Number(detail.profile.total_revenue).toLocaleString()}</div>

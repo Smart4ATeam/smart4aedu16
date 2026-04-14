@@ -30,11 +30,11 @@ const Dashboard = () => {
     // Fetch profile data
     supabase
       .from("profiles")
-      .select("display_name, learning_days, total_points, total_badges, total_revenue")
+      .select("display_name, learning_days, total_badges, total_revenue")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
-        if (data) setProfile(data);
+        if (data) setProfile(data as any);
       });
 
     // Fetch reg_members points (the authoritative point source)
