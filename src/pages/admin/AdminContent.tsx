@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search, FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,7 @@ type NewResource = {
   detail_url: string;sub_category: string;tags: string;hot_rank: string;
   flow_count: string;usage_count: string;industry_tag: string;
   duration: string;video_type: string;is_hot: boolean;sort_order: string;
-  app_id: string;trial_enabled: boolean;
+  app_id: string;trial_enabled: boolean;template_file_path: string;
 };
 
 const emptyResource = (): NewResource => ({
@@ -45,7 +45,7 @@ const emptyResource = (): NewResource => ({
   detail_url: "", sub_category: "", tags: "", hot_rank: "",
   flow_count: "", usage_count: "", industry_tag: "",
   duration: "", video_type: "", is_hot: false, sort_order: "",
-  app_id: "", trial_enabled: false,
+  app_id: "", trial_enabled: false, template_file_path: "",
 });
 
 const categoryOptions = [
@@ -150,6 +150,45 @@ function SubCategoryManager({ open, onOpenChange, subCategories, onRefresh
       </DialogContent>
     </Dialog>);
 
+}
+
+/* ─── Template File Upload ─── */
+
+function TemplateFileUpload({ filePath, onChange }: { filePath: string; onChange: (path: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("resource-templates").upload(path, file);
+    if (error) { toast.error("上傳失敗：" + error.message); setUploading(false); return; }
+    onChange(path);
+    setUploading(false);
+    toast.success("範本檔案已上傳");
+  };
+
+  return (
+    <div>
+      <Label className="text-xs">範本檔案（.zip / .json）</Label>
+      <div className="flex items-center gap-3 mt-1">
+        {filePath ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[10px] font-mono">{filePath}</Badge>
+            <button onClick={() => onChange("")} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition text-xs text-muted-foreground">
+            <FileUp className="w-4 h-4" />
+            {uploading ? "上傳中..." : "上傳範本檔案"}
+            <input type="file" accept=".zip,.json" className="hidden" onChange={handleUpload} disabled={uploading} />
+          </label>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Dynamic form fields by category ─── */
@@ -258,9 +297,11 @@ function DynamicFields({ res, onChange, subCategories
         </div>
       }
 
-      {/* Templates: flow_count, usage_count, industry_tag */}
+      {/* Templates: file upload, flow_count, usage_count, industry_tag */}
       {res.category === "templates" &&
-      <div className="flex gap-3">
+      <>
+        <TemplateFileUpload filePath={(res as any).template_file_path || ""} onChange={(path) => onChange("template_file_path" as any, path)} />
+        <div className="flex gap-3">
           <div className="flex-1">
             <Label className="text-xs">流程數</Label>
             <Input className="h-8 text-xs mt-1" type="number" value={res.flow_count} onChange={(e) => onChange("flow_count", e.target.value)} />
@@ -274,6 +315,7 @@ function DynamicFields({ res, onChange, subCategories
             <Input className="h-8 text-xs mt-1" placeholder="電商專用" value={res.industry_tag} onChange={(e) => onChange("industry_tag", e.target.value)} />
           </div>
         </div>
+      </>
       }
 
       {/* Videos: duration, video_type */}
@@ -408,6 +450,7 @@ const AdminContent = () => {
     sort_order: r.sort_order ? parseInt(r.sort_order) : 0,
     app_id: r.app_id?.trim() || null,
     trial_enabled: r.trial_enabled || false,
+    template_file_path: (r as any).template_file_path?.trim() || null,
   });
 
   const handleAdd = async () => {
@@ -451,6 +494,7 @@ const AdminContent = () => {
       sort_order: r.sort_order != null ? String(r.sort_order) : "",
       app_id: r.app_id || "",
       trial_enabled: r.trial_enabled || false,
+      template_file_path: r.template_file_path || "",
     });
     setShowEditDialog(true);
   };
@@ -532,6 +576,7 @@ const AdminContent = () => {
           sort_order: get(col(["sort_order", "排序"])),
           app_id: get(col(["app_id", "應用編號"])),
           trial_enabled: get(col(["trial_enabled", "開放試用"])) === "true",
+          template_file_path: "",
         };
       }).filter((r) => r.title);
 

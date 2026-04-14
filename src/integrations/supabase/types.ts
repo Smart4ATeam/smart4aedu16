@@ -1150,6 +1150,7 @@ export type Database = {
           sub_category: string | null
           submitted_by: string | null
           tags: string[]
+          template_file_path: string | null
           thumbnail_url: string | null
           title: string
           trial_enabled: boolean
@@ -1179,6 +1180,7 @@ export type Database = {
           sub_category?: string | null
           submitted_by?: string | null
           tags?: string[]
+          template_file_path?: string | null
           thumbnail_url?: string | null
           title: string
           trial_enabled?: boolean
@@ -1208,6 +1210,7 @@ export type Database = {
           sub_category?: string | null
           submitted_by?: string | null
           tags?: string[]
+          template_file_path?: string | null
           thumbnail_url?: string | null
           title?: string
           trial_enabled?: boolean

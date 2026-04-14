@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     // 1. Fetch resource
     const { data: resource, error: resErr } = await adminClient
       .from("resources")
-      .select("id, title, category, app_id, trial_enabled")
+      .select("id, title, category, app_id, trial_enabled, template_file_path")
       .eq("id", resource_id)
       .single();
 
@@ -71,11 +71,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!resource.app_id) {
-      return new Response(JSON.stringify({ error: "此資源尚未設定 APP ID" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Validation: templates need template_file_path, extensions need app_id
+    const isTemplate = resource.category === "templates";
+    if (isTemplate) {
+      if (!resource.template_file_path) {
+        return new Response(JSON.stringify({ error: "此範本尚未上傳檔案" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      if (!resource.app_id) {
+        return new Response(JSON.stringify({ error: "此資源尚未設定 APP ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // 2. Check user profile for organization_id and student_id
@@ -110,7 +121,6 @@ Deno.serve(async (req) => {
     const taiwanOffset = 8 * 60 * 60 * 1000;
     const taiwanNow = new Date(now.getTime() + taiwanOffset);
     const todayStr = taiwanNow.toISOString().slice(0, 10);
-    // Start of today in UTC
     const todayStartUTC = new Date(new Date(todayStr + "T00:00:00+08:00").getTime());
     const todayEndUTC = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000);
 
@@ -129,6 +139,92 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ─── Templates: direct signed URL flow (no webhook) ───
+    if (isTemplate) {
+      // Generate 24-hour signed URL
+      const { data: signedUrlData, error: signedUrlErr } = await adminClient.storage
+        .from("resource-templates")
+        .createSignedUrl(resource.template_file_path, 86400); // 24 hours
+
+      if (signedUrlErr || !signedUrlData?.signedUrl) {
+        console.error("Signed URL error:", signedUrlErr);
+        return new Response(JSON.stringify({ error: "無法產生下載連結" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Insert trial record with signed URL directly
+      const { data: trial, error: trialErr } = await adminClient
+        .from("resource_trials")
+        .insert({
+          user_id: userId,
+          resource_id: resource.id,
+          member_no: memberNo,
+          organization_id: profile.organization_id,
+          app_id: resource.app_id || "template",
+          resource_category: resource.category,
+          api_key: signedUrlData.signedUrl,
+          webhook_status: "completed",
+        })
+        .select("id")
+        .single();
+
+      if (trialErr) throw trialErr;
+
+      // Send system notification
+      try {
+        const { data: notifSettings } = await adminClient
+          .from("notification_settings")
+          .select("show_success")
+          .eq("user_id", userId)
+          .single();
+
+        if (notifSettings?.show_success !== false) {
+          const { data: conversation } = await adminClient
+            .from("conversations")
+            .insert({
+              title: `📦 ${resource.title} 範本下載連結已到`,
+              category: "system",
+            })
+            .select("id")
+            .single();
+
+          if (conversation) {
+            await adminClient.from("messages").insert({
+              conversation_id: conversation.id,
+              content: `您領用的「${resource.title}」範本下載連結已備妥，請至資源中心「我的試用」分頁下載（24小時內有效）。`,
+              is_system: true,
+              sender_id: null,
+            });
+            await adminClient.from("conversation_participants").insert({
+              conversation_id: conversation.id,
+              user_id: userId,
+              unread: true,
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Notification error:", e);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          trial_id: trial.id,
+          resource_title: resource.title,
+          app_id: resource.app_id || "template",
+          webhook_status: "completed",
+          message: "領用成功！請至「我的試用」下載範本",
+        },
+      }), {
+        status: 201,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Extensions: existing webhook flow ───
 
     // 5. Insert trial record
     const { data: trial, error: trialErr } = await adminClient

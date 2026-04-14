@@ -322,14 +322,22 @@ function VideoCard({ r }: { r: Resource }) {
 
 /* ─── Callback Value display (API Key or Download Link) ─── */
 
-function CallbackValueCell({ apiKey, category }: { apiKey: string | null; category: string }) {
+function CallbackValueCell({ apiKey, category, createdAt }: { apiKey: string | null; category: string; createdAt?: string }) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!apiKey) return <span className="text-muted-foreground">等待回傳中...</span>;
 
-  // Templates: show download button
+  // Templates: show download button or expired
   if (category === "templates") {
+    const isExpired = createdAt
+      ? new Date().getTime() - new Date(createdAt).getTime() > 24 * 60 * 60 * 1000
+      : false;
+
+    if (isExpired) {
+      return <span className="text-muted-foreground text-xs">⏰ 已過期</span>;
+    }
+
     return (
       <button
         onClick={() => window.open(apiKey, "_blank")}
@@ -393,7 +401,7 @@ function MyTrialsTab({ trials, resources }: { trials: Trial[]; resources: Resour
               </div>
             </div>
             <div className="text-xs">
-              <CallbackValueCell apiKey={t.api_key} category={t.resource_category} />
+              <CallbackValueCell apiKey={t.api_key} category={t.resource_category} createdAt={t.created_at} />
             </div>
           </div>
         );
