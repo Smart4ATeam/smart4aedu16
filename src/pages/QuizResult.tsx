@@ -73,8 +73,8 @@ export default function QuizResult() {
           quiz_attempt_id: attempt.id,
           course_id: quiz.course_id,
           course_name: quiz.courses?.title || quiz.title,
-          student_name: entryName || profile?.display_name || "學員",
-          training_date: entryTrainingDate || new Date().toISOString().split("T")[0],
+          student_name: entryName || getMetaField("studentName") || profile?.display_name || "學員",
+          training_date: entryTrainingDate || getMetaField("trainingDate") || new Date().toISOString().split("T")[0],
           score: attempt.score,
           status: "pending",
         })
