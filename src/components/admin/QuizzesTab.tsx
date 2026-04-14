@@ -374,7 +374,8 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
   "option_c": "選項C",
   "option_d": "選項D",
   "correct_answer": "B",
-  "points": 5
+  "points": 5,
+  "multi_select": false
 }]`}</pre>
               <Textarea value={importJson} onChange={(e) => setImportJson(e.target.value)} rows={8} placeholder="貼上 JSON..." />
             </div>
