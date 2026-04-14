@@ -1,93 +1,59 @@
 
 
-## Plan: 訓後測驗系統
+## Plan: 測驗資格驗證 + 高分更新證書機制
 
-基於現有 `course_quizzes` 和 `quiz_attempts` 表，以及規格書的需求，進行適配設計。
+### 問題總結
 
-### 現有 vs 規格書差異分析
+1. 未報名也能看到並進入測驗
+2. 可選擇非自己的梯次
+3. 可用不同姓名重複取得證書
+4. 應在上課日之後才開放測驗
+5. 重考拿更高分時，應允許更新證書並移除舊證書
 
-| 項目 | 現有系統 | 規格書 | 決策 |
-|------|---------|--------|------|
-| 課程 ID | UUID (`courses` 表) | 字串 slug | **沿用 UUID**，不改現有結構 |
-| 題庫存放 | `course_quizzes.questions` (JSONB) | 獨立 `questions` 表 | **沿用 JSONB**，結構夠用且簡單 |
-| 角色判斷 | `user_roles` + `has_role()` | `profiles.role` | **沿用現有** `has_role()` |
-| 及格判斷 | `quiz_attempts.passed` (普通欄位) | GENERATED ALWAYS | **沿用現有**，應用層寫入 |
-| 訓練日期 | `course_sessions.start_date` | `courses.training_dates[]` | **沿用 sessions** |
-| 證書 | 無 | `certificates` 表 + Make.com | **新建** |
+### 不需要資料庫變更
 
-### 需要新增的資料庫結構
+所有邏輯皆為前端查詢調整，利用現有 `reg_members` + `reg_enrollments` + `certificates` 表。`certificates.status` 是 text 類型，新增 `'replaced'` 值不需 migration。
 
-#### 1. `course_quizzes` 表擴充
-- 新增 `allow_retake boolean DEFAULT true`
-- 新增 `description text DEFAULT ''`
+### 修改項目
 
-#### 2. 新建 `certificates` 表
-```sql
-certificates (
-  id uuid PK,
-  user_id uuid NOT NULL,
-  quiz_attempt_id uuid REFERENCES quiz_attempts(id),
-  course_id uuid NOT NULL,
-  course_name text NOT NULL,
-  student_name text NOT NULL,
-  training_date date NOT NULL,
-  score integer NOT NULL,
-  issued_at timestamptz DEFAULT now(),
-  image_url text,
-  status text DEFAULT 'pending'  -- pending | issued | failed
-)
-```
-RLS: 學員看自己的 + Admin 全部管理
+#### 1. Learning.tsx — AvailableQuizzes 過濾
 
-#### 3. 新建 `certificates` Storage bucket (private)
+- 查詢用戶的 `reg_members`（by user_id）→ `member_id`
+- 查詢 `reg_enrollments`（member_id, status != cancelled, payment_status = paid）→ 取得已報名的 course_id + session_date
+- 只顯示 course_id 在已報名列表中 **且** session_date <= 今天的測驗
+- 無符合條件時顯示「完成課程報名並上課後即可進行測驗」
 
-### 路由規劃（適配現有架構）
+#### 2. QuizEntry.tsx — 報名檢查 + 梯次過濾 + 姓名鎖定 + 日期檢查
 
-| 路由 | 說明 |
+- **報名檢查**：查 reg_members → reg_enrollments（member_id + course_id, status != cancelled, payment_status = paid）。無報名 → 顯示「您尚未報名此課程，無法進行測驗」
+- **上課日期檢查**：所有 enrollment 的 session_date 都 > 今天 → 顯示「課程尚未開始，無法測驗」
+- **梯次過濾**：訓練日期下拉選單只顯示用戶自己 enrollments 中 session_date <= 今天的項目
+- **姓名鎖定**：從 `reg_members.name` 自動帶入，設為 readonly
+
+#### 3. QuizResult.tsx — 高分更新證書 + 防重複
+
+**證書檢查邏輯改為**：
+- 查詢同一 `user_id` + `course_id` + `training_date` 的非 failed/replaced 證書
+- **無舊證書** → 顯示「申請結訓證明」
+- **有舊證書且新分數 <= 舊分數** → 顯示「查看現有證書」（不允許重新申請）
+- **有舊證書但新分數 > 舊分數** → 顯示「更新證書（新高分 X 分）」
+
+**申請/更新 mutation**：
+- 將舊證書 status 更新為 `'replaced'`
+- Insert 新證書 → 呼叫 Edge Function
+- student_name 使用 reg_members.name（與 entry 一致）
+
+#### 4. CertificateView.tsx — 處理 replaced 狀態
+
+- 如果證書 status = `'replaced'`，顯示「此證書已被更高分的版本取代」
+- 提供按鈕引導查看最新證書
+
+### 影響檔案
+
+| 檔案 | 變更 |
 |------|------|
-| `/learning` (測驗分頁) | 學員：可用測驗列表 |
-| `/quiz/:quizId` | 測驗入口（填姓名、選訓練日期） |
-| `/quiz/:quizId/exam` | 作答頁 |
-| `/quiz/:quizId/result/:attemptId` | 結果頁 |
-| `/certificate/:certificateId` | 證書查看/下載 |
-| `/admin/learning` (測驗分頁) | Admin 測驗管理（題庫 CRUD + 批次匯入） |
-
-### 實作分階段
-
-#### Phase 1: Admin 測驗管理 (QuizzesTab 升級)
-- 新增/編輯測驗（選課程、標題、及格分、是否重考、時間限制）
-- 題目 CRUD（JSONB 內容：question_no, content, options A-D, correct_answer, points）
-- 批次 JSON 匯入題目
-- 題目列表 + 編輯表單（左右分欄布局）
-
-#### Phase 2: 學員測驗流程
-- 測驗入口頁：填姓名、選訓練日期（從 course_sessions 拉）、開始測驗
-- 作答頁：進度條、全部題目一頁顯示、Radio 選項、未作答紅框提醒
-- 結果頁：通過/未通過分情境顯示、申請證書按鈕
-
-#### Phase 3: 證書系統
-- Edge Function 呼叫 Make.com Webhook（需設定 `MAKE_CERT_WEBHOOK_URL` secret）
-- 證書頁輪詢狀態、顯示/下載圖片
-- Edge Function 供 Make.com 回調更新證書狀態（`api-certificate-callback`）
-
-### 不變更
-- 現有 `courses`、`course_sessions` 結構不動
-- 現有 `quiz_attempts` 結構不動（已有 answers, score, passed）
-- 現有 `on_quiz_passed` trigger 不動（通過自動加點數）
-- Admin 權限檢查繼續用 `has_role()`
-
-### 技術要點
-- 題目存在 `course_quizzes.questions` JSONB 中，格式：
-```json
-[{
-  "question_no": 1,
-  "content": "題目內容",
-  "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...",
-  "correct_answer": "B",
-  "points": 5
-}]
-```
-- 前端計算分數後寫入 `quiz_attempts`
-- 證書產生透過 Edge Function 呼叫 Make.com，Make.com 完成後透過回調 Edge Function 更新狀態
-- `allow_retake = false` 時，前端檢查是否已有 `passed = true` 的紀錄
+| `src/pages/Learning.tsx` | AvailableQuizzes 加入報名 + 日期過濾 |
+| `src/pages/QuizEntry.tsx` | 報名檢查、梯次過濾、姓名鎖定、日期檢查 |
+| `src/pages/QuizResult.tsx` | 證書查詢改為 course_id+training_date；高分更新邏輯 |
+| `src/pages/CertificateView.tsx` | 處理 replaced 狀態顯示 |
 
