@@ -72,11 +72,20 @@ Deno.serve(async (req) => {
 
         const resourceTitle = resource?.title || "資源";
 
+        // Determine message text based on category
+        const isTemplate = data.resource_category === "templates";
+        const convTitle = isTemplate
+          ? `📦 ${resourceTitle} 範本下載連結已到`
+          : `🔑 ${resourceTitle} 金鑰已到`;
+        const msgContent = isTemplate
+          ? `您領用的「${resourceTitle}」範本下載連結已備妥，請至資源中心「我的試用」分頁下載。`
+          : `您領用的「${resourceTitle}」已收到 API Key，請至資源中心「我的試用」分頁查看。`;
+
         // Create conversation
         const { data: conversation, error: convErr } = await adminClient
           .from("conversations")
           .insert({
-            title: `🔑 ${resourceTitle} 金鑰已到`,
+            title: convTitle,
             category: "system",
           })
           .select("id")
@@ -85,7 +94,7 @@ Deno.serve(async (req) => {
         if (conversation && !convErr) {
           await adminClient.from("messages").insert({
             conversation_id: conversation.id,
-            content: `您領用的「${resourceTitle}」已收到 API Key，請至資源中心「我的試用」分頁查看。`,
+            content: msgContent,
             is_system: true,
             sender_id: null,
           });

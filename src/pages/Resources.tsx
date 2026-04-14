@@ -320,14 +320,27 @@ function VideoCard({ r }: { r: Resource }) {
   );
 }
 
-/* ─── API Key display ─── */
+/* ─── Callback Value display (API Key or Download Link) ─── */
 
-function ApiKeyCell({ apiKey }: { apiKey: string | null }) {
+function CallbackValueCell({ apiKey, category }: { apiKey: string | null; category: string }) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!apiKey) return <span className="text-muted-foreground">等待回傳中...</span>;
 
+  // Templates: show download button
+  if (category === "templates") {
+    return (
+      <button
+        onClick={() => window.open(apiKey, "_blank")}
+        className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-xs font-bold hover:opacity-90 transition"
+      >
+        <Download className="w-3.5 h-3.5" /> 下載範本
+      </button>
+    );
+  }
+
+  // Extensions: masked key + copy
   const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
     setCopied(true);
@@ -368,7 +381,9 @@ function MyTrialsTab({ trials, resources }: { trials: Trial[]; resources: Resour
                 <h4 className="text-sm font-bold text-foreground">{res?.title || "—"}</h4>
                 <Badge variant="outline" className="text-[10px]">{t.resource_category === "extensions" ? "套件" : "模板"}</Badge>
                 <Badge variant={t.webhook_status === "completed" ? "default" : "secondary"} className="text-[10px]">
-                  {t.webhook_status === "completed" ? "✅ 金鑰已回傳" : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
+                  {t.webhook_status === "completed"
+                    ? (t.resource_category === "templates" ? "✅ 連結已回傳" : "✅ 金鑰已回傳")
+                    : t.webhook_status === "sent" ? "⏳ 處理中" : "⏳ 等待中"}
                 </Badge>
               </div>
               <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
@@ -378,7 +393,7 @@ function MyTrialsTab({ trials, resources }: { trials: Trial[]; resources: Resour
               </div>
             </div>
             <div className="text-xs">
-              <ApiKeyCell apiKey={t.api_key} />
+              <CallbackValueCell apiKey={t.api_key} category={t.resource_category} />
             </div>
           </div>
         );

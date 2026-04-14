@@ -293,12 +293,21 @@ function DynamicFields({ res, onChange, subCategories
 
 }
 
-/* ─── Admin API Key Cell ─── */
+/* ─── Admin Callback Value Cell ─── */
 
-function AdminApiKeyCell({ apiKey }: { apiKey: string | null }) {
+function AdminCallbackValueCell({ apiKey, category }: { apiKey: string | null; category: string }) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   if (!apiKey) return <span className="text-muted-foreground">等待中...</span>;
+
+  if (category === "templates") {
+    return (
+      <a href={apiKey} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[10px] font-mono truncate max-w-[180px] inline-block">
+        🔗 下載連結
+      </a>
+    );
+  }
+
   const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
     setCopied(true);
@@ -801,7 +810,7 @@ const AdminContent = () => {
                       <TableHead>組織編號</TableHead>
                       <TableHead>APP ID</TableHead>
                       <TableHead>狀態</TableHead>
-                      <TableHead>API Key</TableHead>
+                      <TableHead>回傳值</TableHead>
                       <TableHead>領用時間</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -823,7 +832,7 @@ const AdminContent = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
-                            <AdminApiKeyCell apiKey={t.api_key} />
+                            <AdminCallbackValueCell apiKey={t.api_key} category={t.resource_category} />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(t.created_at).toLocaleString("zh-TW")}</TableCell>
                         </TableRow>
