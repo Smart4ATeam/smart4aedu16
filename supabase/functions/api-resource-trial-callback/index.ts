@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       .from("resource_trials")
       .update({ api_key, webhook_status: "completed" })
       .eq("id", trial_id)
-      .select("id, resource_id, user_id")
+      .select("id, resource_id, user_id, resource_category")
       .single();
 
     if (error || !data) {
