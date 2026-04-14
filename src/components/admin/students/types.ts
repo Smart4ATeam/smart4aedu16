@@ -8,4 +8,5 @@ export interface StudentDetail {
   profile: Profile;
   roles: UserRole[];
   progress: LearningProgress[];
+  memberPoints?: number;
 }

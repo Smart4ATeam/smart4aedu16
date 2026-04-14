@@ -120,7 +120,8 @@ const AdminStudents = () => {
       .select("*, learning_paths(title)")
       .eq("user_id", profile.id);
     const userRoles = getRoles(profile.id);
-    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[] });
+    const pts = memberPointsMap.get(profile.id) ?? 0;
+    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts });
     setShowDetail(true);
   };
 
