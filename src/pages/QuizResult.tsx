@@ -15,6 +15,12 @@ export default function QuizResult() {
   const navigate = useNavigate();
   const location = useLocation();
   const { studentName: entryName, trainingDate: entryTrainingDate } = (location.state as any) || {};
+
+  // Fallback: read from attempt answers._meta if nav state is missing
+  const getMetaField = (field: string) => {
+    const meta = (attempt?.answers as any)?._meta;
+    return meta?.[field] || null;
+  };
   const queryClient = useQueryClient();
 
   // Fetch attempt

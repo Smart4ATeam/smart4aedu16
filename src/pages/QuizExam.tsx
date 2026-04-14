@@ -150,7 +150,7 @@ export default function QuizExam() {
           user_id: user!.id,
           score,
           passed,
-          answers: answerRecord,
+          answers: { ...answerRecord, _meta: { studentName, trainingDate } },
         })
         .select("id")
         .single();
