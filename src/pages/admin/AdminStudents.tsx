@@ -53,6 +53,7 @@ const AdminStudents = () => {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
+  const [memberPointsMap, setMemberPointsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<StudentDetail | null>(null);
@@ -62,12 +63,20 @@ const AdminStudents = () => {
   const [mainTab, setMainTab] = useState("platform");
 
   const fetchData = async () => {
-    const [profileRes, roleRes] = await Promise.all([
+    const [profileRes, roleRes, regMembersRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
+      supabase.from("reg_members").select("user_id, points"),
     ]);
     if (profileRes.data) setProfiles(profileRes.data);
     if (roleRes.data) setRoles(roleRes.data as UserRole[]);
+    if (regMembersRes.data) {
+      const map = new Map<string, number>();
+      for (const m of regMembersRes.data) {
+        if (m.user_id) map.set(m.user_id, m.points || 0);
+      }
+      setMemberPointsMap(map);
+    }
     setLoading(false);
   };
 
@@ -111,7 +120,8 @@ const AdminStudents = () => {
       .select("*, learning_paths(title)")
       .eq("user_id", profile.id);
     const userRoles = getRoles(profile.id);
-    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[] });
+    const pts = memberPointsMap.get(profile.id) ?? 0;
+    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts });
     setShowDetail(true);
   };
 
@@ -199,6 +209,7 @@ const AdminStudents = () => {
             isSelf={isSelf}
             roleBadge={roleBadge}
             getPrimaryRole={getPrimaryRole}
+            memberPointsMap={memberPointsMap}
           />
         </TabsContent>
 
@@ -256,7 +267,7 @@ const AdminStudents = () => {
 // Platform Users Sub-Tab
 // ═══════════════════════════════════════
 function PlatformUsersTab({
-  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole,
+  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole, memberPointsMap,
 }: {
   search: string;
   setSearch: (s: string) => void;
@@ -266,6 +277,7 @@ function PlatformUsersTab({
   isSelf: (id: string) => boolean;
   roleBadge: (role: Enums<"app_role">) => JSX.Element;
   getPrimaryRole: (id: string) => Enums<"app_role">;
+  memberPointsMap: Map<string, number>;
 }) {
   return (
     <div className="space-y-6 mt-4">
@@ -335,7 +347,7 @@ function PlatformUsersTab({
                   <TableCell className="font-medium">{p.display_name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{p.email || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{p.student_id || "—"}</TableCell>
-                  <TableCell className="text-xs">{p.total_points}</TableCell>
+                  <TableCell className="text-xs">{memberPointsMap.get(p.id)?.toLocaleString() ?? 0}</TableCell>
                   <TableCell className="text-xs">{p.learning_days} 天</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("zh-TW")}</TableCell>
                   <TableCell>

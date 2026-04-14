@@ -16,12 +16,11 @@ interface Props {
 }
 
 export function EditDataDialog({ open, onOpenChange, detail, onSaved }: Props) {
-  const [fields, setFields] = useState({ total_points: 0, total_badges: 0, learning_days: 0, total_revenue: 0 });
+  const [fields, setFields] = useState({ total_badges: 0, learning_days: 0, total_revenue: 0 });
 
   useEffect(() => {
     if (detail && open) {
       setFields({
-        total_points: detail.profile.total_points,
         total_badges: detail.profile.total_badges,
         learning_days: detail.profile.learning_days,
         total_revenue: Number(detail.profile.total_revenue),
@@ -32,7 +31,6 @@ export function EditDataDialog({ open, onOpenChange, detail, onSaved }: Props) {
   const handleSave = async () => {
     if (!detail) return;
     const { error } = await supabase.from("profiles").update({
-      total_points: fields.total_points,
       total_badges: fields.total_badges,
       learning_days: fields.learning_days,
       total_revenue: fields.total_revenue,
@@ -53,7 +51,6 @@ export function EditDataDialog({ open, onOpenChange, detail, onSaved }: Props) {
         </DialogHeader>
         <div className="space-y-4">
           {[
-            { label: "積分", key: "total_points" as const },
             { label: "徽章數", key: "total_badges" as const },
             { label: "學習天數", key: "learning_days" as const },
             { label: "營收 (NT$)", key: "total_revenue" as const },

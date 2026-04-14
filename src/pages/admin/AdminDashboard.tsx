@@ -38,7 +38,7 @@ const AdminDashboard = () => {
         // Total students = reg_members count
         supabase.from("reg_members").select("id", { count: "exact", head: true }),
         // All activated profiles for active student check & progress table
-        supabase.from("profiles").select("id, display_name, learning_days, total_points, total_revenue, activated"),
+        supabase.from("profiles").select("id, display_name, learning_days, total_revenue, activated"),
         // Login tracks in last 3 months
         supabase.from("login_tracks").select("user_id, login_date")
           .gte("login_date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
