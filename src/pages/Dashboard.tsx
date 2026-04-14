@@ -22,9 +22,12 @@ const Dashboard = () => {
     total_badges: number;
     total_revenue: number;
   } | null>(null);
+  const [memberPoints, setMemberPoints] = useState<number>(0);
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch profile data
     supabase
       .from("profiles")
       .select("display_name, learning_days, total_points, total_badges, total_revenue")
@@ -32,6 +35,16 @@ const Dashboard = () => {
       .single()
       .then(({ data }) => {
         if (data) setProfile(data);
+      });
+
+    // Fetch reg_members points (the authoritative point source)
+    supabase
+      .from("reg_members")
+      .select("points")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setMemberPoints((data as any).points || 0);
       });
   }, [user]);
 
