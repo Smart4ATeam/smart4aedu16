@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,6 @@ import { toast } from "sonner";
 export default function CertificateView() {
   const { certificateId } = useParams<{ certificateId: string }>();
   const navigate = useNavigate();
-  const [pollCount, setPollCount] = useState(0);
   const [retrying, setRetrying] = useState(false);
 
   const { data: cert, refetch } = useQuery({
@@ -28,16 +27,6 @@ export default function CertificateView() {
     },
   });
 
-  // Poll for pending certificates
-  useEffect(() => {
-    if (cert?.status !== "pending" || pollCount >= 20) return;
-    const timer = setTimeout(() => {
-      refetch();
-      setPollCount((c) => c + 1);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [cert?.status, pollCount, refetch]);
-
   const handleRetry = async () => {
     if (!certificateId) return;
     setRetrying(true);
@@ -46,8 +35,7 @@ export default function CertificateView() {
         body: { certificate_id: certificateId },
       });
       if (error) throw error;
-      toast.success("已重新發送證書產生請求");
-      setPollCount(0);
+      toast.success("已重新發送證書產生請求，完成後會發送通知");
     } catch (e: any) {
       console.error("Retry error:", e);
       toast.error("重新發送失敗：" + (e.message || "未知錯誤"));
@@ -71,11 +59,9 @@ export default function CertificateView() {
           {cert.status === "pending" && (
             <>
               <Loader2 className="w-12 h-12 text-primary mx-auto animate-spin" />
-              <p className="font-semibold text-foreground">證書產生中，請稍候...</p>
+              <p className="font-semibold text-foreground">證書產生中</p>
               <p className="text-sm text-muted-foreground">
-                {pollCount >= 20
-                  ? "產生時間較長，請稍後至學習中心查看"
-                  : `正在處理中（${pollCount}/20）`}
+                完成後會發送訊息通知您，您可以先離開此頁面
               </p>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleRetry} disabled={retrying}>
                 {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -106,7 +92,7 @@ export default function CertificateView() {
             <>
               <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
               <p className="font-semibold text-foreground">證書產生失敗</p>
-              <p className="text-sm text-muted-foreground">請聯繫管理員或重新申請</p>
+              <p className="text-sm text-muted-foreground">請嘗試重新發送或聯繫管理員</p>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleRetry} disabled={retrying}>
                 {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 重新發送請求
