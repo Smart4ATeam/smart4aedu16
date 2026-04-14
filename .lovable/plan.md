@@ -1,6 +1,7 @@
 
-
 ## Plan: 場景範本領用 — Supabase Storage + 24 小時一次性下載
+
+### 狀態：✅ 已完成
 
 ### 流程簡述
 
@@ -20,34 +21,38 @@
 
 ### 具體變更
 
-#### 1. 資料庫 Migration
+#### 1. ✅ 資料庫 Migration
 - 建立私有 storage bucket `resource-templates`（`public = false`）
-- Storage RLS：admin 可上傳/刪除
+- Storage RLS：admin 可上傳/刪除/讀取
 - `resources` 表新增 `template_file_path text`（bucket 內檔案路徑）
 
-#### 2. Admin 前端 (`AdminContent.tsx`)
+#### 2. ✅ Admin 前端 (`AdminContent.tsx`)
 - 範本類別的編輯表單新增「範本檔案」上傳欄位（.zip / .json）
 - 上傳至 `resource-templates` bucket，路徑存入 `resources.template_file_path`
 - 範本類別不再強制要求 `app_id`（改為選填）
 
-#### 3. 領用 Edge Function (`api-resource-trial`)
-- 新增判斷：`resource.category === 'templates'` 時
-  - 從 `resources.template_file_path` 取得檔案路徑
-  - 用 service role 產生 24 小時 signed URL
+#### 3. ✅ 領用 Edge Function (`api-resource-trial`)
+- 判斷 `resource.category === 'templates'` 時：
+  - 驗證 `template_file_path` 存在
+  - 用 service role 產生 24 小時 signed URL（86400 秒）
   - 寫入 `resource_trials.api_key`
   - 設定 `webhook_status = 'completed'`
-  - 發送系統訊息：「📦 [標題] 範本下載連結已到，請至「我的試用」下載（24小時內有效）」
-  - 跳過 webhook 發送
-  - 回傳成功訊息：「領用成功！請至「我的試用」下載範本」
+  - 發送系統訊息通知學員
+  - 跳過外部 webhook 發送
+- 套件（extensions）流程不變，維持原有 webhook 機制
 
-#### 4. 前端 `Resources.tsx` — CallbackValueCell
+#### 4. ✅ 學員前端 `Resources.tsx` — CallbackValueCell
 - 範本類別：根據 `created_at` + 24 小時判斷是否過期
-  - 未過期：顯示「下載範本」按鈕
-  - 已過期：顯示「已過期」灰色文字，不可點擊
+  - 未過期：顯示「📥 下載範本」按鈕（直接開啟 signed URL）
+  - 已過期：顯示「⏰ 已過期」灰色文字，不可點擊
 
-#### 5. 前端 `Resources.tsx` — 領用驗證
-- 範本類別跳過 `app_id` 檢查（因為範本不一定有 app_id）
+#### 5. ✅ 學員前端 `Resources.tsx` — 領用驗證
+- 範本類別跳過 `app_id` 檢查
 - 改為檢查 `template_file_path` 是否存在
+
+#### 6. ✅ Admin 試用紀錄分頁 — 過期狀態
+- 範本類別試用紀錄超過 24 小時顯示「⏰ 已過期」紅色標籤
+- 其他類別維持原有狀態顯示邏輯
 
 ### 不需變更
 - 套件（extensions）流程完全不變
@@ -59,4 +64,10 @@
 - Storage bucket 為 private，只能透過 signed URL 存取
 - signed URL 有效期固定 24 小時（86400 秒），過期不可再下載
 - 前端用 `trial.created_at` + 24h 與當前時間比較判斷過期狀態
+- Admin 與學員端共用相同的 24 小時過期判斷邏輯
 
+### 相關檔案
+- `supabase/functions/api-resource-trial/index.ts` — 領用 Edge Function（含範本 signed URL 邏輯）
+- `src/pages/Resources.tsx` — 學員資源中心（含試用列表、下載/過期顯示）
+- `src/pages/admin/AdminContent.tsx` — Admin 資源管理（含範本上傳、試用紀錄過期狀態）
+- `supabase/migrations/` — Storage bucket 與 `template_file_path` 欄位
