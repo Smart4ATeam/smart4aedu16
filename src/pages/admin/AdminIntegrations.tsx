@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save, Webhook } from "lucide-react";
+import { Plug, Copy, Check, ChevronDown, ChevronUp, Server, BookOpen, Send, CalendarPlus, ClipboardList, Users, Shield, CreditCard, Save, Webhook, Award } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApiKeyManager } from "@/components/admin/ApiKeyManager";
 import { IconBox } from "@/components/ui/icon-box";
@@ -434,6 +434,51 @@ const endpoints: ApiEndpoint[] = [
         message: "已更新 學員 SA26040001 共 1 筆報名明細的行前通知狀態",
       },
     },
+  },
+  {
+    id: "api-certificate-callback",
+    name: "證書產生回調",
+    icon: <Award className="w-4 h-4" />,
+    method: "POST",
+    path: "/api-certificate-callback",
+    authType: "x-api-key (API_INTEGRATION_KEY)",
+    description: "供 Make.com 產生證書後回調，更新證書狀態與圖片 URL。完整流程：①學員通過測驗 → ②申請證書（系統呼叫 Make.com Webhook）→ ③Make.com 產生證書圖檔 → ④Make.com 呼叫此 API 回傳圖片 URL → ⑤學員可預覽/下載證書。",
+    requiredFields: [
+      { name: "certificate_id", type: "string", required: true, desc: "證書 ID（來自 Webhook Payload）" },
+    ],
+    optionalFields: [
+      { name: "image_url", type: "string", desc: "證書圖片 URL（Make.com 上傳至 Storage 後的公開或簽名 URL）" },
+      { name: "status", type: "string", desc: "狀態：issued（預設）或 failed" },
+    ],
+    exampleBody: {
+      certificate_id: "uuid-xxx",
+      image_url: "https://clwruolkostoirdwnnuy.supabase.co/storage/v1/object/public/certificates/cert-001.png",
+      status: "issued",
+    },
+    exampleResponse: {
+      success: true,
+      data: { certificate_id: "uuid-xxx", status: "issued" },
+    },
+    extraExamples: [
+      {
+        title: "系統發送至 Make.com 的 Webhook Payload 範例（Make.com 會收到）",
+        body: {
+          certificate_id: "uuid-xxx",
+          student_name: "王小明",
+          course_name: "AI 實戰工作坊",
+          training_date: "2026-04-14",
+          score: 85,
+          callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/api-certificate-callback",
+        },
+      },
+      {
+        title: "失敗回調範例",
+        body: {
+          certificate_id: "uuid-xxx",
+          status: "failed",
+        },
+      },
+    ],
   },
 ];
 
