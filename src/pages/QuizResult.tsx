@@ -85,10 +85,9 @@ export default function QuizResult() {
 
       return certData;
     },
-    onSuccess: (data) => {
-      toast.success("已申請結訓證明！");
+    onSuccess: () => {
+      toast.success("已申請結訓證明，產生完成後會發送通知！");
       queryClient.invalidateQueries({ queryKey: ["cert_check"] });
-      navigate(`/certificate/${data.id}`);
     },
     onError: (e: Error) => {
       toast.error(e.message.includes("duplicate") ? "已申請過證書" : "申請失敗：" + e.message);
