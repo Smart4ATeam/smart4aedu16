@@ -111,8 +111,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Call Make.com webhook
-    const webhookUrl = Deno.env.get("MAKE_CERT_WEBHOOK_URL");
+    // Read webhook URL from system_settings (cert_webhook_url)
+    const { data: webhookSetting } = await adminClient
+      .from("system_settings")
+      .select("value")
+      .eq("key_name", "cert_webhook_url")
+      .maybeSingle();
+
+    const webhookUrl = webhookSetting?.value?.trim() || Deno.env.get("MAKE_CERT_WEBHOOK_URL");
+
     if (!webhookUrl) {
       // No webhook configured — mark as failed
       await adminClient
