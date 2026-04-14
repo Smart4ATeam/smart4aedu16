@@ -471,7 +471,7 @@ const endpoints: ApiEndpoint[] = [
           training_date: "2026-05-09~2026-05-10",
           total_hours: 12,
           score: 85,
-          suggested_filename: "MK01-2026-05-09--2026-05-10.pdf",
+          suggested_filename: "MK01",
           callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/api-certificate-callback",
         },
       },

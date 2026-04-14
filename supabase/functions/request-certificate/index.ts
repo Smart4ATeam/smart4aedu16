@@ -136,11 +136,6 @@ Deno.serve(async (req) => {
     // Build callback URL for Make.com to call back
     const callbackUrl = `${supabaseUrl}/functions/v1/api-certificate-callback`;
 
-    // Build suggested filename using course_code + training_date (ASCII-safe)
-    const courseCode = course?.course_code || "CERT";
-    const safeDate = (cert.training_date || "").replace(/~/g, "--");
-    const suggestedFilename = `${courseCode}-${safeDate}.pdf`;
-
     const webhookPayload = {
       action: "generate_certificate",
       certificate_id: cert.id,
@@ -150,7 +145,7 @@ Deno.serve(async (req) => {
       training_date: cert.training_date,
       total_hours: course?.total_hours || null,
       score: cert.score,
-      suggested_filename: suggestedFilename,
+      suggested_filename: course?.course_code || "CERT",
       callback_url: callbackUrl,
     };
 
