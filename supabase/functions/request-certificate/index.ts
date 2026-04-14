@@ -90,11 +90,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch course total_hours separately (no FK relationship)
+    // Fetch course total_hours and course_code
     const { data: course } = await adminClient
       .from("courses")
-      .select("total_hours")
+      .select("total_hours, course_code")
       .eq("id", cert.course_id)
+      .maybeSingle();
+
+    // Fetch student_id from profile
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("student_id")
+      .eq("id", cert.user_id)
       .maybeSingle();
 
     if (cert.status !== "pending") {
@@ -122,14 +129,21 @@ Deno.serve(async (req) => {
     // Build callback URL for Make.com to call back
     const callbackUrl = `${supabaseUrl}/functions/v1/api-certificate-callback`;
 
+    // Build suggested filename using course_code + training_date (ASCII-safe)
+    const courseCode = course?.course_code || "CERT";
+    const safeDate = (cert.training_date || "").replace(/~/g, "--");
+    const suggestedFilename = `${courseCode}-${cert.student_name}-${safeDate}.pdf`;
+
     const webhookPayload = {
       action: "generate_certificate",
       certificate_id: cert.id,
       student_name: cert.student_name,
+      student_id: profile?.student_id || null,
       course_name: cert.course_name,
       training_date: cert.training_date,
       total_hours: course?.total_hours || null,
       score: cert.score,
+      suggested_filename: suggestedFilename,
       callback_url: callbackUrl,
     };
 
