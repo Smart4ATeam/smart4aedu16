@@ -450,6 +450,7 @@ const AdminContent = () => {
     sort_order: r.sort_order ? parseInt(r.sort_order) : 0,
     app_id: r.app_id?.trim() || null,
     trial_enabled: r.trial_enabled || false,
+    template_file_path: (r as any).template_file_path?.trim() || null,
   });
 
   const handleAdd = async () => {
@@ -493,6 +494,7 @@ const AdminContent = () => {
       sort_order: r.sort_order != null ? String(r.sort_order) : "",
       app_id: r.app_id || "",
       trial_enabled: r.trial_enabled || false,
+      template_file_path: r.template_file_path || "",
     });
     setShowEditDialog(true);
   };
@@ -574,6 +576,7 @@ const AdminContent = () => {
           sort_order: get(col(["sort_order", "排序"])),
           app_id: get(col(["app_id", "應用編號"])),
           trial_enabled: get(col(["trial_enabled", "開放試用"])) === "true",
+          template_file_path: "",
         };
       }).filter((r) => r.title);
 
