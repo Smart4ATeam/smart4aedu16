@@ -202,6 +202,7 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
         option_d: q.option_d || "",
         correct_answer: (q.correct_answer || "A").toUpperCase(),
         points: q.points || 5,
+        multi_select: q.multi_select || false,
       }));
       // Merge: replace by question_no, append new
       const existing = [...currentQuestions];
