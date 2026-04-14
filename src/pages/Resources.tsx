@@ -400,6 +400,7 @@ export default function Resources() {
   const [trials, setTrials] = useState<Trial[]>([]);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("browse");
+  const [trialOnly, setTrialOnly] = useState(false);
 
   // Confirmation dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
