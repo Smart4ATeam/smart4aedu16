@@ -58,7 +58,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
 }) {
   if (!subCategories.length) return null;
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
+    <>
       <button
         onClick={() => onChange("")}
         className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
@@ -78,7 +78,7 @@ function SubCategoryFilter({ subCategories, active, onChange }: {
           {sc.label}
         </button>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -400,6 +400,7 @@ export default function Resources() {
   const [trials, setTrials] = useState<Trial[]>([]);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("browse");
+  const [trialOnly, setTrialOnly] = useState(false);
 
   // Confirmation dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -455,8 +456,8 @@ export default function Resources() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Reset sub-category when category changes
-  useEffect(() => { setActiveSubCategory(""); }, [activeCategory]);
+  // Reset sub-category and trial filter when category changes
+  useEffect(() => { setActiveSubCategory(""); setTrialOnly(false); }, [activeCategory]);
 
   const trialMap = new Map(trials.map(t => [t.resource_id, t]));
 
@@ -541,6 +542,7 @@ export default function Resources() {
   const filtered = resources.filter(r => {
     if (r.category !== activeCategory) return false;
     if (activeSubCategory && (r as any).sub_category !== activeSubCategory) return false;
+    if (trialOnly && !r.trial_enabled) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
@@ -661,11 +663,21 @@ export default function Resources() {
 
             {/* Sub-category filter for extensions & templates */}
             {(activeCategory === "extensions" || activeCategory === "templates") && (
-              <SubCategoryFilter
-                subCategories={currentSubCategories}
-                active={activeSubCategory}
-                onChange={setActiveSubCategory}
-              />
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <SubCategoryFilter
+                  subCategories={currentSubCategories}
+                  active={activeSubCategory}
+                  onChange={setActiveSubCategory}
+                />
+                <button
+                  onClick={() => setTrialOnly(!trialOnly)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                    trialOnly ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                  }`}
+                >
+                  🧪 可試用
+                </button>
+              </div>
             )}
 
             {renderCards()}
