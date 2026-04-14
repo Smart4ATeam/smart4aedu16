@@ -295,16 +295,51 @@ export function QuizzesTab({ courses }: { courses: any[] }) {
                     </div>
                   ))}
                 </div>
+                <div className="flex items-center gap-3">
+                  <Label>複選題</Label>
+                  <Switch
+                    checked={editingQuestion.multi_select || false}
+                    onCheckedChange={(checked) => setEditingQuestion({
+                      ...editingQuestion,
+                      multi_select: checked,
+                      correct_answer: checked ? "" : "A",
+                    })}
+                  />
+                </div>
                 <div>
-                  <Label>正確答案</Label>
-                  <RadioGroup value={editingQuestion.correct_answer} onValueChange={(v) => setEditingQuestion({ ...editingQuestion, correct_answer: v })} className="flex gap-4 mt-1">
-                    {["A", "B", "C", "D"].map((opt) => (
-                      <div key={opt} className="flex items-center gap-1">
-                        <RadioGroupItem value={opt} id={`ans-${opt}`} />
-                        <Label htmlFor={`ans-${opt}`} className="text-sm">{opt}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <Label>正確答案{editingQuestion.multi_select ? "（可複選）" : ""}</Label>
+                  {editingQuestion.multi_select ? (
+                    <div className="flex gap-4 mt-1">
+                      {["A", "B", "C", "D"].map((opt) => {
+                        const selected = editingQuestion.correct_answer.split(",").includes(opt);
+                        return (
+                          <div key={opt} className="flex items-center gap-1">
+                            <Checkbox
+                              id={`ans-multi-${opt}`}
+                              checked={selected}
+                              onCheckedChange={(checked) => {
+                                const current = editingQuestion.correct_answer ? editingQuestion.correct_answer.split(",").filter(Boolean) : [];
+                                const next = checked
+                                  ? [...current, opt].sort()
+                                  : current.filter((v) => v !== opt);
+                                setEditingQuestion({ ...editingQuestion, correct_answer: next.join(",") });
+                              }}
+                            />
+                            <Label htmlFor={`ans-multi-${opt}`} className="text-sm">{opt}</Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <RadioGroup value={editingQuestion.correct_answer} onValueChange={(v) => setEditingQuestion({ ...editingQuestion, correct_answer: v })} className="flex gap-4 mt-1">
+                      {["A", "B", "C", "D"].map((opt) => (
+                        <div key={opt} className="flex items-center gap-1">
+                          <RadioGroupItem value={opt} id={`ans-${opt}`} />
+                          <Label htmlFor={`ans-${opt}`} className="text-sm">{opt}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
                 </div>
                 <div>
                   <Label>分數</Label>
