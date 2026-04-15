@@ -1,0 +1,1 @@
+UPDATE reg_orders SET total_amount = 3520 WHERE order_no = 'NWS20260415132321R15';
