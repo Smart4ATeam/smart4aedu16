@@ -27,7 +27,50 @@ interface Props {
 }
 
 export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPrimaryRole, onRoleChange, onOpenEdit, roleBadge }: Props) {
+  const [showResetPwd, setShowResetPwd] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
   if (!detail) return null;
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("密碼至少 6 個字元");
+      return;
+    }
+    if (!detail.profile.email) {
+      toast.error("此使用者沒有 Email，無法重設密碼");
+      return;
+    }
+    setResetting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-set-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: detail.profile.email,
+            password: newPassword,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "重設失敗");
+      toast.success(`已重設 ${detail.profile.email} 的密碼`);
+      setShowResetPwd(false);
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error("重設失敗：" + err.message);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
