@@ -1,18 +1,25 @@
 import { motion } from "framer-motion";
 import { StatCard } from "@/components/StatCard";
 import { TaskCard } from "@/components/TaskCard";
-import { Target, Zap, CheckCircle, Clock, Loader2, Hourglass } from "lucide-react";
+import { Target, Zap, CheckCircle, Clock, Loader2, Hourglass, Search } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import type { Tables } from "@/integrations/supabase/types";
 
-type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected";
+type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+type SortType = "newest" | "amount-desc" | "amount-asc" | "deadline";
 
 const Tasks = () => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<FilterType>("all");
+  const [sort, setSort] = useState<SortType>("newest");
+  const [keyword, setKeyword] = useState("");
   const [tasks, setTasks] = useState<Tables<"tasks">[]>([]);
   const [applications, setApplications] = useState<Tables<"task_applications">[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +42,7 @@ const Tasks = () => {
     if (!appsRes.error) setApplications(appsRes.data ?? []);
     if (!countsRes.error && countsRes.data) {
       const counts: Record<string, number> = {};
-      (countsRes.data as any[]).forEach((r: { task_id: string; count: number }) => {
+      (countsRes.data as { task_id: string; count: number }[]).forEach((r) => {
         counts[r.task_id] = Number(r.count);
       });
       setAppCounts(counts);
@@ -47,8 +54,11 @@ const Tasks = () => {
     const appMap = new Map(applications.map((a) => [a.task_id, a]));
     return tasks.map((task) => {
       const app = appMap.get(task.id);
-      let effectiveStatus: "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" = "available";
+      let effectiveStatus: FilterType extends "all" ? never : "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" = "available" as never;
       let rejectReason: string | undefined;
+      let failedReason: string | undefined;
+      let quotedAmount: number | undefined;
+      let finalAmount: number | undefined;
       let applicationId: string | undefined = app?.id;
 
       if (app) {
@@ -59,43 +69,91 @@ const Tasks = () => {
           case "completed": effectiveStatus = "completed"; break;
           case "rejected":
             effectiveStatus = "rejected";
-            rejectReason = (app as any).reject_reason || undefined;
+            rejectReason = (app as Tables<"task_applications">).reject_reason || undefined;
+            break;
+          case "failed":
+            effectiveStatus = "failed";
+            failedReason = (app as Tables<"task_applications">).failed_reason || undefined;
             break;
           default: effectiveStatus = "pending";
         }
+        quotedAmount = (app as Tables<"task_applications">).quoted_amount ?? undefined;
+        finalAmount = (app as Tables<"task_applications">).final_amount ?? undefined;
+      } else if (task.status === "closed") {
+        effectiveStatus = "closed" as never;
       }
-      return { ...task, effectiveStatus, applicationId, rejectReason };
+
+      return { ...task, effectiveStatus, applicationId, rejectReason, failedReason, quotedAmount, finalAmount };
     });
   }, [tasks, applications]);
 
-  const filtered = filter === "all" ? tasksWithUserStatus : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
+  const filtered = useMemo(() => {
+    let list = filter === "all"
+      ? tasksWithUserStatus
+      : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
+
+    if (keyword.trim()) {
+      const k = keyword.trim().toLowerCase();
+      list = list.filter((t) =>
+        t.title.toLowerCase().includes(k) ||
+        t.description.toLowerCase().includes(k) ||
+        (t.tags || []).some((tag) => tag.toLowerCase().includes(k))
+      );
+    }
+
+    const sorted = [...list];
+    switch (sort) {
+      case "amount-desc":
+        sorted.sort((a, b) => Number(b.amount_max ?? b.amount) - Number(a.amount_max ?? a.amount));
+        break;
+      case "amount-asc":
+        sorted.sort((a, b) => Number(a.amount_min ?? a.amount) - Number(b.amount_min ?? b.amount));
+        break;
+      case "deadline":
+        sorted.sort((a, b) => {
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return a.deadline.localeCompare(b.deadline);
+        });
+        break;
+      default:
+        sorted.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+    }
+    return sorted;
+  }, [tasksWithUserStatus, filter, keyword, sort]);
 
   const stats = useMemo(() => {
     const available = tasksWithUserStatus.filter((t) => t.effectiveStatus === "available").length;
     const pending = tasksWithUserStatus.filter((t) => t.effectiveStatus === "pending").length;
     const inProgress = tasksWithUserStatus.filter((t) => t.effectiveStatus === "in-progress").length;
-    const completed = tasksWithUserStatus.filter((t) => t.effectiveStatus === "completed").length;
     const totalRevenue = tasksWithUserStatus
       .filter((t) => t.effectiveStatus === "completed")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    return { available, pending, inProgress, completed, totalRevenue };
+      .reduce((sum, t) => sum + Number(t.finalAmount ?? t.quotedAmount ?? t.amount), 0);
+    return { available, pending, inProgress, totalRevenue };
   }, [tasksWithUserStatus]);
 
-  const handleApply = async (taskId: string) => {
+  const handleApply = async (taskId: string, quotedAmount: number) => {
     if (!user) return;
     setApplying(taskId);
-    const { error } = await supabase.from("task_applications").insert({ task_id: taskId, user_id: user.id });
+    const { error } = await supabase.from("task_applications").insert({
+      task_id: taskId,
+      user_id: user.id,
+      quoted_amount: quotedAmount,
+    });
     setApplying(null);
     if (error) toast.error(error.message);
-    else { toast.success("已送出申請，等待審核中！"); fetchData(); }
+    else { toast.success("已送出報價，等待審核中！"); fetchData(); }
   };
 
-  const handleReportComplete = async (applicationId: string) => {
+  const handleReportComplete = async (applicationId: string, deliverableUrl: string, deliverableNote: string) => {
     if (!user || !applicationId) return;
     setReporting(applicationId);
+    const updates: Partial<Tables<"task_applications">> = { status: "pending_completion" };
+    if (deliverableUrl) updates.deliverable_url = deliverableUrl;
+    if (deliverableNote) updates.deliverable_note = deliverableNote;
     const { error } = await supabase
       .from("task_applications")
-      .update({ status: "pending_completion" } as any)
+      .update(updates)
       .eq("id", applicationId);
     setReporting(null);
     if (error) toast.error(error.message);
@@ -110,13 +168,15 @@ const Tasks = () => {
     { key: "pending-completion", label: "待確認完成" },
     { key: "completed", label: "已完成" },
     { key: "rejected", label: "已退回" },
+    { key: "failed", label: "已失敗" },
+    { key: "closed", label: "已關閉" },
   ];
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h2 className="text-2xl font-bold text-foreground">任務中心</h2>
-        <p className="text-sm text-muted-foreground mt-1">接案任務，提升技能並賺取收益</p>
+        <p className="text-sm text-muted-foreground mt-1">接案任務、報價、提升技能並賺取收益</p>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -124,6 +184,22 @@ const Tasks = () => {
         <StatCard icon={<Hourglass className="w-5 h-5" />} value={stats.pending} label="審核中" variant="info" delay={0.05} />
         <StatCard icon={<Zap className="w-5 h-5" />} value={stats.inProgress} label="進行中" variant="success" delay={0.1} />
         <StatCard icon={<Clock className="w-5 h-5" />} value={`$${stats.totalRevenue.toLocaleString()}`} label="累計收益" variant="warning" delay={0.15} />
+      </div>
+
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜尋任務標題、描述、標籤..." className="pl-9" />
+        </div>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortType)}>
+          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">最新發布</SelectItem>
+            <SelectItem value="amount-desc">金額由高到低</SelectItem>
+            <SelectItem value="amount-asc">金額由低到高</SelectItem>
+            <SelectItem value="deadline">截止日最近</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -155,17 +231,22 @@ const Tasks = () => {
                 id: task.id,
                 title: task.title,
                 description: task.description,
-                amount: Number(task.amount),
+                amountMin: Number(task.amount_min ?? task.amount),
+                amountMax: Number(task.amount_max ?? task.amount),
+                category: task.category,
                 tags: task.tags,
-                status: task.effectiveStatus,
+                status: task.effectiveStatus as "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed",
                 deadline: task.deadline ?? "",
                 difficulty: task.difficulty,
                 rejectReason: task.rejectReason,
+                failedReason: task.failedReason,
+                quotedAmount: task.quotedAmount,
+                finalAmount: task.finalAmount,
                 applicantCount: appCounts[task.id] || 0,
               }}
-              delay={i * 0.05}
-              onApply={() => handleApply(task.id)}
-              onReportComplete={() => handleReportComplete(task.applicationId!)}
+              delay={i * 0.03}
+              onApply={(q) => handleApply(task.id, q)}
+              onReportComplete={(url, note) => handleReportComplete(task.applicationId!, url, note)}
               applying={applying === task.id}
               reporting={reporting === task.applicationId}
             />

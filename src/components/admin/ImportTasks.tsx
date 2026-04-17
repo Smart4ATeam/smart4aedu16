@@ -18,8 +18,8 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
 
   const downloadTemplate = () => {
     const bom = "\uFEFF";
-    const csv = bom + "title,description,difficulty,amount,tags,deadline,status\n" +
-      "範例任務,任務描述說明,中階,500,\"Dify,Make.com\",2026-05-01,available\n";
+    const csv = bom + "title,description,difficulty,amount_min,amount_max,category,tags,deadline,status,admin_notes\n" +
+      "範例任務,任務描述說明,中級,3000,8000,開發,\"Dify,Make.com\",2026-05-01,available,內部備註(學員看不到)\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -33,7 +33,6 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
     if (lines.length < 2) return [];
     const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-    
     const rows: Record<string, string>[] = [];
     for (let i = 1; i < lines.length; i++) {
       const values: string[] = [];
@@ -60,7 +59,6 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
 
     const text = await file.text();
     const rows = parseCSV(text);
-
     if (rows.length === 0) {
       toast.error("CSV 檔案無有效資料");
       setImporting(false);
@@ -78,17 +76,25 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
       }
 
       const tags = r.tags ? r.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
-      const difficulty = r.difficulty?.trim() || "中階";
-      const amount = Number(r.amount) || 0;
+      const difficultyRaw = r.difficulty?.trim() || "中級";
+      const difficulty = difficultyRaw.replace("初階", "初級").replace("中階", "中級").replace("高階", "高級");
+      const amountMin = Number(r.amount_min ?? r.amount) || 0;
+      const amountMax = Number(r.amount_max ?? r.amount) || amountMin;
       const status = r.status?.trim() || "available";
       const deadline = r.deadline?.trim() || null;
       const description = r.description?.trim() || "";
+      const category = r.category?.trim() || "general";
+      const adminNotes = r.admin_notes?.trim() || "";
 
       const { error } = await supabase.from("tasks").insert({
         title,
         description,
         difficulty,
-        amount,
+        amount: amountMin,
+        amount_min: amountMin,
+        amount_max: amountMax,
+        category,
+        admin_notes: adminNotes,
         tags,
         deadline,
         status,
@@ -134,12 +140,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
         <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
           <Download className="w-4 h-4" /> 下載範本
         </Button>
-        <Button
-          size="sm"
-          className="gap-2"
-          disabled={importing}
-          onClick={() => fileRef.current?.click()}
-        >
+        <Button size="sm" className="gap-2" disabled={importing} onClick={() => fileRef.current?.click()}>
           {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           {importing ? "匯入中..." : "上傳 CSV"}
         </Button>
@@ -147,7 +148,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        CSV 欄位：title（必填）, description, difficulty（初級/中階/高階）, amount, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）
+        CSV 欄位：title（必填）, description, difficulty（初級/中級/高級）, amount_min, amount_max, category, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）, admin_notes
       </div>
 
       {result && (
