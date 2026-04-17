@@ -1,12 +1,17 @@
-import { Mail, BookOpen, Pencil } from "lucide-react";
+import { useState } from "react";
+import { Mail, BookOpen, Pencil, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Enums } from "@/integrations/supabase/types";
 import type { StudentDetail } from "./types";
 
@@ -22,7 +27,50 @@ interface Props {
 }
 
 export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPrimaryRole, onRoleChange, onOpenEdit, roleBadge }: Props) {
+  const [showResetPwd, setShowResetPwd] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
   if (!detail) return null;
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("密碼至少 6 個字元");
+      return;
+    }
+    if (!detail.profile.email) {
+      toast.error("此使用者沒有 Email，無法重設密碼");
+      return;
+    }
+    setResetting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-set-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: detail.profile.email,
+            password: newPassword,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "重設失敗");
+      toast.success(`已重設 ${detail.profile.email} 的密碼`);
+      setShowResetPwd(false);
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error("重設失敗：" + err.message);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -68,7 +116,10 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
                 </SelectContent>
               </Select>
             )}
-            <Button variant="outline" size="sm" onClick={onOpenEdit} className="ml-auto gap-1.5 text-xs">
+            <Button variant="outline" size="sm" onClick={() => setShowResetPwd(true)} className="ml-auto gap-1.5 text-xs">
+              <KeyRound className="w-3.5 h-3.5" /> 重設密碼
+            </Button>
+            <Button variant="outline" size="sm" onClick={onOpenEdit} className="gap-1.5 text-xs">
               <Pencil className="w-3.5 h-3.5" /> 手動調整數據
             </Button>
           </div>
@@ -95,6 +146,37 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
           </div>
         </div>
       </DialogContent>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPwd} onOpenChange={setShowResetPwd}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>重設密碼</DialogTitle>
+            <DialogDescription>
+              為 {detail.profile.display_name}（{detail.profile.email}）設定新密碼
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-sm">新密碼</Label>
+            <Input
+              type="text"
+              placeholder="至少 6 個字元"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              ⚠️ 請務必告知使用者新密碼，並建議盡快自行變更。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetPwd(false)}>取消</Button>
+            <Button onClick={handleResetPassword} disabled={resetting}>
+              {resetting ? "重設中…" : "確認重設"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
