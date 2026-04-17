@@ -24,19 +24,27 @@ ${SUPABASE_FUNCTIONS_BASE}
 
 ## 可用端點（皆為唯讀）
 
-### 1. 列出課程
+### 1. 列出已開放課程
 \`GET /api-agent-courses\`
 
 可選查詢參數：
-- \`status\`：例如 \`published\`
 - \`category\`：例如 \`basic\`
 
 回傳：\`{ courses: Course[] }\`
+
+每個 Course 物件包含（節錄）：
+- \`id\`, \`title\`, \`course_code\`, \`category\`, \`description\`, \`price\`, \`total_hours\`
+- \`cover_url\`：課程封面
+- \`detail_url\`：課程介紹頁網址
+- \`registration_url\`：**課程報名連結**（若為 null 代表該課程目前未開放線上報名，請引導學員聯繫客服）
+
+> 本 API 僅回傳 \`status = published\` 的課程，未上架課程不會出現。
 
 ### 2. 課程詳情（含單元與內容）
 \`GET /api-agent-courses?id=<course_id>\`
 
 回傳：\`{ course, units: [{ id, title, sections: [...] }] }\`
+\`course\` 物件同上，包含 \`registration_url\` 可作為報名連結。
 
 ### 3. 我的報名／出席記錄
 \`GET /api-agent-my-enrollments\`
