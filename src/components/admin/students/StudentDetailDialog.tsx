@@ -116,7 +116,10 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
                 </SelectContent>
               </Select>
             )}
-            <Button variant="outline" size="sm" onClick={onOpenEdit} className="ml-auto gap-1.5 text-xs">
+            <Button variant="outline" size="sm" onClick={() => setShowResetPwd(true)} className="ml-auto gap-1.5 text-xs">
+              <KeyRound className="w-3.5 h-3.5" /> 重設密碼
+            </Button>
+            <Button variant="outline" size="sm" onClick={onOpenEdit} className="gap-1.5 text-xs">
               <Pencil className="w-3.5 h-3.5" /> 手動調整數據
             </Button>
           </div>
