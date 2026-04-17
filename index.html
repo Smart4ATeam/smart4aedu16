@@ -26,5 +26,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function dismissLovableBadge() {
+        const tryClose = () => {
+          const btn = document.getElementById("lovable-badge-close");
+          if (btn) { btn.click(); return true; }
+          return false;
+        };
+        if (tryClose()) return;
+        const obs = new MutationObserver(() => { if (tryClose()) obs.disconnect(); });
+        obs.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => obs.disconnect(), 15000);
+      })();
+    </script>
   </body>
 </html>
