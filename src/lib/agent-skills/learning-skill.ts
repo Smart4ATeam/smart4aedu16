@@ -396,6 +396,104 @@ Body：\`{ "resource_id": "<uuid>" }\`
 - 「我今天還能領套件嗎？」
   → \`GET /api-agent-my-trials\`，比對當日 \`created_at\` 與 \`resource_category\`
 
+### 13. 任務中心
+
+#### 13.1 查詢任務
+\`GET /api-agent-tasks\`
+
+可選查詢參數：
+- \`filter\`：\`available\`（預設，可接案）｜\`mine\`（我申請過的全部）｜\`pending\`（審核中）｜\`in_progress\`（進行中）｜\`pending_completion\`（已回報待確認）｜\`completed\`（已完成）｜\`failed\`（失敗）｜\`rejected\`（被退回）
+- \`q\`：關鍵字（比對 title / description / tags）
+- \`category\`：類別
+- \`difficulty\`：\`初級｜中級｜高級\`
+- \`limit\`：預設 30、最多 100
+
+回傳：
+\`\`\`json
+{
+  "tasks": [{
+    "id": "...",
+    "title": "...",
+    "description": "...",
+    "category": "...",
+    "difficulty": "中級",
+    "amount_min": 1000,
+    "amount_max": 3000,
+    "deadline": "2026-05-01",
+    "status": "available",
+    "tags": ["..."],
+    "my_application": null
+  }],
+  "total": 1,
+  "my_stats": {
+    "total_applications": 5,
+    "in_progress_count": 1,
+    "completed_count": 3,
+    "failed_count": 1,
+    "success_rate": 75
+  }
+}
+\`\`\`
+
+> \`admin_notes\`（管理員內部備註）絕不會回傳給 Agent。
+
+\`GET /api-agent-tasks?id=<task_id>\`
+
+回傳單筆任務 + \`my_application\` + \`my_stats\`。
+
+#### 13.2 申請接案（報價）
+\`POST /api-agent-tasks\`
+
+Body：
+\`\`\`json
+{ "task_id": "<uuid>", "quoted_amount": 2000 }
+\`\`\`
+
+規則：
+- \`quoted_amount\` 必須在任務的 \`amount_min ~ amount_max\` 之間
+- 任務必須是 \`available\` 狀態
+- 截止日期不可已過
+- 同一任務只能申請一次
+
+成功回傳：\`{ success: true, application: {...}, message: "報價已送出，等待管理員審核。" }\`
+
+錯誤代碼：
+- \`INVALID_INPUT\`：缺少 task_id 或 quoted_amount
+- \`TASK_NOT_FOUND\` / \`TASK_NOT_AVAILABLE\` / \`DEADLINE_PASSED\`
+- \`AMOUNT_OUT_OF_RANGE\`：報價超出範圍
+- \`ALREADY_APPLIED\`：已申請過
+
+#### 13.3 回報完成
+\`PATCH /api-agent-tasks?application_id=<id>\`
+
+Body：
+\`\`\`json
+{
+  "action": "report_complete",
+  "deliverable_url": "https://...",
+  "deliverable_note": "選填說明"
+}
+\`\`\`
+
+規則：
+- 申請狀態必須是 \`approved\`（進行中）
+- 回報後狀態變為 \`pending_completion\`，等待管理員確認
+- 確認完成後系統會自動發放點數 / 收益
+
+#### 使用範例
+- 「有什麼可接的任務？」
+  → \`GET /api-agent-tasks?filter=available\`
+- 「找跟『LINE』有關的任務」
+  → \`GET /api-agent-tasks?q=LINE\`
+- 「我申請了哪些任務？」
+  → \`GET /api-agent-tasks?filter=mine\`
+- 「我目前的接案戰績？」
+  → \`GET /api-agent-tasks\` 看 \`my_stats\`
+- 「幫我用 2000 元報價這個任務」
+  → \`POST /api-agent-tasks\`，body：\`{ "task_id": "...", "quoted_amount": 2000 }\`
+- 「我做完了，幫我回報」
+  → \`PATCH /api-agent-tasks?application_id=<id>\`，body 帶 \`action: "report_complete"\` 與交付連結
+
 ## 限制
 
 - 課程相關寫入（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 \`registration_url\` 完成報名。
