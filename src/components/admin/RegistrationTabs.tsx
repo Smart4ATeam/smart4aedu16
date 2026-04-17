@@ -681,18 +681,46 @@ function EnrollmentsTab() {
     mutationFn: async () => {
       if (!editingEnroll) throw new Error("無資料");
       if (!editReason.trim()) throw new Error("請填寫變更原因");
+      const newDate = editSessionDate || null;
+
+      // 判斷新日期是否已過 → 自動標記為已完成
+      // session_date 格式： "2026/04/16" 或 "2026/01/17-01/18"，取第一段比對
+      let nextStatus: string | null = null;
+      if (newDate) {
+        const firstPart = newDate.split(/[-~]/)[0].trim();
+        const isoDate = firstPart.replace(/\//g, "-");
+        const today = new Date().toISOString().split("T")[0];
+        if (isoDate <= today && editingEnroll.status === "enrolled") {
+          nextStatus = "completed";
+        } else if (isoDate > today && editingEnroll.status === "completed") {
+          // 從已過日期改到未來 → 還原為已報名
+          nextStatus = "enrolled";
+        }
+      }
+
+      const updatePayload: Record<string, unknown> = { session_date: newDate };
+      if (nextStatus) updatePayload.status = nextStatus;
+
       const { error } = await supabase.from("reg_enrollments" as any)
-        .update({ session_date: editSessionDate || null } as any)
+        .update(updatePayload as any)
         .eq("id", editingEnroll.id);
       if (error) throw error;
       await supabase.from("reg_operation_logs" as any).insert({
         entity_type: "enrollment", entity_id: editingEnroll.id, action: "update_session_date",
-        old_value: { session_date: editingEnroll.session_date },
-        new_value: { session_date: editSessionDate || null },
+        old_value: { session_date: editingEnroll.session_date, status: editingEnroll.status },
+        new_value: { session_date: newDate, ...(nextStatus ? { status: nextStatus } : {}) },
         reason: editReason, operated_by: user?.id,
       } as any);
+      return nextStatus;
     },
-    onSuccess: () => { toast.success("上課日期已更新"); queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] }); queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] }); setEditingEnroll(null); },
+    onSuccess: (nextStatus) => {
+      if (nextStatus === "completed") toast.success("上課日期已更新，狀態自動設為已完成（測驗已開放）");
+      else if (nextStatus === "enrolled") toast.success("上課日期已更新，狀態還原為已報名");
+      else toast.success("上課日期已更新");
+      queryClient.invalidateQueries({ queryKey: ["reg-enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_session_enrollment_counts"] });
+      setEditingEnroll(null);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
