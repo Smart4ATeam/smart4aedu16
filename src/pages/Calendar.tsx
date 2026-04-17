@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ type CalendarEvent = Tables<"calendar_events">;
 
 const DAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
+const EMPTY_FORM = { title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" };
+
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -33,7 +35,8 @@ const Calendar = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -53,20 +56,65 @@ const Calendar = () => {
 
   useEffect(() => { fetchEvents(); }, [user]);
 
-  const handleAdd = async () => {
-    if (!newEvent.title || !newEvent.event_date || !user) return;
-    const { error } = await supabase.from("calendar_events").insert({
-      title: newEvent.title,
-      color: newEvent.color,
-      event_date: newEvent.event_date,
-      event_time: newEvent.event_time || null,
-      description: newEvent.description || null,
-      is_global: false,
-      user_id: user.id,
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setShowDialog(true);
+  };
+
+  const openEdit = (ev: CalendarEvent) => {
+    if (ev.is_global || ev.user_id !== user?.id) return;
+    setEditingId(ev.id);
+    setForm({
+      title: ev.title,
+      color: ev.color,
+      event_date: ev.event_date,
+      event_time: ev.event_time ?? "",
+      description: ev.description ?? "",
     });
-    if (error) { toast.error("新增失敗：" + error.message); return; }
-    toast.success("活動已新增");
-    setNewEvent({ title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" });
+    setShowDialog(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title || !form.event_date || !user) return;
+    if (editingId) {
+      const { error } = await supabase.from("calendar_events").update({
+        title: form.title,
+        color: form.color,
+        event_date: form.event_date,
+        event_time: form.event_time || null,
+        description: form.description || null,
+      }).eq("id", editingId).eq("user_id", user.id);
+      if (error) { toast.error("更新失敗：" + error.message); return; }
+      toast.success("活動已更新");
+    } else {
+      const { error } = await supabase.from("calendar_events").insert({
+        title: form.title,
+        color: form.color,
+        event_date: form.event_date,
+        event_time: form.event_time || null,
+        description: form.description || null,
+        is_global: false,
+        user_id: user.id,
+      });
+      if (error) { toast.error("新增失敗：" + error.message); return; }
+      toast.success("活動已新增");
+    }
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setShowDialog(false);
+    fetchEvents();
+  };
+
+  const handleDelete = async () => {
+    if (!editingId || !user) return;
+    if (!confirm("確定要刪除這個活動嗎？")) return;
+    const { error } = await supabase.from("calendar_events")
+      .delete().eq("id", editingId).eq("user_id", user.id);
+    if (error) { toast.error("刪除失敗：" + error.message); return; }
+    toast.success("活動已刪除");
+    setEditingId(null);
+    setForm(EMPTY_FORM);
     setShowDialog(false);
     fetchEvents();
   };
@@ -84,7 +132,6 @@ const Calendar = () => {
   const isToday = (day: number) =>
     year === now.getFullYear() && month === now.getMonth() && day === now.getDate();
 
-  // Group events by date
   const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
     const key = ev.event_date;
     if (!acc[key]) acc[key] = [];
@@ -92,7 +139,6 @@ const Calendar = () => {
     return acc;
   }, {});
 
-  // Upcoming events (from today onward)
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const upcomingEvents = events.filter(ev => ev.event_date >= todayStr).slice(0, 10);
 
@@ -103,6 +149,8 @@ const Calendar = () => {
       </div>
     );
   }
+
+  const isOwn = (ev: CalendarEvent) => !ev.is_global && ev.user_id === user?.id;
 
   return (
     <div className="space-y-6">
@@ -117,7 +165,6 @@ const Calendar = () => {
         transition={{ delay: 0.1 }}
         className="glass-card p-5"
       >
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
@@ -130,7 +177,6 @@ const Calendar = () => {
           </button>
         </div>
 
-        {/* Weekday headers */}
         <div className="grid grid-cols-7 mb-2">
           {DAYS.map((d) => (
             <div key={d} className="text-center text-[11px] text-muted-foreground font-medium py-2">
@@ -139,7 +185,6 @@ const Calendar = () => {
           ))}
         </div>
 
-        {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-1">
           {cells.map((day, i) => {
             if (day === null) return <div key={i} />;
@@ -148,7 +193,7 @@ const Calendar = () => {
             return (
               <div
                 key={i}
-                className={`min-h-[80px] p-1.5 rounded-lg border transition-colors cursor-pointer hover:border-primary/30 ${
+                className={`min-h-[80px] p-1.5 rounded-lg border transition-colors ${
                   isToday(day) ? "border-primary/50 bg-primary/5" : "border-transparent"
                 }`}
               >
@@ -168,11 +213,13 @@ const Calendar = () => {
                       "gradient-cyan": "bg-chart-cyan/15 text-[hsl(200,35%,38%)] dark:text-chart-cyan border border-chart-cyan/20",
                     };
                     const colorClass = colorMap[ev.color] || colorMap["gradient-orange"];
+                    const editable = isOwn(ev);
                     return (
                       <div
                         key={ev.id}
-                        className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${colorClass}`}
-                        title={ev.description || ev.title}
+                        onClick={() => editable && openEdit(ev)}
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${colorClass} ${editable ? "cursor-pointer hover:opacity-80" : ""}`}
+                        title={editable ? "點擊編輯" : (ev.description || ev.title)}
                       >
                         {ev.title}
                       </div>
@@ -185,7 +232,6 @@ const Calendar = () => {
         </div>
       </motion.div>
 
-      {/* Upcoming events */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -195,7 +241,7 @@ const Calendar = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground">近期活動</h3>
           <button
-            onClick={() => setShowDialog(true)}
+            onClick={openCreate}
             className="text-xs text-primary flex items-center gap-1 hover:opacity-80"
           >
             <Plus className="w-3.5 h-3.5" /> 新增
@@ -205,38 +251,53 @@ const Calendar = () => {
           {upcomingEvents.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">近期沒有活動</p>
           ) : (
-            upcomingEvents.map((ev) => (
-              <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                <div className={`w-2 h-2 rounded-full ${
-                  ev.color === "gradient-purple" ? "bg-secondary" :
-                  ev.color === "gradient-lime" ? "bg-success" :
-                  ev.color === "gradient-cyan" ? "bg-chart-cyan" :
-                  "bg-accent"
-                }`} />
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-foreground">{ev.title}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {ev.event_date}{ev.event_time ? ` ${ev.event_time}` : ""}
-                    {ev.is_global && " · 全域"}
-                  </p>
+            upcomingEvents.map((ev) => {
+              const editable = isOwn(ev);
+              return (
+                <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                  <div className={`w-2 h-2 rounded-full ${
+                    ev.color === "gradient-purple" ? "bg-secondary" :
+                    ev.color === "gradient-lime" ? "bg-success" :
+                    ev.color === "gradient-cyan" ? "bg-chart-cyan" :
+                    "bg-accent"
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{ev.title}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {ev.event_date}{ev.event_time ? ` ${ev.event_time}` : ""}
+                      {ev.is_global && " · 全域"}
+                    </p>
+                  </div>
+                  {editable && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEdit(ev)}
+                      className="h-7 w-7 p-0"
+                      title="編輯"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </motion.div>
 
-      {/* Add event dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(o) => { if (!o) { setShowDialog(false); setEditingId(null); setForm(EMPTY_FORM); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增個人活動</DialogTitle>
-            <DialogDescription>新增一個個人行事曆活動</DialogDescription>
+            <DialogTitle>{editingId ? "編輯個人活動" : "新增個人活動"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "修改或刪除你建立的行事曆活動" : "新增一個個人行事曆活動"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="活動標題" value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} />
-            <Input placeholder="說明" value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} />
-            <Select value={newEvent.color} onValueChange={(v) => setNewEvent({ ...newEvent, color: v })}>
+            <Input placeholder="活動標題" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <Input placeholder="說明" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <Select value={form.color} onValueChange={(v) => setForm({ ...form, color: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="gradient-orange">
@@ -254,13 +315,20 @@ const Calendar = () => {
               </SelectContent>
             </Select>
             <div className="flex gap-3">
-              <Input type="date" value={newEvent.event_date} onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })} className="flex-1" />
-              <Input type="time" value={newEvent.event_time} onChange={(e) => setNewEvent({ ...newEvent, event_time: e.target.value })} className="w-32" />
+              <Input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} className="flex-1" />
+              <Input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} className="w-32" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
-            <Button onClick={handleAdd}>新增</Button>
+          <DialogFooter className="sm:justify-between">
+            {editingId ? (
+              <Button variant="ghost" onClick={handleDelete} className="text-destructive hover:text-destructive gap-1.5">
+                <Trash2 className="w-4 h-4" /> 刪除
+              </Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { setShowDialog(false); setEditingId(null); setForm(EMPTY_FORM); }}>取消</Button>
+              <Button onClick={handleSave}>{editingId ? "儲存" : "新增"}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
