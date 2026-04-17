@@ -1332,27 +1332,48 @@ export type Database = {
       }
       task_applications: {
         Row: {
+          admin_notes: string
           applied_at: string
           completed_at: string | null
+          deliverable_note: string | null
+          deliverable_url: string | null
+          failed_at: string | null
+          failed_reason: string | null
+          final_amount: number | null
           id: string
+          quoted_amount: number | null
           reject_reason: string | null
           status: string
           task_id: string
           user_id: string
         }
         Insert: {
+          admin_notes?: string
           applied_at?: string
           completed_at?: string | null
+          deliverable_note?: string | null
+          deliverable_url?: string | null
+          failed_at?: string | null
+          failed_reason?: string | null
+          final_amount?: number | null
           id?: string
+          quoted_amount?: number | null
           reject_reason?: string | null
           status?: string
           task_id: string
           user_id: string
         }
         Update: {
+          admin_notes?: string
           applied_at?: string
           completed_at?: string | null
+          deliverable_note?: string | null
+          deliverable_url?: string | null
+          failed_at?: string | null
+          failed_reason?: string | null
+          final_amount?: number | null
           id?: string
+          quoted_amount?: number | null
           reject_reason?: string | null
           status?: string
           task_id?: string
@@ -1370,7 +1391,11 @@ export type Database = {
       }
       tasks: {
         Row: {
+          admin_notes: string
           amount: number
+          amount_max: number
+          amount_min: number
+          category: string
           created_at: string
           created_by: string | null
           deadline: string | null
@@ -1383,7 +1408,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string
           amount?: number
+          amount_max?: number
+          amount_min?: number
+          category?: string
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -1396,7 +1425,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string
           amount?: number
+          amount_max?: number
+          amount_min?: number
+          category?: string
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -1586,12 +1619,32 @@ export type Database = {
           task_id: string
         }[]
       }
+      get_user_task_stats: {
+        Args: { _user_id: string }
+        Returns: {
+          completed_count: number
+          failed_count: number
+          in_progress_count: number
+          success_rate: number
+          total_applications: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      run_task_daily_maintenance: { Args: never; Returns: Json }
+      send_system_message: {
+        Args: {
+          _category?: string
+          _content: string
+          _title: string
+          _user_id: string
+        }
+        Returns: string
       }
     }
     Enums: {
