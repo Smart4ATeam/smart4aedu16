@@ -66,11 +66,13 @@ export default function QuizEntry() {
     },
   });
 
-  // Filter enrollments: only session_date <= today
+  // 開放測驗條件：status=completed (上課日已過) 或 session_date 第一段 <= today
   const eligibleEnrollments = courseEnrollments.filter((e: any) => {
+    if (e.status === "completed") return true;
     if (!e.session_date) return false;
-    const firstDate = e.session_date.split("~")[0].trim();
-    return firstDate <= today;
+    const firstPart = e.session_date.split(/[-~]/)[0].trim();
+    const isoDate = firstPart.replace(/\//g, "-");
+    return isoDate <= today;
   });
 
   // Check if user already passed (for no-retake quizzes)

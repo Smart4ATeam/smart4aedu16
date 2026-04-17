@@ -28,21 +28,23 @@ function AvailableQuizzes({ userId, navigate }: { userId?: string; navigate: (pa
       const memberIds = (members || []).map((m: any) => m.id);
       if (memberIds.length === 0) return [];
 
-      // Get paid, non-cancelled enrollments with session_date <= today
+      // Get paid, non-cancelled enrollments
       const { data: enrollments } = await supabase
         .from("reg_enrollments")
-        .select("course_id, session_date")
+        .select("course_id, session_date, status")
         .in("member_id", memberIds)
         .neq("status", "cancelled")
         .eq("payment_status", "paid");
 
-      // Filter: session_date <= today
+      // 開放測驗條件：status=completed (上課日已過) 或 session_date 第一段日期 <= today
       return (enrollments || [])
         .filter((e: any) => {
+          if (e.status === "completed") return true;
           if (!e.session_date) return false;
-          // session_date may contain "~", take the first date
-          const firstDate = e.session_date.split("~")[0].trim();
-          return firstDate <= today;
+          // session_date 格式："2026/04/16" 或 "2026/01/17-01/18"，取第一段並轉為 ISO
+          const firstPart = e.session_date.split(/[-~]/)[0].trim();
+          const isoDate = firstPart.replace(/\//g, "-");
+          return isoDate <= today;
         })
         .map((e: any) => e.course_id)
         .filter(Boolean);
