@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Settings as SettingsIcon, User, Globe, Bell, Eye, Target, Link, BarChart3, Info, Camera } from "lucide-react";
+import { Settings as SettingsIcon, User, Globe, Bell, Eye, Target, Link, BarChart3, Info, Camera, Bot } from "lucide-react";
+import AgentTokenManager from "@/components/settings/AgentTokenManager";
+import AgentSkillViewer from "@/components/settings/AgentSkillViewer";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -202,6 +204,16 @@ export default function Settings() {
         <FieldGroup label="個人簡介">
           <Textarea value={bio} onChange={(e) => setBio(e.target.value)} className="bg-muted border-border min-h-[60px]" />
         </FieldGroup>
+      </SectionCard>
+
+      {/* 個人 Agent */}
+      <SectionCard icon={<Bot className="w-5 h-5 text-primary" />} title="個人 Agent">
+        <p className="text-xs text-muted-foreground -mt-1">
+          建立 API Token，讓您的 AI Agent（Claude / ChatGPT / Cursor 等）以您的身份查詢學習中心資料。
+        </p>
+        <AgentTokenManager />
+        <div className="border-t border-border my-2" />
+        <AgentSkillViewer />
       </SectionCard>
 
       {/* 環境資料 */}
