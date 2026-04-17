@@ -146,6 +146,37 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
           </div>
         </div>
       </DialogContent>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPwd} onOpenChange={setShowResetPwd}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>重設密碼</DialogTitle>
+            <DialogDescription>
+              為 {detail.profile.display_name}（{detail.profile.email}）設定新密碼
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-sm">新密碼</Label>
+            <Input
+              type="text"
+              placeholder="至少 6 個字元"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              ⚠️ 請務必告知使用者新密碼，並建議盡快自行變更。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetPwd(false)}>取消</Button>
+            <Button onClick={handleResetPassword} disabled={resetting}>
+              {resetting ? "重設中…" : "確認重設"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
