@@ -50,37 +50,40 @@ const Tasks = () => {
     setLoading(false);
   };
 
+  type EffectiveStatus = "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+
   const tasksWithUserStatus = useMemo(() => {
     const appMap = new Map(applications.map((a) => [a.task_id, a]));
     return tasks.map((task) => {
       const app = appMap.get(task.id);
-      let effectiveStatus: FilterType extends "all" ? never : "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" = "available" as never;
+      let effectiveStatus: EffectiveStatus = "available";
       let rejectReason: string | undefined;
       let failedReason: string | undefined;
       let quotedAmount: number | undefined;
       let finalAmount: number | undefined;
-      let applicationId: string | undefined = app?.id;
+      const applicationId: string | undefined = app?.id;
 
       if (app) {
-        switch (app.status) {
+        const a = app as Tables<"task_applications">;
+        switch (a.status) {
           case "applied": effectiveStatus = "pending"; break;
           case "approved": effectiveStatus = "in-progress"; break;
           case "pending_completion": effectiveStatus = "pending-completion"; break;
           case "completed": effectiveStatus = "completed"; break;
           case "rejected":
             effectiveStatus = "rejected";
-            rejectReason = (app as Tables<"task_applications">).reject_reason || undefined;
+            rejectReason = a.reject_reason || undefined;
             break;
           case "failed":
             effectiveStatus = "failed";
-            failedReason = (app as Tables<"task_applications">).failed_reason || undefined;
+            failedReason = a.failed_reason || undefined;
             break;
           default: effectiveStatus = "pending";
         }
-        quotedAmount = (app as Tables<"task_applications">).quoted_amount ?? undefined;
-        finalAmount = (app as Tables<"task_applications">).final_amount ?? undefined;
+        quotedAmount = a.quoted_amount ?? undefined;
+        finalAmount = a.final_amount ?? undefined;
       } else if (task.status === "closed") {
-        effectiveStatus = "closed" as never;
+        effectiveStatus = "closed";
       }
 
       return { ...task, effectiveStatus, applicationId, rejectReason, failedReason, quotedAmount, finalAmount };

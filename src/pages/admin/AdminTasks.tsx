@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, User, CheckCircle, Users, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp } from "lucide-react";
 import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -30,35 +31,84 @@ type TaskApplication = Tables<"task_applications"> & {
   applicant?: Profile | null;
 };
 
+interface UserStats {
+  total_applications: number;
+  completed_count: number;
+  failed_count: number;
+  in_progress_count: number;
+  success_rate: number;
+}
+
+const DIFFICULTY_OPTIONS = ["初級", "中級", "高級"];
+const TASK_STATUSES = [
+  { value: "available", label: "已發布" },
+  { value: "in_progress", label: "進行中" },
+  { value: "completed", label: "已結束" },
+  { value: "closed", label: "已關閉" },
+];
+
 const AdminTasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [applications, setApplications] = useState<TaskApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewTask, setShowNewTask] = useState(false);
-  const [newTask, setNewTask] = useState({ title: "", difficulty: "中階", amount: 0, tags: "", deadline: "" });
-  const [editScore, setEditScore] = useState<{ id: string; comment: string } | null>(null);
+  const [newTask, setNewTask] = useState({
+    title: "", description: "", difficulty: "中級",
+    amount_min: 0, amount_max: 0, category: "general",
+    tags: "", deadline: "", admin_notes: "",
+  });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", description: "", difficulty: "", amount: 0, tags: "", deadline: "", status: "" });
+  const [editForm, setEditForm] = useState({
+    title: "", description: "", difficulty: "",
+    amount_min: 0, amount_max: 0, category: "general",
+    tags: "", deadline: "", status: "", admin_notes: "",
+  });
   const [selectedApplicant, setSelectedApplicant] = useState<TaskApplication | null>(null);
+  const [applicantStats, setApplicantStats] = useState<UserStats | null>(null);
   const [applicantHistory, setApplicantHistory] = useState<(Tables<"task_applications"> & { task_title?: string })[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingTaskApplicants, setViewingTaskApplicants] = useState<string | null>(null);
 
-  // Reject reason state
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Failed mark
+  const [failTarget, setFailTarget] = useState<string | null>(null);
+  const [failReason, setFailReason] = useState("");
+
+  // Final amount on confirm
+  const [completeTarget, setCompleteTarget] = useState<TaskApplication | null>(null);
+  const [finalAmount, setFinalAmount] = useState<number>(0);
+  const [completeAdminNotes, setCompleteAdminNotes] = useState("");
+
+  // Batch
+  const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
+  const [batchRejectOpen, setBatchRejectOpen] = useState(false);
+  const [batchRejectReason, setBatchRejectReason] = useState("");
+
+  // Stats cache for review table
+  const [statsCache, setStatsCache] = useState<Record<string, UserStats>>({});
+
+  const fetchUserStats = async (userId: string) => {
+    if (statsCache[userId]) return statsCache[userId];
+    const { data } = await supabase.rpc("get_user_task_stats", { _user_id: userId });
+    const stats = (data?.[0] || { total_applications: 0, completed_count: 0, failed_count: 0, in_progress_count: 0, success_rate: 0 }) as UserStats;
+    setStatsCache((prev) => ({ ...prev, [userId]: stats }));
+    return stats;
+  };
 
   const openApplicantDetail = async (app: TaskApplication) => {
     setSelectedApplicant(app);
     setHistoryLoading(true);
+    const stats = await fetchUserStats(app.user_id);
+    setApplicantStats(stats);
     const { data: historyApps } = await supabase
       .from("task_applications")
       .select("*")
       .eq("user_id", app.user_id)
       .order("applied_at", { ascending: false });
-
     if (historyApps) {
       const enriched = historyApps.map(h => {
         const task = tasks.find(t => t.id === h.task_id);
@@ -74,21 +124,18 @@ const AdminTasks = () => {
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("task_applications").select("*").order("applied_at", { ascending: false }),
     ]);
-
     if (tasksRes.data) setTasks(tasksRes.data);
     if (appsRes.data) {
       const userIds = [...new Set(appsRes.data.map(a => a.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", userIds);
-
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", userIds);
       const enriched = appsRes.data.map(app => {
         const task = tasksRes.data?.find(t => t.id === app.task_id);
         const applicant = profiles?.find(p => p.id === app.user_id) || null;
         return { ...app, task_title: task?.title || "未知任務", applicant };
       });
       setApplications(enriched);
+      // Pre-fetch stats for all unique users
+      userIds.forEach((uid) => fetchUserStats(uid));
     }
     setLoading(false);
   };
@@ -97,10 +144,19 @@ const AdminTasks = () => {
 
   const handleAddTask = async () => {
     if (!newTask.title || !user) return;
+    if (newTask.amount_max < newTask.amount_min) {
+      toast.error("最高金額不能小於最低金額");
+      return;
+    }
     const { error } = await supabase.from("tasks").insert({
       title: newTask.title,
+      description: newTask.description,
       difficulty: newTask.difficulty,
-      amount: newTask.amount,
+      amount: newTask.amount_min,
+      amount_min: newTask.amount_min,
+      amount_max: newTask.amount_max,
+      category: newTask.category,
+      admin_notes: newTask.admin_notes,
       tags: newTask.tags.split(",").map(t => t.trim()).filter(Boolean),
       deadline: newTask.deadline || null,
       created_by: user.id,
@@ -108,7 +164,7 @@ const AdminTasks = () => {
     });
     if (error) { toast.error("新增失敗：" + error.message); return; }
     toast.success("任務已發布");
-    setNewTask({ title: "", difficulty: "中階", amount: 0, tags: "", deadline: "" });
+    setNewTask({ title: "", description: "", difficulty: "中級", amount_min: 0, amount_max: 0, category: "general", tags: "", deadline: "", admin_notes: "" });
     setShowNewTask(false);
     fetchData();
   };
@@ -119,20 +175,31 @@ const AdminTasks = () => {
       title: t.title,
       description: t.description,
       difficulty: t.difficulty,
-      amount: Number(t.amount),
+      amount_min: Number(t.amount_min ?? t.amount),
+      amount_max: Number(t.amount_max ?? t.amount),
+      category: t.category || "general",
       tags: t.tags.join(", "),
       deadline: t.deadline || "",
       status: t.status,
+      admin_notes: t.admin_notes || "",
     });
   };
 
   const handleEditTask = async () => {
     if (!editingTask) return;
+    if (editForm.amount_max < editForm.amount_min) {
+      toast.error("最高金額不能小於最低金額");
+      return;
+    }
     const { error } = await supabase.from("tasks").update({
       title: editForm.title,
       description: editForm.description,
       difficulty: editForm.difficulty,
-      amount: editForm.amount,
+      amount: editForm.amount_min,
+      amount_min: editForm.amount_min,
+      amount_max: editForm.amount_max,
+      category: editForm.category,
+      admin_notes: editForm.admin_notes,
       tags: editForm.tags.split(",").map(t => t.trim()).filter(Boolean),
       deadline: editForm.deadline || null,
       status: editForm.status,
@@ -153,55 +220,123 @@ const AdminTasks = () => {
   const handleApprove = async (id: string) => {
     const { error } = await supabase.from("task_applications").update({ status: "approved" }).eq("id", id);
     if (error) { toast.error("更新失敗：" + error.message); return; }
-    toast.success("已通過");
+    toast.success("已通過（已自動發訊息給學員）");
     setSelectedApplicant(null);
     fetchData();
   };
 
-  const handleConfirmComplete = async (id: string) => {
+  const openCompleteDialog = (app: TaskApplication) => {
+    setCompleteTarget(app);
+    setFinalAmount(Number(app.final_amount ?? app.quoted_amount ?? 0));
+    setCompleteAdminNotes(app.admin_notes || "");
+  };
+
+  const handleConfirmComplete = async () => {
+    if (!completeTarget) return;
     const { error } = await supabase
       .from("task_applications")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", id);
+      .update({
+        status: "completed",
+        final_amount: finalAmount > 0 ? finalAmount : null,
+        admin_notes: completeAdminNotes,
+      })
+      .eq("id", completeTarget.id);
     if (error) { toast.error("更新失敗：" + error.message); return; }
-    toast.success("已確認完成");
+    toast.success("已確認完成，獎勵已撥點");
+    setCompleteTarget(null);
     setSelectedApplicant(null);
+    setStatsCache({});
     fetchData();
   };
 
-  const openRejectDialog = (id: string) => {
-    setRejectTarget(id);
-    setRejectReason("");
-  };
+  const openRejectDialog = (id: string) => { setRejectTarget(id); setRejectReason(""); };
 
   const handleConfirmReject = async () => {
     if (!rejectTarget) return;
-    if (!rejectReason.trim()) {
-      toast.error("請填寫退回原因");
-      return;
-    }
+    if (!rejectReason.trim()) { toast.error("請填寫退回原因"); return; }
     const { error } = await supabase
       .from("task_applications")
-      .update({ status: "rejected", reject_reason: rejectReason.trim() } as any)
+      .update({ status: "rejected", reject_reason: rejectReason.trim() })
       .eq("id", rejectTarget);
     if (error) { toast.error("更新失敗：" + error.message); return; }
     toast.success("已退回");
-    setRejectTarget(null);
-    setRejectReason("");
+    setRejectTarget(null); setRejectReason("");
     setSelectedApplicant(null);
+    fetchData();
+  };
+
+  const openFailDialog = (id: string) => { setFailTarget(id); setFailReason(""); };
+
+  const handleConfirmFail = async () => {
+    if (!failTarget) return;
+    if (!failReason.trim()) { toast.error("請填寫失敗原因"); return; }
+    const { error } = await supabase
+      .from("task_applications")
+      .update({ status: "failed", failed_reason: failReason.trim() })
+      .eq("id", failTarget);
+    if (error) { toast.error("標記失敗：" + error.message); return; }
+    toast.success("已標記為失敗");
+    setFailTarget(null); setFailReason("");
+    setSelectedApplicant(null);
+    setStatsCache({});
+    fetchData();
+  };
+
+  // Batch actions
+  const toggleSelectAll = (apps: TaskApplication[]) => {
+    if (selectedAppIds.size === apps.length) {
+      setSelectedAppIds(new Set());
+    } else {
+      setSelectedAppIds(new Set(apps.filter(a => a.status === "applied").map(a => a.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    const next = new Set(selectedAppIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedAppIds(next);
+  };
+
+  const handleBatchApprove = async () => {
+    if (selectedAppIds.size === 0) return;
+    const ids = [...selectedAppIds];
+    const { error } = await supabase.from("task_applications").update({ status: "approved" }).in("id", ids);
+    if (error) { toast.error("批次通過失敗：" + error.message); return; }
+    toast.success(`已批次通過 ${ids.length} 筆`);
+    setSelectedAppIds(new Set());
+    fetchData();
+  };
+
+  const handleBatchReject = async () => {
+    if (!batchRejectReason.trim()) { toast.error("請填寫退回原因"); return; }
+    const ids = [...selectedAppIds];
+    const { error } = await supabase
+      .from("task_applications")
+      .update({ status: "rejected", reject_reason: batchRejectReason.trim() })
+      .in("id", ids);
+    if (error) { toast.error("批次退回失敗：" + error.message); return; }
+    toast.success(`已批次退回 ${ids.length} 筆`);
+    setSelectedAppIds(new Set());
+    setBatchRejectOpen(false);
+    setBatchRejectReason("");
     fetchData();
   };
 
   const statusLabel = (s: string) => {
-    const map: Record<string, string> = { available: "已發布", in_progress: "進行中", completed: "已結束", applied: "待審核", approved: "已通過", rejected: "已退回", pending_completion: "待確認完成" };
+    const map: Record<string, string> = {
+      available: "已發布", in_progress: "進行中", completed: "已結束",
+      applied: "待審核", approved: "已通過", rejected: "已退回",
+      pending_completion: "待確認完成", failed: "已失敗", closed: "已關閉",
+    };
     return map[s] || s;
   };
 
   const statusColor = (s: string) => {
-    if (s === "in_progress" || s === "applied") return "bg-primary/20 text-primary";
+    if (s === "in_progress" || s === "applied" || s === "approved") return "bg-primary/20 text-primary";
     if (s === "pending_completion") return "bg-chart-yellow/20 text-chart-yellow";
-    if (s === "completed" || s === "approved") return "bg-success/20 text-success";
-    if (s === "rejected") return "bg-destructive/20 text-destructive";
+    if (s === "completed") return "bg-chart-green/20 text-chart-green";
+    if (s === "rejected" || s === "failed") return "bg-destructive/20 text-destructive";
+    if (s === "closed") return "bg-muted text-muted-foreground";
     return "";
   };
 
@@ -209,11 +344,14 @@ const AdminTasks = () => {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  const filteredApps = applications.filter(a => statusFilter === "all" || a.status === statusFilter);
+  const selectableApps = filteredApps.filter(a => a.status === "applied");
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <h2 className="text-2xl font-bold text-foreground">任務與審核管理</h2>
-        <p className="text-sm text-muted-foreground mt-1">發布任務、審核學員申請</p>
+        <p className="text-sm text-muted-foreground mt-1">發布任務、審核學員報價、查看戰績</p>
       </motion.div>
 
       <Tabs defaultValue="tasks" className="space-y-4">
@@ -229,24 +367,30 @@ const AdminTasks = () => {
           </div>
 
           <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>發布新任務</DialogTitle>
-                <DialogDescription>設定任務詳細資訊</DialogDescription>
+                <DialogDescription>設定任務詳細資訊與金額範圍</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                 <Input placeholder="任務標題" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
-                <Select value={newTask.difficulty} onValueChange={(v) => setNewTask({ ...newTask, difficulty: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="初級">初級</SelectItem>
-                    <SelectItem value="中階">中階</SelectItem>
-                    <SelectItem value="高階">高階</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input type="number" placeholder="金額" value={newTask.amount || ""} onChange={(e) => setNewTask({ ...newTask, amount: Number(e.target.value) })} />
+                <Textarea placeholder="任務描述" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} rows={3} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={newTask.difficulty} onValueChange={(v) => setNewTask({ ...newTask, difficulty: v })}>
+                    <SelectTrigger><SelectValue placeholder="難度" /></SelectTrigger>
+                    <SelectContent>
+                      {DIFFICULTY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input placeholder="類別（如：開發、設計）" value={newTask.category} onChange={(e) => setNewTask({ ...newTask, category: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input type="number" placeholder="最低金額" value={newTask.amount_min || ""} onChange={(e) => setNewTask({ ...newTask, amount_min: Number(e.target.value) })} />
+                  <Input type="number" placeholder="最高金額" value={newTask.amount_max || ""} onChange={(e) => setNewTask({ ...newTask, amount_max: Number(e.target.value) })} />
+                </div>
                 <Input placeholder="技術標籤（逗號分隔）" value={newTask.tags} onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })} />
                 <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
+                <Textarea placeholder="管理員內部備註（學員看不到）" value={newTask.admin_notes} onChange={(e) => setNewTask({ ...newTask, admin_notes: e.target.value })} rows={2} />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowNewTask(false)}>取消</Button>
@@ -260,11 +404,11 @@ const AdminTasks = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>標題</TableHead>
+                  <TableHead>類別</TableHead>
                   <TableHead>等級</TableHead>
-                  <TableHead>金額</TableHead>
-                  <TableHead>標籤</TableHead>
+                  <TableHead>金額範圍</TableHead>
                   <TableHead>截止日</TableHead>
-                  <TableHead>申請人數</TableHead>
+                  <TableHead>申請</TableHead>
                   <TableHead>狀態</TableHead>
                   <TableHead>操作</TableHead>
                 </TableRow>
@@ -272,27 +416,18 @@ const AdminTasks = () => {
               <TableBody>
                 {tasks.map((t) => {
                   const taskApps = applications.filter(a => a.task_id === t.id);
+                  const min = Number(t.amount_min ?? t.amount);
+                  const max = Number(t.amount_max ?? t.amount);
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.title}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{t.category || "general"}</Badge></TableCell>
                       <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
-                      <TableCell>${Number(t.amount).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {t.tags.map((tag) => (<Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>))}
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1.5 text-xs"
-                          onClick={() => setViewingTaskApplicants(t.id)}
-                          disabled={taskApps.length === 0}
-                        >
-                          <Users className="w-3.5 h-3.5" />
-                          {taskApps.length} 人
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setViewingTaskApplicants(t.id)} disabled={taskApps.length === 0}>
+                          <Users className="w-3.5 h-3.5" />{taskApps.length}
                         </Button>
                       </TableCell>
                       <TableCell><Badge className={statusColor(t.status)}>{statusLabel(t.status)}</Badge></TableCell>
@@ -311,78 +446,111 @@ const AdminTasks = () => {
         </TabsContent>
 
         <TabsContent value="review" className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap items-center">
             {[
               { value: "all", label: "全部" },
               { value: "applied", label: "待審核" },
               { value: "pending_completion", label: "待確認完成" },
               { value: "approved", label: "已通過" },
+              { value: "completed", label: "已完成" },
               { value: "rejected", label: "已退回" },
+              { value: "failed", label: "已失敗" },
             ].map((f) => (
-              <Button
-                key={f.value}
-                size="sm"
-                variant={statusFilter === f.value ? "default" : "outline"}
-                onClick={() => setStatusFilter(f.value)}
-              >
+              <Button key={f.value} size="sm" variant={statusFilter === f.value ? "default" : "outline"} onClick={() => { setStatusFilter(f.value); setSelectedAppIds(new Set()); }}>
                 {f.label}
               </Button>
             ))}
+            {selectedAppIds.size > 0 && (
+              <div className="ml-auto flex gap-2">
+                <span className="text-xs text-muted-foreground self-center">已選 {selectedAppIds.size} 筆</span>
+                <Button size="sm" onClick={handleBatchApprove}><Check className="w-3.5 h-3.5 mr-1" />批次通過</Button>
+                <Button size="sm" variant="destructive" onClick={() => setBatchRejectOpen(true)}><X className="w-3.5 h-3.5 mr-1" />批次退回</Button>
+              </div>
+            )}
           </div>
+
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="glass-card p-5">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    {selectableApps.length > 0 && (
+                      <Checkbox
+                        checked={selectedAppIds.size > 0 && selectedAppIds.size === selectableApps.length}
+                        onCheckedChange={() => toggleSelectAll(selectableApps)}
+                      />
+                    )}
+                  </TableHead>
                   <TableHead>任務</TableHead>
                   <TableHead>接案人員</TableHead>
-                  <TableHead>學號</TableHead>
+                  <TableHead>戰績（成/敗/率）</TableHead>
+                  <TableHead>報價</TableHead>
                   <TableHead>狀態</TableHead>
                   <TableHead>申請時間</TableHead>
                   <TableHead>操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.filter(a => statusFilter === "all" || a.status === statusFilter).length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">尚無申請</TableCell></TableRow>
-                ) : applications.filter(a => statusFilter === "all" || a.status === statusFilter).map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.task_title}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6">
-                          {a.applicant?.avatar_url ? (
-                            <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} />
-                          ) : null}
-                          <AvatarFallback className="text-[10px] bg-muted">
-                            {a.applicant?.display_name?.slice(0, 1) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{a.applicant?.display_name || "未知"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{a.applicant?.student_id || "—"}</TableCell>
-                    <TableCell><Badge className={statusColor(a.status)}>{statusLabel(a.status)}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{new Date(a.applied_at).toLocaleDateString("zh-TW")}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openApplicantDetail(a)} title="查看詳情">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {a.status === "applied" && (
-                          <>
-                            <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(a.id)}><Check className="w-4 h-4" /></Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openRejectDialog(a.id)}><X className="w-4 h-4" /></Button>
-                          </>
+                {filteredApps.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">尚無申請</TableCell></TableRow>
+                ) : filteredApps.map((a) => {
+                  const stats = statsCache[a.user_id];
+                  const isSelectable = a.status === "applied";
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell>
+                        {isSelectable && (
+                          <Checkbox checked={selectedAppIds.has(a.id)} onCheckedChange={() => toggleSelectOne(a.id)} />
                         )}
-                        {a.status === "pending_completion" && (
-                          <Button size="sm" variant="ghost" className="text-success" onClick={() => handleConfirmComplete(a.id)} title="確認完成">
-                            <CheckCircle className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="font-medium">{a.task_title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-6 h-6">
+                            {a.applicant?.avatar_url ? <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} /> : null}
+                            <AvatarFallback className="text-[10px] bg-muted">{a.applicant?.display_name?.slice(0, 1) || "?"}</AvatarFallback>
+                          </Avatar>
+                          <div className="text-xs">
+                            <div>{a.applicant?.display_name || "未知"}</div>
+                            <div className="text-[10px] text-muted-foreground">{a.applicant?.student_id || "—"}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {stats ? (
+                          <div className="flex items-center gap-1 text-xs">
+                            <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-chart-green">{stats.completed_count}</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="text-destructive">{stats.failed_count}</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="font-semibold">{stats.success_rate}%</span>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-sm">{a.quoted_amount ? `$${Number(a.quoted_amount).toLocaleString()}` : "—"}</TableCell>
+                      <TableCell><Badge className={statusColor(a.status)}>{statusLabel(a.status)}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(a.applied_at).toLocaleDateString("zh-TW")}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openApplicantDetail(a)} title="查看詳情"><Eye className="w-4 h-4" /></Button>
+                          {a.status === "applied" && (
+                            <>
+                              <Button size="sm" variant="ghost" className="text-chart-green" onClick={() => handleApprove(a.id)} title="通過"><Check className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openRejectDialog(a.id)} title="退回"><X className="w-4 h-4" /></Button>
+                            </>
+                          )}
+                          {a.status === "pending_completion" && (
+                            <Button size="sm" variant="ghost" className="text-chart-green" onClick={() => openCompleteDialog(a)} title="確認完成"><CheckCircle className="w-4 h-4" /></Button>
+                          )}
+                          {(a.status === "approved" || a.status === "pending_completion") && (
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openFailDialog(a.id)} title="標記為失敗"><XCircle className="w-4 h-4" /></Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </motion.div>
@@ -391,58 +559,36 @@ const AdminTasks = () => {
 
       {/* Edit Task Dialog */}
       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>編輯任務</DialogTitle>
             <DialogDescription>修改任務資訊</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">標題</label>
-              <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">描述</label>
-              <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="標題" />
+            <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} placeholder="描述" />
+            <div className="grid grid-cols-2 gap-3">
+              <Select value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{DIFFICULTY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} placeholder="類別" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-foreground">難度</label>
-                <Select value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="初級">初級</SelectItem>
-                    <SelectItem value="中階">中階</SelectItem>
-                    <SelectItem value="高階">高階</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">金額</label>
-                <Input type="number" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })} />
-              </div>
+              <Input type="number" placeholder="最低金額" value={editForm.amount_min || ""} onChange={(e) => setEditForm({ ...editForm, amount_min: Number(e.target.value) })} />
+              <Input type="number" placeholder="最高金額" value={editForm.amount_max || ""} onChange={(e) => setEditForm({ ...editForm, amount_max: Number(e.target.value) })} />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">標籤（逗號分隔）</label>
-              <Input value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
-            </div>
+            <Input placeholder="技術標籤（逗號分隔）" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-foreground">截止日</label>
-                <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">狀態</label>
-                <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">已發布</SelectItem>
-                    <SelectItem value="in_progress">進行中</SelectItem>
-                    <SelectItem value="completed">已結束</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
+              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TASK_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
+            <Textarea placeholder="管理員內部備註（學員看不到）" value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={2} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTask(null)}>取消</Button>
@@ -451,24 +597,19 @@ const AdminTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Applicant Detail Dialog */}
+      {/* Applicant Detail */}
       <Dialog open={!!selectedApplicant} onOpenChange={(open) => !open && setSelectedApplicant(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>接案人員詳細資料</DialogTitle>
-            <DialogDescription>審核參考資訊</DialogDescription>
+            <DialogDescription>審核參考資訊與戰績</DialogDescription>
           </DialogHeader>
           {selectedApplicant?.applicant && (
             <div className="space-y-5">
-              {/* Profile Header */}
               <div className="flex items-center gap-4">
                 <Avatar className="w-14 h-14">
-                  {selectedApplicant.applicant.avatar_url ? (
-                    <AvatarImage src={selectedApplicant.applicant.avatar_url} alt={selectedApplicant.applicant.display_name} />
-                  ) : null}
-                  <AvatarFallback className="bg-primary/15 text-primary text-lg font-bold">
-                    {selectedApplicant.applicant.display_name.slice(0, 1)}
-                  </AvatarFallback>
+                  {selectedApplicant.applicant.avatar_url ? <AvatarImage src={selectedApplicant.applicant.avatar_url} alt={selectedApplicant.applicant.display_name} /> : null}
+                  <AvatarFallback className="bg-primary/15 text-primary text-lg font-bold">{selectedApplicant.applicant.display_name.slice(0, 1)}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-lg font-semibold text-foreground">{selectedApplicant.applicant.display_name}</p>
@@ -476,40 +617,64 @@ const AdminTasks = () => {
                 </div>
               </div>
 
-              {/* Info Grid */}
+              {/* Stats card */}
+              {applicantStats && (
+                <div className="glass-card p-4 grid grid-cols-4 gap-3 text-center">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">總接案</p>
+                    <p className="text-lg font-bold text-foreground">{applicantStats.total_applications}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">成功</p>
+                    <p className="text-lg font-bold text-chart-green">{applicantStats.completed_count}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">失敗</p>
+                    <p className="text-lg font-bold text-destructive">{applicantStats.failed_count}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">成功率</p>
+                    <p className="text-lg font-bold text-primary">{applicantStats.success_rate}%</p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <InfoItem label="學號" value={selectedApplicant.applicant.student_id || "—"} />
                 <InfoItem label="組織" value={selectedApplicant.applicant.organization_id || "—"} />
                 <InfoItem label="累計收益" value={`$${Number(selectedApplicant.applicant.total_revenue).toLocaleString()}`} />
-                <InfoItem label="學習天數" value={`${selectedApplicant.applicant.learning_days} 天`} />
                 <InfoItem label="徽章數" value={`${selectedApplicant.applicant.total_badges} 枚`} />
-                <InfoItem label="難度偏好" value={selectedApplicant.applicant.difficulty_preference || "—"} />
-                <InfoItem label="電話" value={selectedApplicant.applicant.phone || "—"} />
               </div>
 
-              {/* Bio */}
-              {selectedApplicant.applicant.bio && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">個人簡介</p>
-                  <p className="text-sm text-foreground glass-card p-3">{selectedApplicant.applicant.bio}</p>
-                </div>
-              )}
-
-              {/* Task Info */}
-              <div className="glass-card p-3 space-y-1">
+              {/* Application info */}
+              <div className="glass-card p-3 space-y-2">
                 <p className="text-xs text-muted-foreground">申請任務</p>
                 <p className="text-sm font-medium text-foreground">{selectedApplicant.task_title}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className={statusColor(selectedApplicant.status)}>{statusLabel(selectedApplicant.status)}</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(selectedApplicant.applied_at).toLocaleDateString("zh-TW")}
-                  </span>
+                  {selectedApplicant.quoted_amount && (
+                    <span className="text-xs">報價：<span className="font-semibold text-primary">${Number(selectedApplicant.quoted_amount).toLocaleString()}</span></span>
+                  )}
                 </div>
-                {/* Show reject reason if rejected */}
-                {selectedApplicant.status === "rejected" && (selectedApplicant as any).reject_reason && (
+                {selectedApplicant.deliverable_url && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">交付連結：</span>
+                    <a href={selectedApplicant.deliverable_url} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{selectedApplicant.deliverable_url}</a>
+                  </div>
+                )}
+                {selectedApplicant.deliverable_note && (
+                  <div className="text-xs"><span className="text-muted-foreground">交付說明：</span><span className="text-foreground whitespace-pre-wrap">{selectedApplicant.deliverable_note}</span></div>
+                )}
+                {selectedApplicant.status === "rejected" && selectedApplicant.reject_reason && (
                   <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/20">
                     <p className="text-xs text-muted-foreground mb-0.5">退回原因</p>
-                    <p className="text-sm text-destructive">{(selectedApplicant as any).reject_reason}</p>
+                    <p className="text-sm text-destructive">{selectedApplicant.reject_reason}</p>
+                  </div>
+                )}
+                {selectedApplicant.status === "failed" && selectedApplicant.failed_reason && (
+                  <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/20">
+                    <p className="text-xs text-muted-foreground mb-0.5">失敗原因</p>
+                    <p className="text-sm text-destructive">{selectedApplicant.failed_reason}</p>
                   </div>
                 )}
               </div>
@@ -518,20 +683,16 @@ const AdminTasks = () => {
               <div>
                 <p className="text-xs text-muted-foreground mb-2">歷史接案紀錄</p>
                 {historyLoading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
+                  <div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
                 ) : applicantHistory.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">無歷史紀錄</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {applicantHistory.map((h) => (
                       <div key={h.id} className="glass-card p-2.5 rounded-lg flex items-center justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground truncate">{h.task_title}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {new Date(h.applied_at).toLocaleDateString("zh-TW")}
-                          </p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(h.applied_at).toLocaleDateString("zh-TW")}</p>
                         </div>
                         <Badge className={`ml-2 shrink-0 ${statusColor(h.status)}`}>{statusLabel(h.status)}</Badge>
                       </div>
@@ -554,29 +715,32 @@ const AdminTasks = () => {
             )}
             {selectedApplicant?.status === "pending_completion" && (
               <div className="flex gap-2 w-full">
-                <Button variant="outline" className="flex-1 text-destructive border-destructive/30" onClick={() => openRejectDialog(selectedApplicant.id)}>
-                  <X className="w-4 h-4 mr-1" /> 退回
+                <Button variant="outline" className="flex-1 text-destructive border-destructive/30" onClick={() => openFailDialog(selectedApplicant.id)}>
+                  <XCircle className="w-4 h-4 mr-1" /> 標記失敗
                 </Button>
-                <Button className="flex-1" onClick={() => handleConfirmComplete(selectedApplicant.id)}>
+                <Button className="flex-1" onClick={() => openCompleteDialog(selectedApplicant)}>
                   <CheckCircle className="w-4 h-4 mr-1" /> 確認完成
                 </Button>
               </div>
             )}
-            {selectedApplicant?.status !== "applied" && selectedApplicant?.status !== "pending_completion" && (
+            {selectedApplicant?.status === "approved" && (
+              <Button variant="outline" className="w-full text-destructive border-destructive/30" onClick={() => openFailDialog(selectedApplicant.id)}>
+                <XCircle className="w-4 h-4 mr-1" /> 標記為失敗
+              </Button>
+            )}
+            {!["applied", "pending_completion", "approved"].includes(selectedApplicant?.status || "") && (
               <Button variant="outline" onClick={() => setSelectedApplicant(null)}>關閉</Button>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Task Applicants Dialog */}
+      {/* Task Applicants */}
       <Dialog open={!!viewingTaskApplicants} onOpenChange={(open) => !open && setViewingTaskApplicants(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>申請者列表</DialogTitle>
-            <DialogDescription>
-              {viewingTaskApplicants ? tasks.find(t => t.id === viewingTaskApplicants)?.title : ""}
-            </DialogDescription>
+            <DialogDescription>{viewingTaskApplicants ? tasks.find(t => t.id === viewingTaskApplicants)?.title : ""}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {viewingTaskApplicants && applications.filter(a => a.task_id === viewingTaskApplicants).length === 0 ? (
@@ -586,17 +750,13 @@ const AdminTasks = () => {
                 <div key={a.id} className="glass-card p-3 rounded-lg flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Avatar className="w-8 h-8 shrink-0">
-                      {a.applicant?.avatar_url ? (
-                        <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} />
-                      ) : null}
-                      <AvatarFallback className="text-xs bg-muted">
-                        {a.applicant?.display_name?.slice(0, 1) || "?"}
-                      </AvatarFallback>
+                      {a.applicant?.avatar_url ? <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} /> : null}
+                      <AvatarFallback className="text-xs bg-muted">{a.applicant?.display_name?.slice(0, 1) || "?"}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{a.applicant?.display_name || "未知"}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {a.applicant?.student_id || "無學號"} · {new Date(a.applied_at).toLocaleDateString("zh-TW")}
+                        {a.quoted_amount ? `報價 $${Number(a.quoted_amount).toLocaleString()}` : "未報價"} · {new Date(a.applied_at).toLocaleDateString("zh-TW")}
                       </p>
                     </div>
                   </div>
@@ -605,17 +765,6 @@ const AdminTasks = () => {
                     <Button size="sm" variant="ghost" onClick={() => { setViewingTaskApplicants(null); openApplicantDetail(a); }}>
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
-                    {a.status === "applied" && (
-                      <>
-                        <Button size="sm" variant="ghost" className="text-chart-green" onClick={() => handleApprove(a.id)}><Check className="w-3.5 h-3.5" /></Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openRejectDialog(a.id)}><X className="w-3.5 h-3.5" /></Button>
-                      </>
-                    )}
-                    {a.status === "pending_completion" && (
-                      <Button size="sm" variant="ghost" className="text-chart-green" onClick={() => handleConfirmComplete(a.id)}>
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
                   </div>
                 </div>
               ))
@@ -627,22 +776,74 @@ const AdminTasks = () => {
         </DialogContent>
       </Dialog>
 
-
+      {/* Reject */}
       <Dialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) { setRejectTarget(null); setRejectReason(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>退回原因</DialogTitle>
-            <DialogDescription>請填寫退回此申請的原因，學員將會看到此說明。</DialogDescription>
+            <DialogDescription>學員會看到此說明，並收到系統訊息通知。</DialogDescription>
           </DialogHeader>
-          <Textarea
-            placeholder="請輸入退回原因..."
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            className="min-h-[100px]"
-          />
+          <Textarea placeholder="請輸入退回原因..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="min-h-[100px]" />
           <DialogFooter>
             <Button variant="outline" onClick={() => { setRejectTarget(null); setRejectReason(""); }}>取消</Button>
             <Button variant="destructive" onClick={handleConfirmReject}>確認退回</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Failed */}
+      <Dialog open={!!failTarget} onOpenChange={(open) => { if (!open) { setFailTarget(null); setFailReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>標記為失敗</DialogTitle>
+            <DialogDescription>學員會看到失敗原因，並計入戰績。</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="請輸入失敗原因..." value={failReason} onChange={(e) => setFailReason(e.target.value)} className="min-h-[100px]" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setFailTarget(null); setFailReason(""); }}>取消</Button>
+            <Button variant="destructive" onClick={handleConfirmFail}>確認失敗</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Complete with final amount */}
+      <Dialog open={!!completeTarget} onOpenChange={(open) => { if (!open) setCompleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>確認完成</DialogTitle>
+            <DialogDescription>確認任務完成後，獎勵將自動撥點到該學員。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground">
+              學員報價：<span className="text-foreground font-semibold">${Number(completeTarget?.quoted_amount ?? 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">最終金額（可調整）</label>
+              <Input type="number" value={finalAmount || ""} onChange={(e) => setFinalAmount(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">管理員備註（選填）</label>
+              <Textarea value={completeAdminNotes} onChange={(e) => setCompleteAdminNotes(e.target.value)} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteTarget(null)}>取消</Button>
+            <Button onClick={handleConfirmComplete}>確認完成並撥獎勵</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Reject */}
+      <Dialog open={batchRejectOpen} onOpenChange={(open) => { if (!open) { setBatchRejectOpen(false); setBatchRejectReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>批次退回 {selectedAppIds.size} 筆申請</DialogTitle>
+            <DialogDescription>所有選取的申請會收到相同的退回原因。</DialogDescription>
+          </DialogHeader>
+          <Textarea placeholder="請輸入退回原因..." value={batchRejectReason} onChange={(e) => setBatchRejectReason(e.target.value)} className="min-h-[100px]" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBatchRejectOpen(false); setBatchRejectReason(""); }}>取消</Button>
+            <Button variant="destructive" onClick={handleBatchReject}>確認批次退回</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
