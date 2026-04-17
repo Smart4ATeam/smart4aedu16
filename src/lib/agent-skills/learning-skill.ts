@@ -88,11 +88,15 @@ ${SUPABASE_FUNCTIONS_BASE}
 - 「課程 X 有哪些單元？」
   → \`GET /api-agent-courses?id=<course_id>\`
 
+- 「我想報名 XX 課程，報名連結在哪？」
+  → \`GET /api-agent-courses\` 找到對應課程，回傳其 \`registration_url\`。
+  若 \`registration_url\` 為空，請告知學員此課程未開放線上報名，建議聯繫客服。
+
 - 「我有哪些證書？」
   → \`GET /api-agent-my-certificates\`
 
 ## 限制
 
-- 所有寫入操作（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站操作。
+- 所有寫入操作（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 \`registration_url\` 完成報名。
 - 所有資料僅限該 token 對應的學員本人。
 `;
