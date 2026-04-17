@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  let q = admin.from("courses").select("*").order("sort_order");
-  if (status) q = q.eq("status", status);
+  // 學員端 Agent 僅能查詢已上架課程
+  let q = admin.from("courses").select("*").eq("status", "published").order("sort_order");
   if (category) q = q.eq("category", category);
   const { data, error } = await q;
   if (error) return jsonResponse({ error: error.message }, 500);
