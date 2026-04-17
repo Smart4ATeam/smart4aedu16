@@ -114,7 +114,91 @@ Body：
 > 重要：Agent 僅能 **新增 / 修改 / 刪除學員本人建立** 的個人事件，
 > 對 \`is_global=true\` 的管理員全域事件只能讀取，不能異動。
 
-### 9. 我的點數
+### 9. 訊息中心
+
+\`GET /api-agent-my-messages\`
+
+可選查詢參數：
+- \`filter\`：\`all\`（預設，非封存）｜\`unread\`（未讀）｜\`starred\`（標星）｜\`archived\`（已封存）
+- \`category\`：\`system\`｜\`client\`｜\`team\`
+- \`limit\`：預設 50、最多 200
+
+回傳：
+\`\`\`json
+{
+  "conversations": [
+    {
+      "conversation_id": "...",
+      "title": "...",
+      "category": "system",
+      "starred": false,
+      "unread": true,
+      "archived": false,
+      "updated_at": "...",
+      "last_message": { "content": "...", "sender_id": null, "is_system": true, "created_at": "..." }
+    }
+  ]
+}
+\`\`\`
+
+\`GET /api-agent-my-messages?conversation_id=<id>\`
+
+回傳該對話的所有訊息與該學員的參與狀態：
+\`\`\`json
+{
+  "conversation": { "id": "...", "title": "...", "category": "system", "updated_at": "..." },
+  "participant": { "starred": false, "unread": true, "archived": false },
+  "messages": [{ "id": "...", "content": "...", "sender_id": null, "is_system": true, "created_at": "..." }]
+}
+\`\`\`
+若該學員不是 participant，回 403。
+
+\`PATCH /api-agent-my-messages?conversation_id=<id>\`
+
+更新本人對該對話的狀態。Body 為部分 JSON，可包含一或多個 boolean 欄位：
+\`\`\`json
+{ "starred": true, "unread": false, "archived": false }
+\`\`\`
+回傳：\`{ participant: { id, conversation_id, starred, unread, archived } }\`
+
+> 注意：本 API 僅支援查詢與狀態管理（標星 / 已讀 / 封存），**不允許 Agent 主動發送訊息**。
+
+### 10. 個人設定
+
+\`GET /api-agent-my-settings\`
+
+回傳分組設定與允許值：
+\`\`\`json
+{
+  "profile": { "display_name": "...", "phone": "...", "bio": "...", "avatar_url": "...", "email": "...", "student_id": "..." },
+  "environment": { "organization_id": "...", "server_location": "US1" },
+  "learning": { "learning_goal": "...", "difficulty_preference": "初級", "daily_learning_time": "1 小時" },
+  "server_location_options": ["US1","US2","US3","EU1","EU2","EU3"],
+  "difficulty_options": ["初級","中級","高級"],
+  "daily_learning_time_options": ["30 分鐘","1 小時","2 小時","3 小時以上"]
+}
+\`\`\`
+
+\`PATCH /api-agent-my-settings\`
+
+Body 為 partial JSON，僅允許以下欄位（其他一律拒絕並回 400）：
+
+| 分組 | 欄位 | 限制 |
+|------|------|------|
+| profile | \`display_name\` | string，≤50 字 |
+| profile | \`phone\` | string 或 null，≤20 字 |
+| profile | \`bio\` | string，≤500 字 |
+| environment | \`organization_id\` | string 或 null，≤50 字 |
+| environment | \`server_location\` | 必須為 \`US1｜US2｜US3｜EU1｜EU2｜EU3\` |
+| learning | \`learning_goal\` | string，≤200 字 |
+| learning | \`difficulty_preference\` | 必須為 \`初級｜中級｜高級\` |
+| learning | \`daily_learning_time\` | 必須為 \`30 分鐘｜1 小時｜2 小時｜3 小時以上\` |
+
+**禁止修改**（即使送出也會被拒絕）：\`email\`、\`avatar_url\`、\`student_id\`、\`role\`、\`activated\`、\`total_points\` 等系統欄位。
+
+回傳：與 GET 相同格式的最新 settings。
+
+### 11. 我的點數
 \`GET /api-agent-my-points\`
 
 回傳：\`{ member: { member_no, name, points } | null, balance: number }\`
@@ -170,10 +254,33 @@ Body：
 - 「最近的點數紀錄」
   → \`GET /api-agent-my-points?history=true&limit=20\`
 
+- 「我有幾封未讀訊息？」
+  → \`GET /api-agent-my-messages?filter=unread\`
+
+- 「列出我標星的訊息」
+  → \`GET /api-agent-my-messages?filter=starred\`
+
+- 「把這封標星」
+  → \`PATCH /api-agent-my-messages?conversation_id=<id>\`，body：\`{ "starred": true }\`
+
+- 「把這封標為已讀」
+  → \`PATCH /api-agent-my-messages?conversation_id=<id>\`，body：\`{ "unread": false }\`
+
+- 「把我的顯示名稱改成 小明」
+  → \`PATCH /api-agent-my-settings\`，body：\`{ "display_name": "小明" }\`
+
+- 「把 Make 主機改成 EU1」
+  → \`PATCH /api-agent-my-settings\`，body：\`{ "server_location": "EU1" }\`
+
+- 「我學習偏好設成中級、每天 2 小時」
+  → \`PATCH /api-agent-my-settings\`，body：\`{ "difficulty_preference": "中級", "daily_learning_time": "2 小時" }\`
+
 ## 限制
 
 - 課程相關寫入（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 \`registration_url\` 完成報名。
 - 行事曆寫入（POST/PATCH/DELETE）僅限學員本人建立的個人事件，**不能修改或刪除管理員建立的全域事件**（\`is_global=true\`）。
 - 點數 API 僅供查詢，不開放 Agent 增減點數。
+- 訊息中心：**不允許 Agent 發送訊息**，僅能查詢、標星、設定已讀 / 封存。
+- 個人設定：僅允許修改白名單欄位（顯示名稱 / 電話 / 簡介 / 組織編號 / Make 主機 / 學習偏好）。**不可修改** email、頭像、學員編號、角色、啟用狀態、點數等系統欄位。
 - 所有資料僅限該 token 對應的學員本人。
 `;
