@@ -1,117 +1,48 @@
 
 
-## 規劃：學員 Agent Skill 擴充（資源中心）
+# 任務中心優化（白話版・更新）
 
-### 1. 新增 Edge Functions（皆使用 `verify-user-token.ts` sk_xxx token 驗證）
+## 一、要新增的功能
 
-**A. `api-agent-resources` — 資源查詢（唯讀，智能查詢）**
+1. **完成自動撥獎勵** — 任務確認完成時，系統自動把錢/點數記到學員帳上。
+2. **狀態通知** — 申請通過、被退回、完成、失敗時，自動發系統訊息給學員。
+3. **批次審核** — 管理員可以一次勾選多筆申請，一鍵通過或退回。
+4. **用詞統一** — 把難度與狀態用詞統一一套（初級/中級/高級）。
+5. **搜尋與排序** — 學員可以用關鍵字找任務，並依金額、截止日排序。
+6. **管理員內部備註** — 審核時可以寫筆記，學員看不到。
+7. **任務分類** — 加一個「類別」欄位（例如：設計、開發、行銷…）。
+8. **🆕 學員接案紀錄（戰績卡）** — 系統會記錄每位學員的接案總數、成功數、失敗數、成功率，管理員審核申請時就能直接看到，作為通過/退回的參考。
 
-`GET /api-agent-resources` — 列表 + 搜尋 + 篩選
+## 二、要調整的地方
 
-可選 query：
-- `q`：關鍵字（會比對 `title`、`description`、`tags`、`industry_tag`）
-- `category`：`plugins | extensions | templates | videos`
-- `sub_category`：例如「熱門套件」「電商應用」
-- `difficulty`：`初級|中級|高級`
-- `is_hot`：`true` 只看熱門
-- `trial_only`：`true` 只看 `trial_enabled=true`（給「我可以領哪些試用」用）
-- `industry_tag`：產業標籤
-- `limit`（預設 30、最多 100）、`offset`
+1. **金額改成範圍** — 管理員填「最低 ~ 最高」，學員自己填報價（必須在範圍內）。管理員確認完成時可微調最終金額。
+2. **任務可標示失敗** — 多一個「標記為失敗」選項，要填失敗原因，學員也看得到自己的失敗紀錄（會計入戰績）。
 
-僅回傳 `status='approved'` 的資源。回傳精簡欄位（避免 token 爆量）：
-```
-{
-  total, limit, offset,
-  resources: [{
-    id, title, category, sub_category, description (截斷 200 字),
-    author, version, tags, difficulty, is_hot, hot_rank,
-    industry_tag, duration, video_type,
-    trial_enabled, has_trial_file (templates 才有意義),
-    detail_url, download_url, thumbnail_url
-  }]
-}
-```
+## 三、過期 & 提醒機制（更新）
 
-`GET /api-agent-resources?id=<resource_id>` — 單筆完整資料
-回傳完整欄位 + `sub_categories_in_category`（同類別所有 sub_category 列表，方便 Agent 推薦）。
+1. **過期自動關閉** — 截止日過了還沒人接的任務，自動變成「已關閉」。
+2. **🆕 即將到期提醒（給管理員）** — 系統每天自動檢查：
+   - 截止日剩 3 天內還沒人接 → 發訊息提醒管理員「任務 X 即將到期，目前無人申請」。
+   - 截止日剩 1 天內還沒確認完成（卡在審核中或進行中）→ 發訊息提醒管理員處理。
+   - 一次匯整成一封通知，避免訊息轟炸。
 
-`GET /api-agent-resources?facets=true` — 篩選選項
-回傳：`{ categories: [...], sub_categories: { extensions: [...], templates: [...] }, difficulties: [...], industry_tags: [...] }`，讓 Agent 知道有哪些可選值。
+## 四、順便會做的小事
 
-**B. `api-agent-my-trials` — 我的試用查詢（唯讀）**
+- **回報完成可附交付物**：學員按「回報完成」時可填交付連結與說明。
+- **Agent Skill**：學員的 AI Agent 也能查任務、報價接案、回報完成。
 
-`GET /api-agent-my-trials`
+## 五、會動到哪些地方
 
-可選 query：`status=pending|completed|failed|all`（預設 all）、`limit`（預設 50、最多 200）
-
-回傳：
-```
-{
-  trials: [{
-    trial_id, resource_id, resource_title, resource_category,
-    app_id, member_no, organization_id,
-    api_key (套件序號 / 範本下載連結),
-    webhook_status, created_at
-  }]
-}
-```
-
-> 範本類別的 `api_key` 是 24 小時 signed URL，Agent 應提醒「24 小時內有效」。
-
-**C. `api-agent-claim-trial` — 領取試用（寫入）**
-
-`POST /api-agent-claim-trial`，body：`{ resource_id }`
-
-完整移植 `api-resource-trial` 的所有規則，但用 sk_xxx token 驗 user：
-
-1. 驗 `resource.trial_enabled`、`status='approved'`
-2. 範本檢查 `template_file_path`、套件檢查 `app_id`
-3. 檢查 `profile.organization_id`，沒設定回 400 並提示「請至設定頁填組織編號」
-4. 解析 `member_no`（profile.student_id → reg_members.member_no）
-5. **每天每類別限領 1 個**（台灣時區 UTC+8 當日）— 超過回 429 並訊息「今日已領用過一個{類別}，明天再來吧！」
-6. 範本：直接產生 24h signed URL → 寫 trial → 回 `api_key`（下載連結）+ `expires_in: 86400`
-7. 套件：寫 trial → 觸發 webhook（讀 `system_settings.trial_webhook_url`）→ 回 `webhook_status`，並提示「請稍後用 `GET /api-agent-my-trials` 查詢序號」
-8. 同步發系統訊息（沿用既有邏輯，看 `notification_settings.show_success`）
-
-回傳：
-```
-{
-  success: true,
-  trial_id, resource_title, resource_category, app_id,
-  api_key (範本才有，套件需稍後查詢),
-  webhook_status,
-  message: "..."
-}
-```
-
-錯誤回傳統一格式：`{ error, code }`，code 包含 `MISSING_ORG_ID | DAILY_LIMIT_REACHED | TRIAL_DISABLED | NO_TEMPLATE_FILE | NO_APP_ID | RESOURCE_NOT_FOUND`，方便 Agent 給使用者看正確提示。
-
-### 2. 更新 Agent Skill 文件 `src/lib/agent-skills/learning-skill.ts`
-
-新增「資源中心」整段，含：
-
-- 三個 endpoint 完整說明
-- 「智能查詢」使用說明：建議 Agent 先用 `?facets=true` 拿到合法值再去搜尋；模糊比對用 `q`、精確篩選用 `category/sub_category/difficulty`
-- 領取規則明列：每天每類別 1 個、需先設組織編號、套件需等 webhook 回拋（用 my-trials 查序號）、範本連結 24h 有效
-- 範例：
-  - 「有什麼 LINE 相關的套件？」→ `?q=LINE&category=extensions`
-  - 「推薦熱門電商範本」→ `?category=templates&sub_category=電商應用&is_hot=true`
-  - 「我可以領哪些試用？」→ `?trial_only=true`
-  - 「幫我領 X 套件」→ POST claim-trial（成功後若是套件提醒查 my-trials）
-  - 「我的試用序號」→ GET my-trials
-  - 「我今天還能領嗎？」→ Agent 自行用 my-trials 比對當日 created_at 跟 category
-- 限制段落補充：每日領取限額、不能跨用戶、不能改 webhook_url、不能領 `trial_enabled=false` 的資源
-
-### 3. 不需變更
-
-- 不需新 table 或 migration（`resources`、`resource_trials`、`resource_sub_categories`、`system_settings` 都已存在）
-- 不需動 RLS（Edge Function 用 service role + token 驗 userId）
-- 不需動前端 UI 與既有 `api-resource-trial`
-
-### 檔案清單
-
-- 新增 `supabase/functions/api-agent-resources/index.ts`
-- 新增 `supabase/functions/api-agent-my-trials/index.ts`
-- 新增 `supabase/functions/api-agent-claim-trial/index.ts`
-- 修改 `src/lib/agent-skills/learning-skill.ts`（補上資源中心整段 + 範例 + 限制）
+- **資料庫**
+  - `tasks`：加金額範圍、類別、內部備註欄位。
+  - `task_applications`：加報價、最終金額、交付物、失敗原因欄位。
+  - 新增「學員戰績」檢視（從 `task_applications` 即時計算：總接案、成功、失敗、成功率）。
+- **學員頁面**：金額範圍顯示、報價彈窗、交付欄位、搜尋排序、失敗/已關閉篩選。
+- **管理員頁面**：
+  - 發布表單：金額範圍 + 類別 + 備註。
+  - 審核列表：批次操作、顯示申請者戰績卡（總/成/敗/成功率）。
+  - 確認完成：可改最終金額；新增「標記失敗」按鈕。
+  - 過期 & 提醒通知收件匣。
+- **後端排程**：每日跑一次「過期關閉 + 即將到期提醒」。
+- **Agent Skill 文件**：補上任務中心使用說明與範例。
 
