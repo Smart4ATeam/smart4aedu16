@@ -23,6 +23,7 @@ Deno.serve(async (req) => {
       .from("courses")
       .select("*")
       .eq("id", id)
+      .eq("status", "published")
       .maybeSingle();
     if (error) return jsonResponse({ error: error.message }, 500);
     if (!course) return jsonResponse({ error: "Course not found" }, 404);
