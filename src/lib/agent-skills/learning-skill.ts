@@ -153,27 +153,27 @@ Body：
   → \`GET /api-agent-my-certificates\`
 
 - 「我下週有什麼活動？」
-  → `GET /api-agent-my-calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
+  → \`GET /api-agent-my-calendar?from=YYYY-MM-DD&to=YYYY-MM-DD\`
 
 - 「幫我加一個明天下午兩點的活動：與客戶會議」
-  → `POST /api-agent-my-calendar`，body 帶 `title, event_date, event_time`
+  → \`POST /api-agent-my-calendar\`，body 帶 \`title, event_date, event_time\`
 
 - 「把剛剛那筆活動改成下週一」
-  → `PATCH /api-agent-my-calendar?id=<event_id>`，body：`{ "event_date": "..." }`
+  → \`PATCH /api-agent-my-calendar?id=<event_id>\`，body：\`{ "event_date": "..." }\`
 
 - 「刪掉那筆會議」
-  → `DELETE /api-agent-my-calendar?id=<event_id>`
+  → \`DELETE /api-agent-my-calendar?id=<event_id>\`
 
 - 「我現在還有多少點？」
-  → `GET /api-agent-my-points`
+  → \`GET /api-agent-my-points\`
 
 - 「最近的點數紀錄」
-  → `GET /api-agent-my-points?history=true&limit=20`
+  → \`GET /api-agent-my-points?history=true&limit=20\`
 
 ## 限制
 
-- 課程相關寫入（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 `registration_url` 完成報名。
-- 行事曆寫入（POST/PATCH/DELETE）僅限學員本人建立的個人事件，**不能修改或刪除管理員建立的全域事件**（`is_global=true`）。
+- 課程相關寫入（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 \`registration_url\` 完成報名。
+- 行事曆寫入（POST/PATCH/DELETE）僅限學員本人建立的個人事件，**不能修改或刪除管理員建立的全域事件**（\`is_global=true\`）。
 - 點數 API 僅供查詢，不開放 Agent 增減點數。
 - 所有資料僅限該 token 對應的學員本人。
 `;
