@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ResetPassword() {
@@ -14,6 +14,8 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -27,6 +29,17 @@ export default function ResetPassword() {
       }
     });
   }, []);
+
+  // Auto countdown & redirect after success
+  useEffect(() => {
+    if (!success) return;
+    if (countdown <= 0) {
+      navigate("/", { replace: true });
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [success, countdown, navigate]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +57,7 @@ export default function ResetPassword() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("密碼已更新！");
-      navigate("/", { replace: true });
+      setSuccess(true);
     }
   };
 
@@ -58,6 +70,41 @@ export default function ResetPassword() {
             返回登入
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md"
+        >
+          <div className="glass-card p-8 text-center space-y-5">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              className="w-20 h-20 rounded-full bg-primary/12 flex items-center justify-center mx-auto"
+            >
+              <CheckCircle2 className="w-12 h-12 text-primary" strokeWidth={2} />
+            </motion.div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold text-foreground">密碼重設成功！</h1>
+              <p className="text-sm text-muted-foreground">
+                您的密碼已成功更新，將在 {countdown} 秒後自動進入學員俱樂部
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/", { replace: true })}
+              className="w-full h-11 font-semibold"
+            >
+              立即進入
+            </Button>
+          </div>
+        </motion.div>
       </div>
     );
   }
