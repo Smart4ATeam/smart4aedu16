@@ -114,6 +114,7 @@ export function AchievementsTab() {
   // ---- Award / Revoke ----
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardForm, setAwardForm] = useState({ user_id: "", achievement_id: "" });
+  const [studentPopoverOpen, setStudentPopoverOpen] = useState(false);
 
   const awardMut = useMutation({
     mutationFn: async () => {
