@@ -9,8 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Award, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Award, X, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
   { value: "learning", label: "學習" },
@@ -111,6 +114,7 @@ export function AchievementsTab() {
   // ---- Award / Revoke ----
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardForm, setAwardForm] = useState({ user_id: "", achievement_id: "" });
+  const [studentPopoverOpen, setStudentPopoverOpen] = useState(false);
 
   const awardMut = useMutation({
     mutationFn: async () => {
@@ -273,14 +277,55 @@ export function AchievementsTab() {
           <div className="space-y-4">
             <div>
               <Label>學員</Label>
-              <Select value={awardForm.user_id} onValueChange={v => setAwardForm(f => ({ ...f, user_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="選擇學員" /></SelectTrigger>
-                <SelectContent>
-                  {allProfiles.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>{p.display_name}{p.student_id ? ` (${p.student_id})` : ""}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={studentPopoverOpen} onOpenChange={setStudentPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={studentPopoverOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {awardForm.user_id
+                      ? (() => {
+                          const p = (allProfiles as any[]).find(p => p.id === awardForm.user_id);
+                          return p ? `${p.display_name}${p.student_id ? ` (${p.student_id})` : ""}` : "選擇學員";
+                        })()
+                      : "選擇學員"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command
+                    filter={(value, search) => {
+                      if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                      return 0;
+                    }}
+                  >
+                    <CommandInput placeholder="搜尋姓名 / 學員編號 / Email..." />
+                    <CommandList>
+                      <CommandEmpty>找不到學員</CommandEmpty>
+                      <CommandGroup>
+                        {(allProfiles as any[]).map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={`${p.display_name} ${p.student_id ?? ""} ${p.email ?? ""}`}
+                            onSelect={() => {
+                              setAwardForm(f => ({ ...f, user_id: p.id }));
+                              setStudentPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", awardForm.user_id === p.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span>{p.display_name}{p.student_id ? ` (${p.student_id})` : ""}</span>
+                              {p.email && <span className="text-xs text-muted-foreground">{p.email}</span>}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label>成就</Label>
