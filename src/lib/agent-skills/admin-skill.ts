@@ -161,4 +161,148 @@ Agent：[呼叫 adjust-points with confirm=true]
 | 500 | 伺服器錯誤 |
 
 收到錯誤時請完整告知操作者錯誤訊息，不要自行重試變更類操作。
+
+---
+
+## 學習中心管理（課程 / 梯次 / 合作單位 / 講師）
+
+### 通用規則 ⚠️
+- **新增/修改**：必須先用自然語言完整覆述所有欄位，操作者明確同意才送 \`confirm: true\`
+- **刪除**：兩段式確認 → 先 GET 該筆資料、念出名稱、警告無法復原 → 操作者說「確認刪除」才送 \`confirm: true\` + \`confirm_delete: true\`
+- 被引用的資料無法刪除，會回 \`409 HAS_REFERENCES\` 並附上引用數量，請告知操作者需先處理引用資料
+
+---
+
+### 5. 課程管理 \`api-admin-agent-courses\`
+
+**GET 列表**：\`?q=關鍵字&status=published\`
+**GET 單筆**：\`?id=<uuid>\`
+**POST**：\`{ action, confirm, confirm_delete?, ...payload }\`
+
+| action | 必填 | 說明 |
+|---|---|---|
+| create | title | 其他欄位：course_code、category(basic/advanced/...)、description、price、enrollment_points、status(draft/published)、tags |
+| update | id | 任一欲更新欄位 |
+| delete | id, confirm_delete | 若有梯次或報名會回 409 |
+
+---
+
+### 6. 梯次管理 \`api-admin-agent-sessions\`
+
+**GET 列表**：\`?course_id=<uuid>&date_from=2025-01-01&date_to=2025-12-31&status=scheduled\`
+**POST**：\`{ action, confirm, confirm_delete?, ...payload }\`
+
+| action | 必填 | 說明 |
+|---|---|---|
+| create | course_id, start_date(YYYY-MM-DD), end_date | 其他：title_suffix、price、max_students、location、instructor_id、registration_url、status |
+| update | id | 任一欲更新欄位 |
+| delete | id, confirm_delete | 若有有效報名會回 409 \`HAS_ENROLLMENTS\` |
+
+---
+
+### 7. 合作單位 \`api-admin-agent-partners\`
+
+**GET**：\`?q=關鍵字\`
+**POST**：
+
+| action | 必填 | 說明 |
+|---|---|---|
+| create | name | 其他：type、category、contact_name、contact_email、contact_phone、website_url、contract_start/end、revenue_share、notes |
+| update | id | 任一欄位 |
+| delete | id, confirm_delete | 若有講師掛在底下會回 409 |
+
+---
+
+### 8. 講師 \`api-admin-agent-instructors\`
+
+**GET**：\`?q=姓名\`
+**POST**：
+
+| action | 必填 | 說明 |
+|---|---|---|
+| create | name | 其他：bio、specialties(string[])、avatar_url、partner_id |
+| update | id | 任一欄位 |
+| delete | id, confirm_delete | 若有課程或梯次掛在底下會回 409 |
+
+---
+
+### 9. 報名查詢 \`api-admin-agent-registrations\`（唯讀）
+
+**訂單查詢**：\`GET ?type=orders&q=<關鍵字>&payment_status=paid&date_from=&date_to=&limit=50&offset=0\`
+- q 比對：訂單編號、P1~P3 姓名/Email/電話
+
+**報名明細查詢**：\`GET ?type=enrollments&q=<關鍵字>&course_id=&course_code=&session_date_from=&session_date_to=&status=&payment_status=&checked_in=true&include_cancelled=false&limit=50&offset=0\`
+- q 比對：學員姓名 / member_no / Email / 電話 / 訂單編號
+- status：\`enrolled | paid | checked_in | cancelled | completed\`
+- payment_status：\`pending | paid | refunded\`
+- 預設排除 cancelled，可加 \`include_cancelled=true\` 包含
+- 回傳含 \`summary: { total, by_status, by_course }\` 方便摘要回報
+
+**使用範例**：
+\`\`\`
+使用者：上週「Make 基礎班」報名的人有誰？
+Agent：[GET ?type=enrollments&course_code=MK-BASIC&session_date_from=2025-04-13&session_date_to=2025-04-19]
+      共 12 人報名（已繳費 10、未繳 2、已報到 8）：
+      1. 王小明 (SA26040160) - 已報到
+      2. ...
+\`\`\`
+
+---
+
+### 10. 成就管理 \`api-admin-agent-achievements\`
+
+**GET 列表**：\`?\`（列出所有 achievements）
+**GET 含學員已獲得**：\`?student_id=SA26040160\` 或 \`?email=foo@bar.com\` 或 \`?user_id=<uuid>\`
+
+**POST 頒發**：
+\`\`\`json
+{
+  "action": "award",
+  "user_id": "uuid",            // 三擇一
+  "student_id": "SA26040160",   // 三擇一
+  "email": "foo@bar.com",       // 三擇一
+  "achievement_id": "uuid",     // 二擇一
+  "achievement_name": "百分先鋒", // 二擇一
+  "reason": "獎勵原因",
+  "confirm": true
+}
+\`\`\`
+- 若該學員已擁有此成就會回 409
+- 回傳 \`{ success, award: { id, ... }, achievement_name }\`
+
+**POST 撤銷**（雙確認）：
+\`\`\`json
+{
+  "action": "revoke",
+  "award_id": "uuid",      // 從 GET 撈到的 user_achievements.id
+  "reason": "撤銷原因",
+  "confirm": true,
+  "confirm_delete": true
+}
+\`\`\`
+
+**操作流程範例**：
+\`\`\`
+使用者：把「百分先鋒」頒給王小明
+Agent：[GET ?student_id=SA26040160] 王小明目前已獲得：學習達人。尚未取得「百分先鋒」。
+      即將執行：頒發「百分先鋒」給 王小明 (SA26040160)
+      確認執行嗎？
+使用者：確認
+Agent：[POST action=award with confirm=true] 已頒發。
+\`\`\`
+
+\`\`\`
+使用者：把王小明的「學習達人」收回
+Agent：[GET ?student_id=SA26040160] 找到 award_id: xxx「學習達人」（2025-03-12 取得）。
+      ⚠️ 撤銷後該成就會從學員紀錄移除，無法復原。確認撤銷嗎？
+使用者：確認撤銷
+Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
+\`\`\`
+
+---
+
+## 錯誤碼補充
+| 狀態碼 | 意義 |
+|---|---|
+| 409 | HAS_REFERENCES / HAS_ENROLLMENTS（被引用無法刪除）或重複（已擁有成就） |
 `;
