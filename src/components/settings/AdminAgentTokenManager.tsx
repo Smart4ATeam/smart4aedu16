@@ -58,23 +58,33 @@ export default function AdminAgentTokenManager() {
 
   const load = async () => {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setTokens([]);
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("user-token-manager", {
+        method: "GET",
+      });
+      if (error) {
+        const msg = (error as any)?.message ?? "";
+        if (!msg.includes("401") && !msg.includes("Unauthorized")) {
+          toast.error("載入 Token 失敗");
+        }
+        setTokens([]);
+      } else {
+        setTokens(data?.tokens ?? []);
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? "";
+      if (!msg.includes("401") && !msg.includes("Unauthorized")) {
+        toast.error("載入 Token 失敗");
+      }
       setTokens([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    const { data, error } = await supabase.functions.invoke("user-token-manager", {
-      method: "GET",
-    });
-    if (error) {
-      const msg = (error as any)?.message ?? "";
-      if (!msg.includes("401")) toast.error("載入 Token 失敗");
-      setTokens([]);
-    } else {
-      setTokens(data?.tokens ?? []);
-    }
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
