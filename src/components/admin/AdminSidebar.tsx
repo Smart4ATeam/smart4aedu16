@@ -15,6 +15,7 @@ import {
   Plug,
   BookOpen,
   FileUp,
+  Bot,
 } from "lucide-react";
 import logoFed from "@/assets/logo-fed.png";
 import logoW from "@/assets/logo-w.png";
@@ -29,6 +30,7 @@ const navItems = [
   
   { title: "行事曆管理", url: "/admin/settings", icon: CalendarDays },
   { title: "API 串接", url: "/admin/integrations", icon: Plug },
+  { title: "管理者 Agent", url: "/admin/agent", icon: Bot },
 ];
 
 export function AdminSidebar() {

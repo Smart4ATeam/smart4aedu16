@@ -27,6 +27,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminIntegrations from "./pages/admin/AdminIntegrations";
 import AdminLearning from "./pages/admin/AdminLearning";
+import AdminAgent from "./pages/admin/AdminAgent";
 
 import AdminImport from "./pages/admin/AdminImport";
 import Learning from "./pages/Learning";
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/admin/students" element={<AdminProtectedRoute><AdminLayout><AdminStudents /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/integrations" element={<AdminProtectedRoute><AdminLayout><AdminIntegrations /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/learning" element={<AdminProtectedRoute><AdminLayout><AdminLearning /></AdminLayout></AdminProtectedRoute>} />
+            <Route path="/admin/agent" element={<AdminProtectedRoute><AdminLayout><AdminAgent /></AdminLayout></AdminProtectedRoute>} />
             
             <Route path="/admin/import" element={<AdminProtectedRoute><AdminLayout><AdminImport /></AdminLayout></AdminProtectedRoute>} />
 
