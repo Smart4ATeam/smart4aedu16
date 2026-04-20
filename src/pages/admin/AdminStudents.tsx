@@ -640,6 +640,7 @@ function PointsTab() {
   const { user } = useAuth();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [pointsDelta, setPointsDelta] = useState(0);
   const [pointType, setPointType] = useState("manual");
   const [pointDesc, setPointDesc] = useState("");
