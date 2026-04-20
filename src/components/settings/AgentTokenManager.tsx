@@ -52,11 +52,20 @@ export default function AgentTokenManager() {
 
   const load = async () => {
     setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setTokens([]);
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("user-token-manager", {
       method: "GET",
     });
     if (error) {
-      toast.error("載入 Token 失敗");
+      // 401 = session expired; silent. Other errors show toast.
+      const msg = (error as any)?.message ?? "";
+      if (!msg.includes("401")) toast.error("載入 Token 失敗");
+      setTokens([]);
     } else {
       setTokens(data?.tokens ?? []);
     }
