@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus, Pencil, Eye } from "lucide-react";
+import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus, Pencil, Eye, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
