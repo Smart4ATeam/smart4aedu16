@@ -29,13 +29,26 @@ interface Props {
 export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPrimaryRole, onRoleChange, onOpenEdit, roleBadge }: Props) {
   const [showResetPwd, setShowResetPwd] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
   if (!detail) return null;
 
+  const closeResetDialog = (open: boolean) => {
+    setShowResetPwd(open);
+    if (!open) {
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  };
+
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
       toast.error("密碼至少 6 個字元");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("兩次密碼輸入不一致");
       return;
     }
     if (!detail.profile.email) {
@@ -65,6 +78,7 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
       toast.success(`已重設 ${detail.profile.email} 的密碼`);
       setShowResetPwd(false);
       setNewPassword("");
+      setConfirmPassword("");
     } catch (err: any) {
       toast.error("重設失敗：" + err.message);
     } finally {
@@ -148,7 +162,7 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
       </DialogContent>
 
       {/* Reset Password Dialog */}
-      <Dialog open={showResetPwd} onOpenChange={setShowResetPwd}>
+      <Dialog open={showResetPwd} onOpenChange={closeResetDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>重設密碼</DialogTitle>
@@ -156,22 +170,39 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
               為 {detail.profile.display_name}（{detail.profile.email}）設定新密碼
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label className="text-sm">新密碼</Label>
-            <Input
-              type="text"
-              placeholder="至少 6 個字元"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoFocus
-            />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">新密碼</Label>
+              <Input
+                type="text"
+                placeholder="至少 6 個字元"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">確認新密碼</Label>
+              <Input
+                type="text"
+                placeholder="再次輸入新密碼"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-destructive">兩次密碼輸入不一致</p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               ⚠️ 請務必告知使用者新密碼，並建議盡快自行變更。
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetPwd(false)}>取消</Button>
-            <Button onClick={handleResetPassword} disabled={resetting}>
+            <Button variant="outline" onClick={() => closeResetDialog(false)}>取消</Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resetting || !newPassword || newPassword !== confirmPassword}
+            >
               {resetting ? "重設中…" : "確認重設"}
             </Button>
           </DialogFooter>
