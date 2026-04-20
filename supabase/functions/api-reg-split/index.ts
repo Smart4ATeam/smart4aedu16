@@ -288,6 +288,7 @@ Deno.serve(async (req) => {
     }
 
     // 8. Log operation
+    const newMemberIds = memberResults.filter((m) => m.is_new).map((m) => m.member_id);
     await adminClient.from("reg_operation_logs").insert({
       entity_type: "order",
       entity_id: order.id,
@@ -295,9 +296,10 @@ Deno.serve(async (req) => {
       old_value: { payment_status: order.payment_status },
       new_value: {
         member_ids: memberIds,
+        new_member_ids: newMemberIds,
         enrollments_count: insertedEnrollments?.length || 0,
       },
-      reason: `api-reg-split: 訂單 ${order_no} 拆解完成`,
+      reason: `api-reg-split: 訂單 ${order_no} 拆解完成（新學員 ${newMemberIds.length} 位）`,
     });
 
     return new Response(JSON.stringify({
@@ -305,7 +307,9 @@ Deno.serve(async (req) => {
       data: {
         order_id: order.id,
         order_no,
-        member_ids: memberIds,
+        member_ids: memberIds, // 保留向下相容
+        members: memberResults, // 新增：含 position / member_no / is_new 等
+        new_members_count: newMemberIds.length,
         enrollments_count: insertedEnrollments?.length || 0,
         message: "訂單拆解完成，學員與報名明細已建立",
       },
