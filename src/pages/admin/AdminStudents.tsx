@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus, Pencil, Eye } from "lucide-react";
+import { Users, Search, Calendar, ShieldCheck, UserCog, UserPlus, Award, Plus, Pencil, Eye, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -637,6 +640,7 @@ function PointsTab() {
   const { user } = useAuth();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [pointsDelta, setPointsDelta] = useState(0);
   const [pointType, setPointType] = useState("manual");
   const [pointDesc, setPointDesc] = useState("");
@@ -764,16 +768,52 @@ function PointsTab() {
           <div className="space-y-4">
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">選擇學員</label>
-              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="選擇學員..." /></SelectTrigger>
-                <SelectContent>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name} ({m.member_no || "無編號"}) — {m.points} 點
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={memberPickerOpen} onOpenChange={setMemberPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full h-9 justify-between font-normal"
+                  >
+                    {selectedMemberId
+                      ? (() => {
+                          const m = members.find(x => x.id === selectedMemberId);
+                          return m ? `${m.name} (${m.member_no || "無編號"}) — ${m.points} 點` : "選擇學員...";
+                        })()
+                      : "選擇學員..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command
+                    filter={(value, search) => {
+                      // value 內已包含姓名與學員編號，直接用 includes 比對
+                      return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                    }}
+                  >
+                    <CommandInput placeholder="搜尋姓名或學員編號..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>找不到學員</CommandEmpty>
+                      <CommandGroup>
+                        {members.map(m => (
+                          <CommandItem
+                            key={m.id}
+                            value={`${m.name} ${m.member_no || ""}`}
+                            onSelect={() => {
+                              setSelectedMemberId(m.id);
+                              setMemberPickerOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedMemberId === m.id ? "opacity-100" : "opacity-0")} />
+                            <span className="flex-1">{m.name} <span className="text-muted-foreground">({m.member_no || "無編號"})</span></span>
+                            <span className="text-xs text-muted-foreground ml-2">{m.points} 點</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
