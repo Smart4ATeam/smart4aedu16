@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   const { error: txErr } = await admin.from("reg_point_transactions").insert({
     member_id: member.id,
     points_delta: pointsDelta,
-    type: pointsDelta > 0 ? "earned" : "adjusted",
+    type: pointsDelta > 0 ? "Agent發放" : "Agent調整",
     description: reason,
   });
   if (txErr) return jsonResponse({ error: "寫入點數紀錄失敗：" + txErr.message }, 500);
