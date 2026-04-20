@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
 
     // 4. Extract persons from p1~p3
     interface PersonInfo {
+      position: string; // p1 / p2 / p3
       name: string;
       phone: string | null;
       email: string | null;
@@ -88,6 +89,7 @@ Deno.serve(async (req) => {
       const name = order[`p${i}_name`];
       if (name) {
         persons.push({
+          position: `p${i}`,
           name,
           phone: order[`p${i}_phone`] || null,
           email: order[`p${i}_email`] || null,
