@@ -30,6 +30,17 @@ export default function ResetPassword() {
     });
   }, []);
 
+  // Auto countdown & redirect after success
+  useEffect(() => {
+    if (!success) return;
+    if (countdown <= 0) {
+      navigate("/", { replace: true });
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [success, countdown, navigate]);
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -46,8 +57,7 @@ export default function ResetPassword() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("密碼已更新！");
-      navigate("/", { replace: true });
+      setSuccess(true);
     }
   };
 
