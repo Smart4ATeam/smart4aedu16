@@ -7,7 +7,6 @@ const corsHeaders = {
 
 async function sendWelcomeMessage(adminClient: any, userId: string, displayName: string) {
   try {
-    // Check notification settings - welcome is a "success" type
     const { data: settings } = await adminClient
       .from("notification_settings")
       .select("show_success")
@@ -16,7 +15,6 @@ async function sendWelcomeMessage(adminClient: any, userId: string, displayName:
 
     if (settings && settings.show_success === false) return;
 
-    // Create a system conversation for this user
     const { data: conv, error: convErr } = await adminClient
       .from("conversations")
       .insert({ title: "系統通知", category: "system" })
@@ -25,12 +23,10 @@ async function sendWelcomeMessage(adminClient: any, userId: string, displayName:
 
     if (convErr || !conv) return;
 
-    // Add user as participant
     await adminClient
       .from("conversation_participants")
       .insert({ conversation_id: conv.id, user_id: userId, unread: true });
 
-    // Send welcome message
     await adminClient.from("messages").insert({
       conversation_id: conv.id,
       content: `🎉 歡迎加入 Smart4A！\n\n${displayName} 您好，您的帳號已成功啟用。\n\n您現在可以開始使用系統的各項功能，包括學習課程、領取資源、接案任務等。\n\n祝您學習愉快！`,
@@ -69,33 +65,67 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Find pre-built profile matching email + student_id
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedSid = String(student_id).trim();
+
+    let displayName = "";
+    let organizationId: string | null = null;
+    let prebuiltProfileId: string | null = null;
+    let regMemberId: string | null = null;
+
+    // Source A: pre-built profile (admin enrolled)
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("id, display_name, email, student_id, organization_id")
-      .eq("email", email)
-      .eq("student_id", student_id)
+      .ilike("email", normalizedEmail)
+      .eq("student_id", normalizedSid)
       .eq("activated", false)
       .maybeSingle();
 
     if (profileError) throw profileError;
 
-    if (!profile) {
-      return new Response(JSON.stringify({ error: "找不到符合的學員資料，請確認 Email 與學員編號是否正確" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (profile) {
+      displayName = profile.display_name;
+      organizationId = profile.organization_id;
+      prebuiltProfileId = profile.id;
+    } else {
+      // Source B: registration member (paid student) — match by email + member_no
+      const { data: member, error: memberErr } = await adminClient
+        .from("reg_members")
+        .select("id, name, email, member_no, user_id")
+        .ilike("email", normalizedEmail)
+        .eq("member_no", normalizedSid)
+        .maybeSingle();
+
+      if (memberErr) throw memberErr;
+
+      if (!member) {
+        return new Response(JSON.stringify({ error: "找不到符合的學員資料，請確認 Email 與學員編號是否正確" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (member.user_id) {
+        return new Response(JSON.stringify({ error: "此學員帳號已啟用，請直接登入" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      displayName = member.name;
+      regMemberId = member.id;
     }
 
-    // Create auth user (this will trigger handle_new_user which updates the profile)
+    // Create auth user
     const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: {
-        display_name: profile.display_name,
-        student_id: profile.student_id,
-        organization_id: profile.organization_id,
+        display_name: displayName,
+        student_id: normalizedSid,
+        ...(organizationId ? { organization_id: organizationId } : {}),
       },
     });
 
@@ -109,9 +139,25 @@ Deno.serve(async (req) => {
       throw authError;
     }
 
-    // Send welcome message to the new user
-    if (authData?.user) {
-      await sendWelcomeMessage(adminClient, authData.user.id, profile.display_name);
+    const newUserId = authData?.user?.id;
+
+    // If activating from a reg_member (no pre-built profile), bind member to new user
+    // (this triggers sync_member_no_to_profile -> updates profiles.student_id)
+    if (newUserId && regMemberId) {
+      await adminClient
+        .from("reg_members")
+        .update({ user_id: newUserId })
+        .eq("id", regMemberId);
+
+      // Ensure profile has correct display_name & student_id
+      await adminClient
+        .from("profiles")
+        .update({ display_name: displayName, student_id: normalizedSid, activated: true })
+        .eq("id", newUserId);
+    }
+
+    if (newUserId) {
+      await sendWelcomeMessage(adminClient, newUserId, displayName);
     }
 
     return new Response(JSON.stringify({ message: "帳號啟用成功！請使用 Email 和密碼登入。" }), {
