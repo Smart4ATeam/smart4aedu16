@@ -18,6 +18,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  Bot,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ const navItems = [
 
 const bottomNavItems = [
   { title: "設定", url: "/settings", icon: Settings },
+  { title: "個人 Agent", url: "/agent", icon: Bot },
 ];
 
 export function AppSidebar() {

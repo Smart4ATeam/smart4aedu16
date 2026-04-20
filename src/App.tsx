@@ -17,6 +17,7 @@ import Calendar from "./pages/Calendar";
 import Resources from "./pages/Resources";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
+import Agent from "./pages/Agent";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTasks from "./pages/admin/AdminTasks";
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><AppLayout><Calendar /></AppLayout></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><AppLayout><Messages /></AppLayout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+            <Route path="/agent" element={<ProtectedRoute><AppLayout><Agent /></AppLayout></ProtectedRoute>} />
             <Route path="/learning" element={<ProtectedRoute><AppLayout><Learning /></AppLayout></ProtectedRoute>} />
             <Route path="/learning/course/:courseId" element={<ProtectedRoute><AppLayout><CourseDetail /></AppLayout></ProtectedRoute>} />
             <Route path="/points" element={<ProtectedRoute><AppLayout><Points /></AppLayout></ProtectedRoute>} />
