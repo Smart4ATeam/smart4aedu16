@@ -31,14 +31,14 @@ import { EditDataDialog } from "@/components/admin/students/EditDataDialog";
 // ── Reg types ──
 type RegMember = {
   id: string; member_no: string | null; name: string; phone: string | null;
-  email: string | null; course_level: string | null; points: number;
+  email: string | null; course_level: string | null; points: number; task_points: number;
   referral_code: string | null; notes: string | null; created_at: string;
   user_id: string | null;
 };
 
 type RegPointTx = {
   id: string; member_id: string; order_id: string | null;
-  points_delta: number; type: string; description: string | null; created_at: string;
+  points_delta: number; type: string; category: string; description: string | null; created_at: string;
   reg_members?: { name: string; member_no: string | null } | null;
 };
 
