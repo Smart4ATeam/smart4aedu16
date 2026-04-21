@@ -73,6 +73,7 @@ const AdminTasks = () => {
   const [applicantStats, setApplicantStats] = useState<UserStats | null>(null);
   const [applicantHistory, setApplicantHistory] = useState<(Tables<"task_applications"> & { task_title?: string })[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [reviewTaskFilter, setReviewTaskFilter] = useState<string>("all");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingTaskApplicants, setViewingTaskApplicants] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
