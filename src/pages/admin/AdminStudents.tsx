@@ -905,6 +905,8 @@ function PointsTab() {
     },
   });
 
+  const [pointCategory, setPointCategory] = useState<"points" | "task_points">("points");
+
   const addMutation = useMutation({
     mutationFn: async () => {
       if (!selectedMemberId) throw new Error("請選擇學員");
@@ -915,13 +917,14 @@ function PointsTab() {
         member_id: selectedMemberId,
         points_delta: pointsDelta,
         type: pointType,
+        category: pointCategory,
         description: pointDesc || null,
       } as any);
       if (error) throw error;
 
       await supabase.from("reg_operation_logs" as any).insert({
         entity_type: "member", entity_id: selectedMemberId, action: "manual_points",
-        new_value: { points_delta: pointsDelta, type: pointType, description: pointDesc },
+        new_value: { points_delta: pointsDelta, type: pointType, category: pointCategory, description: pointDesc },
         reason, operated_by: user?.id,
       } as any);
     },
