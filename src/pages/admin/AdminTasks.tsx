@@ -667,8 +667,8 @@ const AdminTasks = () => {
                   const max = Number(t.amount_max ?? t.amount);
                   const isExpanded = expandedTaskId === t.id;
                   return (
-                    <>
-                      <TableRow key={t.id} className={isExpanded ? "border-b-0" : ""}>
+                    <React.Fragment key={t.id}>
+                      <TableRow className={isExpanded ? "border-b-0" : ""}>
                         <TableCell className="font-medium">{t.title}</TableCell>
                         <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
                         <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
