@@ -40,11 +40,46 @@ ${SUPABASE_FUNCTIONS_BASE}
 
 > 本 API 僅回傳 \`status = published\` 的課程，未上架課程不會出現。
 
-### 2. 課程詳情（含單元與內容）
+### 2. 課程詳情（含單元、內容、開課梯次）
 \`GET /api-agent-courses?id=<course_id>\`
 
-回傳：\`{ course, units: [{ id, title, sections: [...] }] }\`
+回傳：\`{ course, units: [{ id, title, sections: [...] }], sessions: [...] }\`
 \`course\` 物件同上，包含 \`registration_url\` 可作為報名連結。
+\`sessions\` 為該課程目前 \`status=scheduled\` 且尚未過期的所有梯次（含 \`start_date / end_date / location / registration_url\`）。
+若要查跨課程的梯次（例如「5 月有哪些課」），請用 \`/api-agent-sessions\`。
+
+### 2.5 開課梯次查詢（跨課程，按日期）
+\`GET /api-agent-sessions\`
+
+可選查詢參數：
+- \`course_id\`：指定課程
+- \`category\`：例如 \`basic\` / \`quest\`
+- \`date_from\` / \`date_to\`：YYYY-MM-DD，**用於「5 月有哪些課」「下個月開哪幾梯」這類問題**
+- \`status\`：預設 \`scheduled\`（可報名），可傳 \`all\`
+- \`upcoming=true\`：只回 \`start_date >= 今天\`
+
+回傳：
+\`\`\`json
+{
+  "sessions": [{
+    "id": "...",
+    "course_id": "...",
+    "title_suffix": "5月梯",
+    "start_date": "2026-05-09",
+    "end_date": "2026-05-10",
+    "location": "台北",
+    "max_students": 20,
+    "price": 6000,
+    "registration_url": "https://...",
+    "status": "scheduled",
+    "course": { "title": "基礎課", "course_code": "...", "category": "basic", "price": 6000 }
+  }],
+  "total": 1
+}
+\`\`\`
+
+> 僅回傳 \`courses.status='published'\` 的課程下的梯次。
+> 若要查「某月開哪些課」，**一定要用這支**，不要只查 \`/api-agent-courses\`（那支沒有日期欄位）。
 
 ### 3. 我的報名／出席記錄
 \`GET /api-agent-my-enrollments\`
@@ -535,6 +570,15 @@ Body：
   → \`POST /api-agent-tasks\`，body：\`{ "task_id": "...", "quoted_amount": 2000 }\`
 - 「我做完了，幫我回報」
   → \`PATCH /api-agent-tasks?application_id=<id>\`，body 帶 \`action: "report_complete"\` 與交付連結
+
+## 重要行為準則（反幻覺）
+
+- 你是後端 API 客戶端，**不是瀏覽器**。**禁止**自行推測「CORS 問題」「被瀏覽器擋下」「內容被安全過濾」「BLOCKED」這類藉口。
+- 若呼叫 endpoint 失敗，請**回報實際的 HTTP 狀態碼與錯誤訊息**（例如 \`401 token revoked\`、\`500 db error\`），不要編造原因。
+- 若資料為空，請直接告知「查無資料」，並建議使用者用其他條件查詢；不要假設是技術錯誤。
+- 問「X 月有哪些課」「下個月開哪幾梯」→ **必用** \`/api-agent-sessions?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD\`。
+- 問「XX 課什麼時候開」→ \`/api-agent-courses?id=<id>\` 取回應裡的 \`sessions\`。
+- 問「課程列表 / 有哪些課程」→ \`/api-agent-courses\`（這支沒有日期，不要拿來回答「幾月開課」）。
 
 ## 限制
 
