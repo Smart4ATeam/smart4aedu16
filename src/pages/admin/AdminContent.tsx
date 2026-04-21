@@ -391,14 +391,17 @@ const AdminContent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterAuthor, setFilterAuthor] = useState("all");
+  const [trialTotalCount, setTrialTotalCount] = useState<number>(0);
 
   const fetchAll = async () => {
-    const [resResult, scResult] = await Promise.all([
+    const [resResult, scResult, trialCountResult] = await Promise.all([
     supabase.from("resources").select("*").order("sort_order"),
-    supabase.from("resource_sub_categories").select("*").order("sort_order")]
+    supabase.from("resource_sub_categories").select("*").order("sort_order"),
+    supabase.from("resource_trials").select("id", { count: "exact", head: true })]
     );
     if (resResult.data) setResources(resResult.data);
     if (scResult.data) setSubCategories(scResult.data as SubCategory[]);
+    setTrialTotalCount(trialCountResult.count || 0);
     setLoading(false);
   };
 
