@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins, RotateCcw, ChevronDown, Copy } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
