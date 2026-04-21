@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins, RotateCcw } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,10 @@ const AdminTasks = () => {
   // Failed mark
   const [failTarget, setFailTarget] = useState<string | null>(null);
   const [failReason, setFailReason] = useState("");
+
+  // Retry / 補件
+  const [retryTarget, setRetryTarget] = useState<TaskApplication | null>(null);
+  const [retryNote, setRetryNote] = useState("");
 
   // Final amount on confirm
   const [completeTarget, setCompleteTarget] = useState<TaskApplication | null>(null);
@@ -329,6 +333,33 @@ const AdminTasks = () => {
     if (error) { toast.error("標記失敗：" + error.message); return; }
     toast.success("已標記為失敗");
     setFailTarget(null); setFailReason("");
+    setSelectedApplicant(null);
+    setStatsCache({});
+    fetchData();
+  };
+
+  const openRetryDialog = (app: TaskApplication) => {
+    setRetryTarget(app);
+    setRetryNote("");
+  };
+
+  const handleConfirmRetry = async () => {
+    if (!retryTarget) return;
+    if (!retryNote.trim()) { toast.error("請填寫補件說明"); return; }
+    const prevNotes = retryTarget.admin_notes ? retryTarget.admin_notes + "\n" : "";
+    const stamp = new Date().toLocaleString("zh-TW");
+    const { error } = await supabase
+      .from("task_applications")
+      .update({
+        status: "approved",
+        failed_at: null,
+        failed_reason: null,
+        admin_notes: prevNotes + `[${stamp}] 補件：${retryNote.trim()}`,
+      })
+      .eq("id", retryTarget.id);
+    if (error) { toast.error("補件失敗：" + error.message); return; }
+    toast.success("已轉回進行中（已通知學員補件）");
+    setRetryTarget(null); setRetryNote("");
     setSelectedApplicant(null);
     setStatsCache({});
     fetchData();
@@ -650,6 +681,9 @@ const AdminTasks = () => {
                           )}
                           {(a.status === "approved" || a.status === "pending_completion") && (
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openFailDialog(a.id)} title="標記為失敗"><XCircle className="w-4 h-4" /></Button>
+                          )}
+                          {a.status === "failed" && (
+                            <Button size="sm" variant="ghost" className="text-primary" onClick={() => openRetryDialog(a)} title="重試 / 補件"><RotateCcw className="w-4 h-4" /></Button>
                           )}
                         </div>
                       </TableCell>
