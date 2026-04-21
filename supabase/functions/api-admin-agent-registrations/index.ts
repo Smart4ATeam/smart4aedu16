@@ -87,8 +87,8 @@ Deno.serve(async (req) => {
     if (status) query = query.eq("status", status);
     if (paymentStatus) query = query.eq("payment_status", paymentStatus);
     if (checkedIn !== null && checkedIn !== "") query = query.eq("checked_in", checkedIn === "true");
-    if (sessionDateFrom) query = query.gte("session_date", sessionDateFrom);
-    if (sessionDateTo) query = query.lte("session_date", sessionDateTo);
+    // 注意：session_date 是 text 欄位且格式雜（YYYY/MM/DD 或 YYYY/MM/DD-MM/DD），
+    // 無法用 SQL gte/lte 正確比對，改於下方在 JS 層用 parseSessionDate 過濾。
 
     if (q) {
       const [{ data: members }, { data: orders }] = await Promise.all([
