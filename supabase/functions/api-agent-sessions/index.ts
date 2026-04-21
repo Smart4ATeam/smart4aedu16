@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   const category = url.searchParams.get("category");
   const dateFrom = url.searchParams.get("date_from");
   const dateTo = url.searchParams.get("date_to");
-  const status = url.searchParams.get("status") ?? "scheduled";
+  const status = url.searchParams.get("status");
   const upcoming = url.searchParams.get("upcoming") === "true";
 
   // 先撈已上架課程，避免回傳草稿課
@@ -40,7 +40,12 @@ Deno.serve(async (req) => {
     .in("course_id", courseIds)
     .order("start_date", { ascending: true });
 
-  if (status !== "all") q = q.eq("status", status);
+  if (status && status !== "all") {
+    q = q.eq("status", status);
+  } else if (!status) {
+    // 預設：學員視角只顯示可報名的梯次 (open + scheduled)
+    q = q.in("status", ["open", "scheduled"]);
+  }
   if (dateFrom) q = q.gte("start_date", dateFrom);
   if (dateTo) q = q.lte("start_date", dateTo);
   if (upcoming) {
