@@ -95,6 +95,10 @@ const AdminTasks = () => {
   // Stats cache for review table
   const [statsCache, setStatsCache] = useState<Record<string, UserStats>>({});
 
+  // 統計卡片：日期區間
+  const [statStart, setStatStart] = useState<string>("");
+  const [statEnd, setStatEnd] = useState<string>("");
+
   const fetchUserStats = async (userId: string) => {
     if (statsCache[userId]) return statsCache[userId];
     const { data } = await supabase.rpc("get_user_task_stats", { _user_id: userId });
