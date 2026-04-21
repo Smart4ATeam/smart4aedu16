@@ -413,12 +413,12 @@ const AdminTasks = () => {
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard icon={<ClipboardList className="w-5 h-5" />} value={stats.total} label="總任務數" variant="primary" delay={0} />
-          <StatCard icon={<Loader2 className="w-5 h-5" />} value={stats.inProgress} label="進行中" variant="info" delay={0.05} />
-          <StatCard icon={<Clock className="w-5 h-5" />} value={stats.pending} label="待審核" variant="warning" delay={0.1} />
-          <StatCard icon={<FileCheck className="w-5 h-5" />} value={stats.completed} label="已完成" variant="success" delay={0.15} />
-          <StatCard icon={<CalendarPlus className="w-5 h-5" />} value={stats.monthlyNew} label="本月新增" variant="info" delay={0.2} />
-          <StatCard icon={<Coins className="w-5 h-5" />} value={`$${stats.totalPaid.toLocaleString()}`} label="總發放金額" variant="warning" delay={0.25} />
+          <StatCard icon={<ClipboardList className="w-5 h-5" />} value={cardStats.total} label="總任務數" variant="primary" delay={0} />
+          <StatCard icon={<Loader2 className="w-5 h-5" />} value={cardStats.inProgress} label="進行中" variant="info" delay={0.05} />
+          <StatCard icon={<Clock className="w-5 h-5" />} value={cardStats.pending} label="待審核" variant="warning" delay={0.1} />
+          <StatCard icon={<FileCheck className="w-5 h-5" />} value={cardStats.completed} label="已完成" variant="success" delay={0.15} />
+          <StatCard icon={<CalendarPlus className="w-5 h-5" />} value={cardStats.monthlyNew} label="本月新增" variant="info" delay={0.2} />
+          <StatCard icon={<Coins className="w-5 h-5" />} value={`$${cardStats.totalPaid.toLocaleString()}`} label="總發放金額" variant="warning" delay={0.25} />
         </div>
       </div>
 
