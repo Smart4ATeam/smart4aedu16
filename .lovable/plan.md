@@ -1,50 +1,60 @@
 
 
-# 訊息排版 + 已發送廣播檢視
+# 修正試用領取規則：允許重複領取（每天 1 次仍生效）
 
 ## 一、問題
 
-1. **訊息全擠在一起**：`Messages.tsx` 第 417 行 `<p>{msg.content}</p>` 直接吐純文字 → 換行字元被瀏覽器吃掉、URL 不會變連結。
-2. **後台看不到已發送內容**：`AdminBroadcast.tsx` 的歷史表格只顯示標題／人數／日期，點不進去看當時發了什麼。
+目前 `resource_trials` 有 `UNIQUE(user_id, resource_id)` 限制 → 同一使用者領過 LineRichMenu 後，隔天想再領一次序號（因試用碼只有 1 天有效）就會撞 23505 → 回 `INTERNAL_ERROR`。
 
-## 二、修正方案
+## 二、規則確認（修正後）
 
-### A. 學員端：訊息支援換行 + 可點連結
+| 規則 | 狀態 |
+|---|---|
+| 每位使用者「每天」整體只能領 1 個套件 + 1 個模板 | ✅ 維持（按 category 分） |
+| 同一使用者可「跨天」重複領同一個資源 | ✅ 新增允許 |
+| 同一天內針對同一資源只能領 1 次 | ✅ 由「每日 category 限制」自然涵蓋 |
 
-新增 `src/components/messages/MessageContent.tsx` 共用元件：
+## 三、要動的東西
 
-- 用 `whitespace-pre-wrap` + `break-words` 保留 `\n`、空白、長 URL 自動斷行
-- 用 regex 偵測 `https?://...`，把 URL 切成 `<a target="_blank" rel="noopener noreferrer">` 樣式為主色底線
-- 純文字渲染（不解析 HTML）→ 安全、不會被注入
+### A. 資料庫 migration
+- **移除** `resource_trials` 的 `UNIQUE(user_id, resource_id)` constraint  
+  （名稱推測為 `resource_trials_user_id_resource_id_key`，migration 內用 `IF EXISTS` 保險）
+- 不新增其他 unique；每日限制由 edge function 程式邏輯把關（已存在）
+- 既有資料完全不動
 
-`Messages.tsx` 第 417 行 `<p>{msg.content}</p>` 換成 `<MessageContent text={msg.content} fromMe={fromMe} />`。
+### B. Edge Function：`api-agent-claim-trial/index.ts`
+- 在 insert 失敗時補上 `error.code === '23505'` → 回 `409 ALREADY_CLAIMED_TODAY`，避免未來其他競態狀況再吐 500
+- 流程不變：仍先檢查當日 category 是否已領 → 已領回 429 `DAILY_LIMIT_REACHED`
 
-> 註：已發出的舊訊息只要原本內容有 `\n`，重新渲染後就會分行；若原本完全沒換行符，那則訊息仍會是一整段（DB 內容沒被改）。
+### C. Edge Function：`api-resource-trial/index.ts`（舊版同邏輯）
+- 同步加上 23505 → 409 防護
+- 維持每日 category 限制檢查
 
-### B. 後台：已發送廣播可展開檢視內容
+### D. 前端：`src/pages/Resources.tsx`
+- 「我的試用」分頁與資源卡片狀態渲染不需邏輯變更（同一資源會出現多筆紀錄，按 `created_at desc` 排序顯示最新）
+- 確認 `MyTrialsTab` 不會因重複 resource_id 出錯（目前用 `trial_id` 當 key，沒問題）
+- 卡片上的「已領用」chip 改成判斷「今日是否已領用此 category」而非「此資源是否曾經領過」→ 跨天就能再次顯示「立即領用」按鈕
 
-`AdminBroadcast.tsx` 歷史區改造：
+### E. Agent skill：`src/lib/agent-skills/admin-skill.ts` 與 `learning-skill.ts`
+- 補一段說明：「試用序號 24 小時有效，跨天可重複領用同一資源；但每日仍受『每類別 1 次』限制」
+- 錯誤碼新增 `ALREADY_CLAIMED_TODAY (409)`，讓 agent 正確回覆使用者
 
-1. `fetchBroadcasts` 多撈一個欄位 → 額外查 `messages` 表拿每個 conversation 的首則內容（或一次撈：先撈 conversations，再用 `in('conversation_id', ids)` 撈 messages，前端組裝）
-2. 表格每列前面加一顆「眼睛」icon 按鈕 → 點開 Dialog 顯示：
-   - 標題、優先級、發送時間、收件人數
-   - 內容區用同一個 `MessageContent` 元件渲染（換行 + 連結點擊一致）
-   - 「複製內容」按鈕
-3. 表格新增「內容預覽」欄（截斷 60 字 + `...`），方便快速辨識
-
-## 三、影響檔案
+## 四、影響檔案總覽
 
 | 檔案 | 異動 |
 |---|---|
-| `src/components/messages/MessageContent.tsx` | **新增**：共用文字渲染（換行 + URL linkify） |
-| `src/pages/Messages.tsx` | 第 417 行改用 `MessageContent` |
-| `src/pages/admin/AdminBroadcast.tsx` | 多撈 message content、加內容預覽欄、加檢視 Dialog |
+| 新 migration | DROP CONSTRAINT `resource_trials_user_id_resource_id_key` |
+| `supabase/functions/api-agent-claim-trial/index.ts` | 23505 → 409 防護 |
+| `supabase/functions/api-resource-trial/index.ts` | 23505 → 409 防護 |
+| `src/pages/Resources.tsx` | 卡片「已領用」狀態改用「今日同類別是否已領」判斷 |
+| `src/lib/agent-skills/admin-skill.ts` | 新增規則說明與錯誤碼 |
+| `src/lib/agent-skills/learning-skill.ts` | 新增規則說明與錯誤碼 |
 
-無需資料庫變更、無需 Edge Function 變更。
+## 五、驗收
 
-## 四、驗收
-
-- 在後台發一則訊息，內容刻意打多行 + 貼一個 https 網址 → 學員端訊息中心應分行顯示、網址可點開新分頁
-- 後台「已發送廣播」每列點眼睛 → 跳出 Dialog 看到完整內容（同樣分行 + 連結可點）
-- 圖中那則「入門班～立即報名」舊訊息：分行依原始 content 是否含 `\n` 而定，網址會自動變連結
+1. 今天領 LineRichMenu → 成功
+2. 今天再領 LineRichMenu → 收到 429 `DAILY_LIMIT_REACHED`（不是 500）
+3. 今天領完套件後再領模板 → 成功（不同 category）
+4. 明天再領 LineRichMenu → 成功（跨天解鎖）
+5. 「我的試用」可看到 2 筆 LineRichMenu 紀錄，各自序號獨立
 
