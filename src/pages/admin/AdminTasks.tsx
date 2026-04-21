@@ -400,7 +400,7 @@ const AdminTasks = () => {
       })
       .eq("id", completeTarget.id);
     if (error) { toast.error("更新失敗：" + error.message); return; }
-    toast.success("已確認完成，獎勵已撥點");
+    toast.success("已確認完成，積分獎勵已發放");
     setCompleteTarget(null);
     setSelectedApplicant(null);
     setStatsCache({});
@@ -629,7 +629,7 @@ const AdminTasks = () => {
                   <FieldGroup label="截止日期 *" hint="過期後系統會自動關閉">
                     <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
                   </FieldGroup>
-                  <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+                  <FieldGroup label="完成積分（單位：分）" hint="完成後額外發給接案人員的積分">
                     <Input type="number" min={0} placeholder="例：50" value={newTask.reward_points || ""} onChange={(e) => setNewTask({ ...newTask, reward_points: Number(e.target.value) })} />
                   </FieldGroup>
                 </div>
@@ -840,7 +840,7 @@ const AdminTasks = () => {
                     <TableHead>任務</TableHead>
                     <TableHead>接案人</TableHead>
                     <TableHead>學號</TableHead>
-                    <TableHead className="text-right">積分</TableHead>
+                    <TableHead className="text-right">積分（分）</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -854,7 +854,7 @@ const AdminTasks = () => {
                       <TableCell className="text-xs text-muted-foreground">{log.member_no || "—"}</TableCell>
                       <TableCell className="text-right">
                         <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
-                          <Coins className="w-3.5 h-3.5" />+{log.points_delta}
+                          <Coins className="w-3.5 h-3.5" />+{log.points_delta} 分
                         </span>
                       </TableCell>
                     </TableRow>
@@ -937,7 +937,7 @@ const AdminTasks = () => {
                 </Select>
               </FieldGroup>
             </div>
-            <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+            <FieldGroup label="完成積分（單位：分）" hint="完成後額外發給接案人員的積分">
               <Input disabled={editingHasApplications} type="number" min={0} placeholder="例：50" value={editForm.reward_points || ""} onChange={(e) => setEditForm({ ...editForm, reward_points: Number(e.target.value) })} />
             </FieldGroup>
             <FieldGroup label="管理員備註" hint="僅後台可見">
