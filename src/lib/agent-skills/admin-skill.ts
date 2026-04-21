@@ -236,6 +236,7 @@ Agent：[呼叫 adjust-points with confirm=true]
 - status：\`enrolled | paid | checked_in | cancelled | completed\`
 - payment_status：\`pending | paid | refunded\`
 - 預設排除 cancelled，可加 \`include_cancelled=true\` 包含
+- **日期格式**：\`session_date_from\` / \`session_date_to\` 必須是 \`YYYY-MM-DD\`（也可接受 \`YYYY/MM/DD\` 或 \`M/D\`，後者會以當年補齊）。DB 中的 session_date 為 text 且可能為區間（如 \`2025/04/26-04/27\`），後端會解析首日做比對。
 - 回傳含 \`summary: { total, by_status, by_course }\` 方便摘要回報
 
 **使用範例**：

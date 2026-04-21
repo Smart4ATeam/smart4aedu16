@@ -41,8 +41,31 @@ Deno.serve(async (req) => {
     // enrollments
     const courseId = url.searchParams.get("course_id");
     const courseCode = url.searchParams.get("course_code");
-    const sessionDateFrom = url.searchParams.get("session_date_from");
-    const sessionDateTo = url.searchParams.get("session_date_to");
+    // session_date 在 DB 是 text，格式為 YYYY/MM/DD 或 YYYY/MM/DD-MM/DD，需在 JS 層解析過濾
+    const normalizeDate = (s: string | null): string | null => {
+      if (!s) return null;
+      const t = s.trim();
+      // YYYY-MM-DD 或 YYYY/MM/DD
+      let m = t.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+      // M/D 或 MM/DD（補當年）
+      m = t.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) {
+        const y = new Date().getFullYear();
+        return `${y}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+      }
+      return null;
+    };
+    const sessionDateFrom = normalizeDate(url.searchParams.get("session_date_from"));
+    const sessionDateTo = normalizeDate(url.searchParams.get("session_date_to"));
+    const parseSessionDate = (raw: string | null): string | null => {
+      if (!raw) return null;
+      // 取區間首日："2025/04/26-04/27" → "2025/04/26"；"2025/04/26" → "2025/04/26"
+      const head = raw.split("-")[0].trim();
+      const m = head.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (!m) return null;
+      return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    };
     const status = url.searchParams.get("status");
     const paymentStatus = url.searchParams.get("payment_status");
     const checkedIn = url.searchParams.get("checked_in");
@@ -64,8 +87,8 @@ Deno.serve(async (req) => {
     if (status) query = query.eq("status", status);
     if (paymentStatus) query = query.eq("payment_status", paymentStatus);
     if (checkedIn !== null && checkedIn !== "") query = query.eq("checked_in", checkedIn === "true");
-    if (sessionDateFrom) query = query.gte("session_date", sessionDateFrom);
-    if (sessionDateTo) query = query.lte("session_date", sessionDateTo);
+    // 注意：session_date 是 text 欄位且格式雜（YYYY/MM/DD 或 YYYY/MM/DD-MM/DD），
+    // 無法用 SQL gte/lte 正確比對，改於下方在 JS 層用 parseSessionDate 過濾。
 
     if (q) {
       const [{ data: members }, { data: orders }] = await Promise.all([
@@ -83,10 +106,28 @@ Deno.serve(async (req) => {
       query = query.or(filters.join(","));
     }
 
-    const { data, error, count } = await query.range(offset, offset + limit - 1);
+    // 若需 JS 層日期過濾，先抓更大範圍（最多 2000 筆），最後再切片
+    const needJsDateFilter = !!(sessionDateFrom || sessionDateTo);
+    const fetchLimit = needJsDateFilter ? 2000 : limit;
+    const fetchOffset = needJsDateFilter ? 0 : offset;
+    const { data, error, count } = await query.range(fetchOffset, fetchOffset + fetchLimit - 1);
     if (error) return jsonResponse({ error: error.message }, 500);
 
-    const flat = (data ?? []).map((e: any) => ({
+    let rows = data ?? [];
+    if (needJsDateFilter) {
+      rows = rows.filter((e: any) => {
+        const d = parseSessionDate(e.session_date);
+        if (!d) return false;
+        if (sessionDateFrom && d < sessionDateFrom) return false;
+        if (sessionDateTo && d > sessionDateTo) return false;
+        return true;
+      });
+    }
+
+    const totalCount = needJsDateFilter ? rows.length : (count ?? rows.length);
+    const pagedRows = needJsDateFilter ? rows.slice(offset, offset + limit) : rows;
+
+    const flat = pagedRows.map((e: any) => ({
       enrollment_id: e.id,
       member_name: e.reg_members?.name ?? null,
       member_no: e.reg_members?.member_no ?? null,
@@ -114,8 +155,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       enrollments: flat,
-      total: count,
-      summary: { total: count ?? flat.length, by_status, by_course },
+      total: totalCount,
+      summary: { total: totalCount, by_status, by_course },
       limit,
       offset,
     });
