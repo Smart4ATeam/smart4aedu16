@@ -915,4 +915,14 @@ function InfoItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function FieldGroup({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-foreground">{label}</Label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>}
+    </div>
+  );
+}
+
 export default AdminTasks;
