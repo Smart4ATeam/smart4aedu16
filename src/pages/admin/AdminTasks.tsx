@@ -881,8 +881,39 @@ const AdminTasks = () => {
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             {editingHasApplications && (
-              <div className="rounded-md border border-chart-yellow/40 bg-chart-yellow/10 px-3 py-2 text-sm text-chart-yellow">
-                ⚠️ 已有學員申請此任務，內容已鎖定。如需大幅修改，請關閉此任務後另開新任務。
+              <div className="rounded-md border border-chart-yellow/40 bg-chart-yellow/10 px-3 py-2.5 text-sm text-chart-yellow space-y-2">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <p className="flex-1 min-w-0">⚠️ 已有 {editingApplicants.length} 位學員申請此任務，內容已鎖定。</p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1.5 border-chart-yellow/40 text-chart-yellow hover:bg-chart-yellow/20" onClick={handleCloneAsNew}>
+                    <Copy className="w-3.5 h-3.5" />以此任務為範本新建
+                  </Button>
+                </div>
+                <Collapsible open={showApplicantList} onOpenChange={setShowApplicantList}>
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-1.5 text-xs hover:underline">
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showApplicantList ? "rotate-180" : ""}`} />
+                      {showApplicantList ? "收合" : "展開"}申請名單
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                    {editingApplicants.map(a => (
+                      <div key={a.id} className="flex items-center gap-2 text-xs bg-background/50 rounded px-2 py-1.5 border border-border">
+                        <Avatar className="w-6 h-6 shrink-0">
+                          {a.applicant?.avatar_url ? <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} /> : null}
+                          <AvatarFallback className="text-[10px] bg-muted">{a.applicant?.display_name?.slice(0, 1) || "?"}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-foreground font-medium truncate">{a.applicant?.display_name || "未知"}</div>
+                          <div className="text-[10px] text-muted-foreground">{a.applicant?.student_id || a.applicant?.email || "—"}</div>
+                        </div>
+                        <Badge className={`shrink-0 text-[10px] ${statusColor(a.status)}`}>{statusLabel(a.status)}</Badge>
+                        <span className="text-[10px] text-muted-foreground shrink-0 w-[110px] text-right">
+                          {new Date(a.applied_at).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
             <FieldGroup label="任務標題">
