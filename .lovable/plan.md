@@ -1,146 +1,107 @@
 
 
-# 訊息廣播系統規劃
+# 訊息廣播：邏輯修正規劃
 
-## 一、目標與使用情境
+## 一、問題根因
 
-支援管理員（電腦後台 + Agent）以彈性條件向學員群發訊息：
+### 1️⃣ 4/16 入門班顯示 0 人 — **資料格式三大不匹配**
 
-- **全體廣播**：所有已啟用學員
-- **指定學員**：手動勾選一位或多位
-- **條件群組**：例如「上過入門課的人」、「7/9 入門課梯次」、「上過入門 + 初階」、「指定狀態的報名者」
+**A. session_id 全是 NULL**
+- `course_sessions.id = 1fa9a460...`（這是「梯次」的 PK）
+- 但 `reg_enrollments.session_id` 全是 `NULL`，從沒寫入過
+- 目前 `RecipientSelector` 勾選梯次後送 `session_ids: [...]`，後端用 `WHERE session_id IN (...)` 永遠抓不到資料
 
-## 二、核心設計：「收件人選擇器」抽象層
+**B. session_date 是字串、格式是 `YYYY/MM/DD` 不是 ISO**
+- 實際值：`"2026/04/16"`、`"2025/06/21-06/22"`（甚至有跨日字串）
+- 目前 UI 的「日期起／迄」用 `<input type="date">` 產出 `2026-04-16`，後端用 `gte/lte` 比對 → **字串比對會錯位**（`/` vs `-`）
 
-不論前端勾選或 Agent 自然語言指令，最終都收斂成一個 **recipient_filter** 物件，由後端統一解析成 user_id 清單。這樣前端 UI 與 Agent API 共用同一套後端邏輯。
+**C. 11 筆 4/16 入門班 user_id 幾乎都是 NULL**
+- 11 筆中只有 2 筆綁了 user_id（你自己 = 741f8dbb，且其中一筆是 cancelled）
+- 其他 9 筆是「未啟用帳號」的學員（reg_member 還沒綁 user）→ 本來就無法收訊息
+- 你自己「未取消」的那筆是 `status='completed'`，但目前 UI 預設沒勾任何狀態 = 不過濾，理論上應該抓到 → 真正擋住你的是 A + B
 
-### recipient_filter 結構
+### 2️⃣ 報名狀態顯示英文
+目前直接顯示 `enrolled / paid / checked_in / completed`；資料庫實際只有 `enrolled / confirmed / completed / cancelled`（連選項也錯）
 
-```jsonc
-{
-  "mode": "all" | "specific" | "filter",
+### 3️⃣ 「日期起／迄」用途不明
+原意是「篩選某段期間的梯次」，但跟「梯次多選」功能重疊、又因格式問題不能用 → 容易混淆
 
-  // mode=specific: 直接給 user_id 或 member_id 清單
-  "user_ids": ["uuid", ...],
-  "member_ids": ["uuid", ...],
+---
 
-  // mode=filter: 條件組合
-  "filters": {
-    "course_ids": ["uuid"],           // 上過這些課程任一堂
-    "course_ids_all": ["uuid"],       // 必須「全部都上過」（交集）
-    "session_ids": ["uuid"],          // 報名特定梯次
-    "session_date_from": "2025-01-01",
-    "session_date_to":   "2025-03-31",
-    "enrollment_status": ["enrolled", "completed"],  // 報名狀態
-    "course_category": ["basic","intermediate"],     // 課程分類
-    "exclude_user_ids": ["uuid"]      // 排除清單
-  }
+## 二、修正方案
+
+### A. 後端 `resolve-recipients.ts`：改用 course_id + session_date 比對
+
+把「梯次選擇」的內部邏輯改成：UI 仍然讓使用者勾梯次卡片，但送到後端時轉成 `{course_id, session_date}` 配對，後端用這組去查 `reg_enrollments`：
+
+```ts
+// 新 filter 結構
+filters: {
+  course_ids?: string[];           // 上過這些課（任一）
+  course_ids_all?: string[];       // 上過這些課（全部）
+  session_keys?: { course_id: string; session_date: string }[]; // ← 新
+  session_date_from?: string;      // YYYY-MM-DD（會轉 YYYY/MM/DD 比對）
+  session_date_to?: string;
+  enrollment_status?: string[];
+  exclude_user_ids?: string[];
 }
 ```
 
-後端會：
-1. 依 filters 從 `reg_enrollments` + `reg_members` 算出 user_id 清單
-2. 過濾掉 `user_id IS NULL`（未啟用帳號）
-3. 套用 `notification_settings`（系統廣播強制送、一般廣播尊重設定 — 由 `force` 參數控制）
-4. 去重後寫入 `conversation_participants`
+**比對邏輯**：
+- `session_keys`：對每組 `(course_id, session_date)` 用 `OR` 串起來，session_date 用 `LIKE 'YYYY/MM/DD%'`（吃單日 + 跨日格式）
+- `session_date_from/to`：把 ISO 轉成 `YYYY/MM/DD` 後做字串 `gte/lte`（因為格式固定 8+斜線排序正確）
+- 預設過濾掉 `status = 'cancelled'`（除非使用者明確勾 cancelled）
 
-## 三、後端：3 個 Edge Functions
+### B. 前端 `RecipientSelector.tsx`
 
-| Function | 用途 | 呼叫者 |
-|---|---|---|
-| `admin-broadcast` | 既有，重構為**接受 recipient_filter** | 後台 + Agent |
-| `api-admin-agent-preview-recipients` | **預覽**符合條件的學員清單（不發送） | Agent + 後台 |
-| `api-admin-agent-broadcast` | Agent 專用入口（Bearer admin token），內部轉呼 admin-broadcast 邏輯 | Agent |
+1. **梯次勾選改送 `session_keys`**（不送 session_ids，因 DB 沒這欄資料）
+2. **報名狀態選項改成中文 + 對應正確 enum**：
+   ```
+   enrolled  → 已報名
+   confirmed → 已確認
+   completed → 已完成
+   cancelled → 已取消（預設不勾，特別勾才包含）
+   ```
+3. **日期起／迄改名為「梯次日期範圍（選填）」** + 加說明文字：「不選梯次時，可用此區間批次抓某段時間所有梯次的學員」
+4. 預覽區也把英文狀態翻成中文
 
-**安全規範**：發送類動作必須 `confirm: true`；Agent 必須先呼叫 preview → 覆述「將發給 N 人，包含 XXX、YYY…」→ 等使用者確認 → 才帶 confirm 送出。
+### C. 預覽區提示「未啟用帳號」數量
 
-修掉先前的問題：移除 `show_info=false` 過濾（管理員廣播強制送達），保留 archived 狀態不過濾。
+呼叫 preview 時，後端額外回傳 `unactivated_count`（符合條件但 user_id IS NULL 的人數），UI 顯示：
 
-## 四、前端後台：AdminBroadcast 重構
+> 符合條件 11 人，其中 2 人已啟用帳號可收訊息（9 人尚未註冊網站帳號，無法收訊息）
 
-`src/pages/admin/AdminBroadcast.tsx` 改為三段式：
+這樣你就不會以為「明明有報名卻 0 人」是 bug。
 
-**1. 收件人選擇區（Tab 切換）**
-- **全體**：顯示「將發送給 N 位學員」
-- **依課程／梯次**：
-  - 多選課程（chips）
-  - 切換「上過任一堂 / 全部都上過」
-  - 多選梯次（依日期）
-  - 報名狀態複選
-- **手動指定**：搜尋框（姓名／email／編號）→ 勾選加入收件清單
+### D. Agent skill (admin-skill.ts) 同步
 
-**2. 即時預覽**
-每次條件變更呼叫 `preview-recipients`，顯示：
-- 收件人總數
-- 前 10 位姓名 + 「還有 N 位…」可展開全部
+- filter 範例改用 `session_keys` 取代 `session_ids`
+- 狀態列表更新成正確 4 個 enum
+- 加註「session_date 是 YYYY/MM/DD 字串」與「未啟用帳號不會收到」的說明
 
-**3. 訊息內容**
-- 標題、優先級（一般／重要／緊急）、內容
-- 「發送」按鈕 → 二次確認 dialog（顯示人數）→ 呼叫 `admin-broadcast`
+---
 
-下方保留「已發送廣播」歷史表格，新增「收件人數」欄位。
+## 三、要修改的檔案
 
-## 五、Agent 整合（admin-skill.ts）
-
-新增兩個端點說明 + 工作流程指引：
-
-```
-### 廣播訊息
-
-步驟（嚴格遵守）：
-1. 解析使用者意圖 → 組出 recipient_filter
-2. 呼叫 GET /api-admin-agent-preview-recipients 取得人數與名單樣本
-3. 用自然語言覆述：標題、內容、優先級、收件人數、樣本姓名
-4. 等待明確同意（「確認」「OK」「執行」）
-5. 呼叫 POST /api-admin-agent-broadcast 帶 confirm: true
-6. 回報實際送達人數
-```
-
-範例自然語言 → filter 對應：
-
-| 使用者說 | recipient_filter |
+| 檔案 | 異動 |
 |---|---|
-| 「發給所有學員」 | `mode: "all"` |
-| 「發給上過入門課的人」 | `mode: "filter", course_ids: [入門課 id]` |
-| 「上過入門+初階的」 | `mode: "filter", course_ids_all: [入門, 初階]` |
-| 「7/9 入門梯次的學員」 | `mode: "filter", session_ids: [梯次 id]` |
-| 「8 月所有上課的人」 | `mode: "filter", session_date_from/to` |
-| 「發給王小明跟陳大華」 | 先 search-members 拿 id → `mode: "specific"` |
+| `supabase/functions/_shared/resolve-recipients.ts` | session_keys 新邏輯、session_date 字串比對、回傳 unactivated_count |
+| `supabase/functions/api-admin-agent-preview-recipients/index.ts` | 回傳 unactivated_count |
+| `src/lib/broadcast/types.ts` | RecipientFilter 加 session_keys、PreviewResult 加 unactivated_count |
+| `src/components/admin/broadcast/RecipientSelector.tsx` | 梯次改送 session_keys、狀態中文化、日期區間加說明 |
+| `src/components/admin/broadcast/RecipientPreview.tsx` | 顯示啟用 / 未啟用人數、預覽狀態翻譯 |
+| `src/lib/agent-skills/admin-skill.ts` | 文件同步 |
 
-## 六、資料庫
+無需資料庫變更。
 
-無需新表。僅在 `conversations` 上新增可選欄位以利日後審計：
+---
 
-```sql
-ALTER TABLE conversations
-  ADD COLUMN broadcast_filter jsonb,    -- 記錄當時的 filter
-  ADD COLUMN recipient_count int,       -- 實際送達人數
-  ADD COLUMN created_by uuid;           -- 發送的管理員
-```
+## 四、預期結果
 
-## 七、檔案清單
+修完後你選「入門課 + 4/16 梯次」應該看到：
 
-**新增**
-- `supabase/functions/api-admin-agent-preview-recipients/index.ts`
-- `supabase/functions/api-admin-agent-broadcast/index.ts`
-- `src/components/admin/broadcast/RecipientSelector.tsx`
-- `src/components/admin/broadcast/RecipientPreview.tsx`
-- `src/lib/broadcast/resolve-recipients.ts`（前後端共用 filter → user_ids 邏輯，後端 Deno 版本獨立一份）
+> 符合條件 **11 人**，其中 **2 人** 已啟用帳號可收訊息（9 人尚未註冊）  
+> 名單樣本：你的名字、741f8dbb 那位…
 
-**修改**
-- `supabase/functions/admin-broadcast/index.ts`（接受 recipient_filter、移除 show_info 強制過濾、寫入 broadcast_filter / recipient_count / created_by）
-- `src/pages/admin/AdminBroadcast.tsx`（整頁重構）
-- `src/lib/agent-skills/admin-skill.ts`（新增廣播段落 + 工作流程）
-
-**Migration**
-- 新增 conversations 三個審計欄位
-
-## 八、實作順序建議
-
-1. Migration（加欄位）
-2. 後端：`admin-broadcast` 重構 + `preview-recipients` + `agent-broadcast`
-3. 前端：RecipientSelector / Preview 元件
-4. AdminBroadcast 頁面整合
-5. Agent skill 文件更新
-6. 端到端測試（後台手動 + Agent 對話）
+並且狀態 chips 顯示「已報名 / 已確認 / 已完成 / 已取消」，日期區間下方有說明文字。
 
