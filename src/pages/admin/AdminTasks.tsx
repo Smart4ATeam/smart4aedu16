@@ -799,6 +799,20 @@ const AdminTasks = () => {
                 {f.label}
               </Button>
             ))}
+            <Select value={reviewTaskFilter} onValueChange={(v) => { setReviewTaskFilter(v); setSelectedAppIds(new Set()); }}>
+              <SelectTrigger className="h-9 w-[240px]">
+                <SelectValue placeholder="篩選任務" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部任務</SelectItem>
+                {reviewTaskOptions.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {reviewTaskFilter !== "all" && (
+              <Button size="sm" variant="ghost" onClick={() => setReviewTaskFilter("all")}>清除任務篩選</Button>
+            )}
             {selectedAppIds.size > 0 && (
               <div className="ml-auto flex gap-2">
                 <span className="text-xs text-muted-foreground self-center">已選 {selectedAppIds.size} 筆</span>
