@@ -181,7 +181,21 @@ const AdminTasks = () => {
   useEffect(() => { fetchData(); }, []);
 
   const handleAddTask = async () => {
-    if (!newTask.title || !user) return;
+    if (!user) return;
+    const tagsArr = newTask.tags.split(",").map(t => t.trim()).filter(Boolean);
+    const missing: string[] = [];
+    if (!newTask.title.trim()) missing.push("任務標題");
+    if (!newTask.description.trim()) missing.push("任務說明");
+    if (!newTask.difficulty) missing.push("任務等級");
+    if (!newTask.category) missing.push("任務類別");
+    if (!newTask.amount_min || newTask.amount_min <= 0) missing.push("最低金額");
+    if (!newTask.amount_max || newTask.amount_max <= 0) missing.push("最高金額");
+    if (tagsArr.length === 0) missing.push("技術標籤");
+    if (!newTask.deadline) missing.push("截止日期");
+    if (missing.length > 0) {
+      toast.error(`請填寫必填欄位：${missing.join("、")}`);
+      return;
+    }
     if (newTask.amount_max < newTask.amount_min) {
       toast.error("最高金額不能小於最低金額");
       return;
@@ -195,7 +209,7 @@ const AdminTasks = () => {
       amount_max: newTask.amount_max,
       category: newTask.category,
       admin_notes: newTask.admin_notes,
-      tags: newTask.tags.split(",").map(t => t.trim()).filter(Boolean),
+      tags: tagsArr,
       deadline: newTask.deadline || null,
       created_by: user.id,
       status: "available",

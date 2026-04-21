@@ -31,7 +31,7 @@ interface Task {
 interface TaskCardProps {
   task: Task;
   delay?: number;
-  onApply?: (quotedAmount: number) => void;
+  onApply?: (quotedAmount: number, appliedNote: string) => void;
   onReportComplete?: (deliverableUrl: string, deliverableNote: string) => void;
   applying?: boolean;
   reporting?: boolean;
@@ -42,6 +42,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
   const [showApply, setShowApply] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [quotedAmount, setQuotedAmount] = useState<number>(task.amountMin || 0);
+  const [appliedNote, setAppliedNote] = useState("");
   const [deliverableUrl, setDeliverableUrl] = useState("");
   const [deliverableNote, setDeliverableNote] = useState("");
 
@@ -54,7 +55,8 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
   const handleConfirmApply = () => {
     if (quotedAmount < task.amountMin || quotedAmount > task.amountMax) return;
     setShowApply(false);
-    onApply?.(quotedAmount);
+    onApply?.(quotedAmount, appliedNote.trim());
+    setAppliedNote("");
   };
 
   const handleConfirmReport = () => {
@@ -155,7 +157,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
 
         <div className="flex gap-3">
           {task.status === "available" && (
-            <button onClick={() => { setQuotedAmount(task.amountMin); setShowApply(true); }} disabled={applying} className="flex-1 bg-primary text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50">
+            <button onClick={() => { setQuotedAmount(task.amountMin); setAppliedNote(""); setShowApply(true); }} disabled={applying} className="flex-1 bg-primary text-primary-foreground text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50">
               {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <>立即報價接案 <ArrowRight className="w-4 h-4" /></>}
             </button>
           )}
@@ -218,6 +220,17 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
               {!quoteValid && quotedAmount > 0 && (
                 <p className="text-xs text-destructive mt-1">報價必須在 {task.amountMin.toLocaleString()} ~ {task.amountMax.toLocaleString()} 之間</p>
               )}
+            </div>
+            <div>
+              <Label className="text-xs">備註 / 說明（選填）</Label>
+              <Textarea
+                value={appliedNote}
+                onChange={(e) => setAppliedNote(e.target.value)}
+                placeholder="說明您的方案、預計交付時間、相關經驗..."
+                rows={3}
+                maxLength={1000}
+              />
+              <p className="text-xs text-muted-foreground mt-1">最多 1000 字，提供給管理員審核參考</p>
             </div>
           </div>
           <DialogFooter>
