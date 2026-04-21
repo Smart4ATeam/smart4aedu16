@@ -964,7 +964,8 @@ function PointsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>學員</TableHead>
-              <TableHead className="w-24">點數</TableHead>
+              <TableHead className="w-20">分類</TableHead>
+              <TableHead className="w-24">數值</TableHead>
               <TableHead className="w-24">類型</TableHead>
               <TableHead>說明</TableHead>
               <TableHead className="w-32">時間</TableHead>
@@ -972,14 +973,19 @@ function PointsTab() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : transactions.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">尚無點數紀錄</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">尚無點數紀錄</TableCell></TableRow>
             ) : transactions.map(tx => (
               <TableRow key={tx.id}>
                 <TableCell>
                   <div className="text-sm font-medium">{(tx.reg_members as any)?.name || "—"}</div>
                   <div className="text-xs text-muted-foreground">{(tx.reg_members as any)?.member_no || ""}</div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={(tx.category ?? "points") === "task_points" ? "default" : "secondary"} className="text-[10px]">
+                    {(tx.category ?? "points") === "task_points" ? "積分" : "點數"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <span className={`text-sm font-mono font-bold ${tx.points_delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
