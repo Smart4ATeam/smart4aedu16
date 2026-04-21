@@ -323,13 +323,15 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
 \`\`\`json
 {
   "title": "標題",
-  "content": "內容（必填）",
+  "content": "內容（必填，支援 \\n 換行；貼上 https:// 開頭的網址會在學員端自動變成可點連結）",
   "priority": "一般" | "重要" | "緊急",
   "category": "system",
   "recipient_filter": { "mode": "...", ... },
   "confirm": true
 }
 \`\`\`
+
+> 撰寫內容小技巧：段落間用 \`\\n\\n\` 空一行、條列用 \`- \` 開頭、網址直接貼完整 \`https://...\`（前後留空白），學員端會自動分行並把網址轉成可點連結。
 
 ### recipient_filter 規格
 
