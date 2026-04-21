@@ -1,69 +1,47 @@
 
 
-# 修復 Joyce 報名 / 學習進度查不到的問題
+# 修復 Agent「查不到 5 月課程」與全面盤點
 
-## 根本原因（已查證）
+## 真正的根因（已驗證）
 
-我直接撈資料對齊，找到兩個問題：
-
-### 問題 1：`api-agent-my-enrollments` 用錯欄位
-這支端點是用 `reg_enrollments.user_id = <登入者>` 來撈，但 Joyce 那 6 筆 enrollments 的 `user_id` 全部是 **NULL**，只有 `member_id` 有值。
-
-- profile 與 reg_member 已正確綁定（`profiles.id` = `reg_members.user_id` = `741f8db…`）
-- 但 enrollments 是由 `api-reg-split` 在訂單拆解時建立的，那支只寫了 `member_id`、沒寫 `user_id`
-- 之後 Joyce 才綁定帳號，舊 enrollments 的 `user_id` 沒被回填 → 端點查不到
-
-正確的查法應該透過 `reg_members.user_id → reg_members.id → reg_enrollments.member_id` 這條路徑。
-
-### 問題 2：`api-agent-my-progress` 查的是空表
-這支查的是 `user_learning_progress` 表，但 Joyce 在這張表裡 **沒有任何資料**（0 筆）。
-
-事實上整個系統的「課程完成 / 學習進度」是由 `reg_enrollments.status`（`enrolled` / `completed` / `cancelled`）在表達的，`user_learning_progress` 是另一條舊的學習路徑系統，目前並沒有跟報名系統打通。
-
-Joyce 的真實學習進度（從 enrollments 推得）：
-- 入門課（quest）2026/04/16 → **completed**
-- 基礎課（basic）2026/05/09-10 → **enrolled**（已繳費，待上課）
-- 另有 4 筆 cancelled 的舊紀錄
+1. **`api-agent-courses` 沒有問題**：CORS 完整、log 沒錯誤、curl 直接打也正常。Agent 講的「被瀏覽器擋下、registration_url 被過濾」是 **LLM 幻覺**——Agent 不是瀏覽器，根本沒有 CORS 問題。
+2. **真正缺的是「梯次查詢能力」**：使用者問「5 月有哪些課」，這個資訊在 `course_sessions.start_date / end_date`，但學員端 Agent **完全沒有任何 endpoint 可查 sessions**。Agent 撈了 `courses` 卻找不到日期欄位，只好硬掰一個藉口交差。
+3. **資源中心 / 序號領取**：我已逐一比對 `api-agent-resources`、`api-agent-claim-trial`、`api-agent-my-trials`，CORS、token 驗證、回傳格式都正常，沒有壞掉，可以正常使用。
+4. **最近的修改沒有破壞既有功能**：先前改的是 `api-admin-agent-registrations`（管理者端）、`api-agent-my-enrollments`、`api-agent-my-progress`（學員端，且加了 reg_members 中介查詢，是更穩健的修法），都跟 `api-agent-courses` 無關。
 
 ## 修改方案
 
-### 1. 修 `supabase/functions/api-agent-my-enrollments/index.ts`
-改成走 `reg_members` 中介查詢：
-1. 先用 `user_id` 查 `reg_members.id`
-2. 再用 `member_id` 查 `reg_enrollments`（這樣不管是新舊資料、之後綁定都查得到）
-3. 同時順便把對應的課程資訊（title / course_code / category）一起回傳，Agent 不必再多一次查詢
-4. 預設過濾掉 `status = 'cancelled'`，可加 `?include_cancelled=true` 還原
+### 1. 新增 `supabase/functions/api-agent-sessions/index.ts`（學員端梯次查詢）
+讓 Agent 能查「某個月、某個課程、某狀態」的梯次。支援參數：
+- `course_id`：指定課程
+- `category`：例如 `basic` / `quest`
+- `date_from` / `date_to`：日期區間（YYYY-MM-DD），用於「5 月」「下個月」這類問題
+- `status`：預設只回 `scheduled`（未來/可報名），可傳 `all`
+- `upcoming=true`：只回 `start_date >= 今天` 的梯次
 
-### 2. 修 `supabase/functions/api-agent-my-progress/index.ts`
-這支改成「以 enrollments 為事實來源」，不再查 `user_learning_progress`。回傳：
-- `completed_courses`：`status = completed` 的課程清單（含完成日、測驗分數、證書）
-- `in_progress_courses`：`status = enrolled` 且已繳費的課程（含 session_date）
-- 仍支援 `?completed=true|false` 篩選
+回傳每筆 session 含：`id, course_id, title_suffix, start_date, end_date, location, max_students, registration_url`，並順便帶出對應 `course.title / course_code / category / price`，Agent 不必再多一次 query。
 
-如果你之後還想保留 `user_learning_progress` 給「自學路徑」用，這支可加 `source=path` 參數切回舊邏輯，預設走 enrollments。
+僅回傳已上架（`courses.status = published`）課程下的梯次，避免洩漏草稿。
 
-### 3. 補資料：回填舊 enrollments 的 `user_id`
-寫一支 migration，一次性把所有 `reg_enrollments.user_id IS NULL` 但對應 `reg_members.user_id` 已綁定的紀錄補上，並建立一個 trigger：往後 `reg_members.user_id` 一旦設定，自動把該 member 名下所有 enrollments 的 `user_id` 同步補齊。這樣未來不管哪支端點用 `user_id` 查都不會再漏。
+### 2. 在 `api-agent-courses` 詳情模式順帶回傳該課程的 sessions
+查 `?id=<course_id>` 時，除了原本 `units / sections`，再附上 `sessions: [...]`（只回 `status = scheduled` 且未過期的梯次）。這樣 Agent 問「XX 課什麼時候開」一次就拿到。
 
-### 4. 同步更新 `src/lib/agent-skills/learning-skill.ts`
-把 `/api-agent-my-enrollments` 與 `/api-agent-my-progress` 的回傳欄位、`include_cancelled` 參數、以及「進度=來自 enrollments」的說明補進去，讓 Agent 給管理者/學員的回覆更精準。
+### 3. 更新 `src/lib/agent-skills/learning-skill.ts`
+- 新增「梯次查詢」章節，把 `/api-agent-sessions` 的參數、回傳、使用範例都寫清楚。
+- 加一條 **明確的反幻覺指引**：「若呼叫 endpoint 失敗，請回報實際 HTTP 狀態碼與錯誤訊息，**不得**自行推測為『瀏覽器 CORS / 內容被過濾 / BLOCKED』，你不是瀏覽器。」
+- 在「常見問題對應」加入：「使用者問『X 月有哪些課』→ 用 `/api-agent-sessions?date_from=...&date_to=...`」與「『XX 課什麼時候開』→ `/api-agent-courses?id=<id>` 取 `sessions`」。
 
 ## 不會動到的部分
-- 不動 `reg_members` / `reg_enrollments` 的 schema 結構（只回填資料 + 加 trigger）
-- 不動學員端 UI（Learning 頁原本就是用 member_id 的方式查，本來就看得到）
-- 不動 admin Agent 端點
+- 不動資料表 schema、不動 RLS、不動既有 endpoint 的回傳結構（只是新增欄位、新增 endpoint）。
+- 不動管理者端的 `api-admin-agent-sessions`（那是另一支，已有不同用途）。
+- 不動前端 UI。
 
 ## 影響檔案總覽
 | 檔案 | 動作 |
 |---|---|
-| `supabase/functions/api-agent-my-enrollments/index.ts` | 改查詢邏輯 |
-| `supabase/functions/api-agent-my-progress/index.ts` | 改為從 enrollments 推導 |
-| `src/lib/agent-skills/learning-skill.ts` | 更新 Skill 文件 |
-| 新 migration | 回填 `reg_enrollments.user_id` + 建立同步 trigger |
+| `supabase/functions/api-agent-sessions/index.ts` | **新增** |
+| `supabase/functions/api-agent-courses/index.ts` | 詳情模式增回 `sessions` |
+| `src/lib/agent-skills/learning-skill.ts` | 補梯次章節 + 反幻覺規則 |
 
-## 需要你確認
-
-1. **學習進度資料來源**：同意改成「以 reg_enrollments 為主」嗎？（這是目前實際在用的那套）`user_learning_progress` 那張表先擱著、不刪，未來如要做自學路徑再啟用。
-2. **trigger 範圍**：trigger 在 `reg_members.user_id` 從 NULL 變成有值時觸發，把對應 enrollments 全部補上 user_id。同意嗎？
-3. **cancelled 預設**：學員端 Agent 查自己的報名，預設要不要排除已取消的？我傾向 **預設排除**，加 `?include_cancelled=true` 才顯示（避免一堆舊取消單干擾）。
+確認後我就執行。
 
