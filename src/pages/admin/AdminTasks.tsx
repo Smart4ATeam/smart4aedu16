@@ -99,6 +99,60 @@ const AdminTasks = () => {
   // Stats cache for review table
   const [statsCache, setStatsCache] = useState<Record<string, UserStats>>({});
 
+  // 任務積分發放紀錄
+  type PointLog = {
+    id: string;
+    points_delta: number;
+    description: string | null;
+    created_at: string;
+    member_id: string;
+    member_name?: string;
+    member_no?: string;
+    task_title?: string;
+  };
+  const [pointLogs, setPointLogs] = useState<PointLog[]>([]);
+  const [pointLogsLoading, setPointLogsLoading] = useState(false);
+  const [pointLogSearch, setPointLogSearch] = useState("");
+
+  const fetchPointLogs = async () => {
+    setPointLogsLoading(true);
+    const { data, error } = await supabase
+      .from("reg_point_transactions")
+      .select("id, points_delta, description, created_at, member_id")
+      .like("description", "任務完成積分獎勵%")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) { toast.error("載入失敗：" + error.message); setPointLogsLoading(false); return; }
+    const memberIds = [...new Set((data ?? []).map(d => d.member_id))];
+    const { data: members } = memberIds.length
+      ? await supabase.from("reg_members").select("id, name, member_no").in("id", memberIds)
+      : { data: [] as { id: string; name: string; member_no: string | null }[] };
+    const memberMap = new Map((members ?? []).map(m => [m.id, m]));
+    const enriched: PointLog[] = (data ?? []).map(d => {
+      const m = memberMap.get(d.member_id);
+      const title = (d.description || "").replace(/^任務完成積分獎勵：?/, "").trim();
+      return {
+        id: d.id, points_delta: d.points_delta, description: d.description, created_at: d.created_at,
+        member_id: d.member_id, member_name: m?.name, member_no: m?.member_no || undefined,
+        task_title: title || "—",
+      };
+    });
+    setPointLogs(enriched);
+    setPointLogsLoading(false);
+  };
+
+  useEffect(() => { fetchPointLogs(); }, []);
+
+  const filteredPointLogs = useMemo(() => {
+    const q = pointLogSearch.trim().toLowerCase();
+    if (!q) return pointLogs;
+    return pointLogs.filter(p =>
+      (p.task_title || "").toLowerCase().includes(q) ||
+      (p.member_name || "").toLowerCase().includes(q) ||
+      (p.member_no || "").toLowerCase().includes(q)
+    );
+  }, [pointLogs, pointLogSearch]);
+
   // 統計卡片：日期區間
   const [statStart, setStatStart] = useState<string>("");
   const [statEnd, setStatEnd] = useState<string>("");
