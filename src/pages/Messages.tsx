@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { MessageContent } from "@/components/messages/MessageContent";
 
 interface ConversationItem {
   id: string;
@@ -414,7 +415,7 @@ export default function Messages() {
                                 : "bg-muted/70 text-foreground rounded-bl-md"
                             }`}
                           >
-                            <p>{msg.content}</p>
+                            <MessageContent text={msg.content} />
                             <div className={`flex items-center gap-1 mt-1.5 ${fromMe ? "justify-end" : ""}`}>
                               <span className="text-[10px] text-muted-foreground">{formatMsgTime(msg.created_at)}</span>
                               {fromMe && <CheckCheck className="w-3 h-3 text-accent" />}
