@@ -279,7 +279,7 @@ const AdminStudents = () => {
 // Platform Users Sub-Tab
 // ═══════════════════════════════════════
 function PlatformUsersTab({
-  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole, memberPointsMap,
+  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole, memberPointsMap, memberTaskPointsMap,
 }: {
   search: string;
   setSearch: (s: string) => void;
@@ -290,6 +290,7 @@ function PlatformUsersTab({
   roleBadge: (role: Enums<"app_role">) => JSX.Element;
   getPrimaryRole: (id: string) => Enums<"app_role">;
   memberPointsMap: Map<string, number>;
+  memberTaskPointsMap: Map<string, number>;
 }) {
   return (
     <div className="space-y-6 mt-4">
