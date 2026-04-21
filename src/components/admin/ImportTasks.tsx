@@ -18,8 +18,8 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
 
   const downloadTemplate = () => {
     const bom = "\uFEFF";
-    const csv = bom + "title,description,difficulty,amount_min,amount_max,category,tags,deadline,status,admin_notes\n" +
-      "範例任務,任務描述說明,中級,3000,8000,開發,\"Dify,Make.com\",2026-05-01,available,內部備註(學員看不到)\n";
+    const csv = bom + "title,description,difficulty,amount_min,amount_max,category,tags,deadline,status,reward_points,admin_notes\n" +
+      "範例任務,任務描述說明,中級,3000,8000,開發,\"Dify,Make.com\",2026-05-01,available,50,內部備註(學員看不到)\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -85,6 +85,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
       const description = r.description?.trim() || "";
       const category = r.category?.trim() || "general";
       const adminNotes = r.admin_notes?.trim() || "";
+      const rewardPoints = Number(r.reward_points ?? 0) || 0;
 
       const { error } = await supabase.from("tasks").insert({
         title,
@@ -99,6 +100,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
         deadline,
         status,
         created_by: user.id,
+        reward_points: rewardPoints,
       });
 
       if (error) {
@@ -148,7 +150,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        CSV 欄位：title（必填）, description, difficulty（初級/中級/高級）, amount_min, amount_max, category, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）, admin_notes
+        CSV 欄位：title（必填）, description, difficulty（初級/中級/高級）, amount_min, amount_max, category, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）, reward_points（完成積分，預設 0）, admin_notes
       </div>
 
       {result && (
