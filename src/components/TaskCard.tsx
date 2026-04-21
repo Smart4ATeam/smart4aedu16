@@ -26,6 +26,7 @@ interface Task {
   quotedAmount?: number;
   finalAmount?: number;
   applicantCount?: number;
+  rewardPoints?: number;
 }
 
 interface TaskCardProps {
