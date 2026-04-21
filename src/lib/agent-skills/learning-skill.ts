@@ -49,16 +49,58 @@ ${SUPABASE_FUNCTIONS_BASE}
 ### 3. 我的報名／出席記錄
 \`GET /api-agent-my-enrollments\`
 
-回傳：\`{ enrollments: [{ id, course_id, status, payment_status, session_date, checked_in, test_score, certificate, ... }] }\`
+可選查詢參數：
+- \`include_cancelled=true\`：是否包含已取消的報名（預設排除）
+
+回傳：
+\`\`\`json
+{
+  "member": { "id": "...", "member_no": "SA25120114", "name": "..." },
+  "enrollments": [{
+    "id": "...", "course_id": "...", "course_type": "basic",
+    "status": "enrolled", "payment_status": "paid",
+    "session_date": "2026-05-09", "checked_in": false,
+    "test_score": null, "certificate": null,
+    "enrolled_at": "...", "paid_at": "...",
+    "course": { "id": "...", "title": "...", "course_code": "...", "category": "basic", "total_hours": 12 }
+  }]
+}
+\`\`\`
+
+> 查詢路徑為 \`reg_members.user_id → member_id → reg_enrollments\`，不再依賴 \`reg_enrollments.user_id\`，
+> 因此舊報名（拆單建立時 user_id 為 NULL）也能正確查到。
+> 若該帳號尚未綁定 \`reg_members\`，回 \`{ member: null, enrollments: [] }\`。
 
 ### 4. 我的學習進度
 \`GET /api-agent-my-progress\`
 
-可選查詢參數：
-- \`completed=true\` 只看已完成
-- \`completed=false\` 只看未完成
+> **資料來源**：預設以 \`reg_enrollments\` 為事實來源（系統實際在用的那套）。
+> 學員「完成的課程」= status=completed；「進行中的課程」= status=enrolled 且 payment_status=paid。
 
-回傳：\`{ progress: [{ learning_path_id, current_step, completed, learning_path: {...} }] }\`
+可選查詢參數：
+- \`completed=true\`：只回 \`completed_courses\`
+- \`completed=false\`：只回 \`in_progress_courses\`
+- \`source=path\`：切回舊的 \`user_learning_progress\` 自學路徑邏輯（預設 \`enrollments\`，目前自學路徑系統尚未啟用）
+
+回傳（預設 source=enrollments）：
+\`\`\`json
+{
+  "source": "enrollments",
+  "member": { "id": "...", "member_no": "...", "name": "..." },
+  "completed_courses": [{
+    "id": "...", "course_id": "...", "status": "completed",
+    "session_date": "2026-04-16", "test_score": 85, "certificate": "...",
+    "course": { "title": "入門課", "course_code": "...", "category": "quest" }
+  }],
+  "in_progress_courses": [{
+    "id": "...", "status": "enrolled", "payment_status": "paid",
+    "session_date": "2026-05-09",
+    "course": { "title": "基礎課", "category": "basic" }
+  }]
+}
+\`\`\`
+
+> 若帳號尚未綁定 \`reg_members\`，回空陣列並 \`member: null\`，請建議學員聯繫客服綁定。
 
 ### 5. 課程測驗題目（不含正解）
 \`GET /api-agent-quizzes?courseId=<course_id>\`
