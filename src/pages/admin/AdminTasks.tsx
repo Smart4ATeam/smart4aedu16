@@ -303,6 +303,33 @@ const AdminTasks = () => {
     [editingTask, applications]
   );
 
+  const editingApplicants = useMemo(
+    () => editingTask ? applications.filter(a => a.task_id === editingTask.id) : [],
+    [editingTask, applications]
+  );
+
+  const [showApplicantList, setShowApplicantList] = useState(false);
+
+  const handleCloneAsNew = () => {
+    if (!editingTask) return;
+    setNewTask({
+      title: editForm.title + "（複製）",
+      description: editForm.description,
+      difficulty: editForm.difficulty,
+      amount_min: editForm.amount_min,
+      amount_max: editForm.amount_max,
+      category: editForm.category,
+      tags: editForm.tags,
+      deadline: editForm.deadline,
+      admin_notes: editForm.admin_notes,
+      reward_points: editForm.reward_points,
+    });
+    setEditingTask(null);
+    setShowApplicantList(false);
+    setShowNewTask(true);
+    toast.info("已帶入原任務內容，請調整後發布");
+  };
+
   const handleEditTask = async () => {
     if (!editingTask) return;
     if (editingHasApplications) {
