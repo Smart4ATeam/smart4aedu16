@@ -238,8 +238,15 @@ Deno.serve(async (req) => {
       },
       201,
     );
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error("api-agent-claim-trial error:", err);
+    // Postgres unique violation — race condition fallback
+    if (err?.code === "23505") {
+      return jsonResponse(
+        { error: "今日已領用過此資源，請明天再試", code: "ALREADY_CLAIMED_TODAY" },
+        409,
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     return jsonResponse({ error: message, code: "INTERNAL_ERROR" }, 500);
   }
