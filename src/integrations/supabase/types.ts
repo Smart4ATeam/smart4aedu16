@@ -899,6 +899,7 @@ export type Database = {
           phone: string | null
           points: number
           referral_code: string | null
+          task_points: number
           user_id: string | null
         }
         Insert: {
@@ -912,6 +913,7 @@ export type Database = {
           phone?: string | null
           points?: number
           referral_code?: string | null
+          task_points?: number
           user_id?: string | null
         }
         Update: {
@@ -925,6 +927,7 @@ export type Database = {
           phone?: string | null
           points?: number
           referral_code?: string | null
+          task_points?: number
           user_id?: string | null
         }
         Relationships: []
@@ -1081,6 +1084,7 @@ export type Database = {
       }
       reg_point_transactions: {
         Row: {
+          category: string
           created_at: string
           description: string | null
           id: string
@@ -1090,6 +1094,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -1099,6 +1104,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
