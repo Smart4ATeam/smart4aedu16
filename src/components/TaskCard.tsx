@@ -102,6 +102,12 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
               <DollarSign className="w-4 h-4 text-primary" />
               <span className="text-base font-bold text-primary">{amountRange}</span>
             </div>
+            {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
+              <div className="flex items-center gap-1 text-xs font-semibold text-chart-yellow border border-chart-yellow/30 bg-chart-yellow/10 px-2 py-0.5 rounded-md">
+                <Coins className="w-3.5 h-3.5" />
+                完成 +{task.rewardPoints} 點
+              </div>
+            )}
           </div>
           {statusBadge()}
         </div>
