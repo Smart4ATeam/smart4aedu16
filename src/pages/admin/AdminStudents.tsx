@@ -689,6 +689,7 @@ function RegMembersTab() {
                 <div><span className="text-muted-foreground">電話：</span>{detailMember.phone || "—"}</div>
                 <div><span className="text-muted-foreground">信箱：</span>{detailMember.email || "—"}</div>
                 <div><span className="text-muted-foreground">點數：</span>{detailMember.points}</div>
+                <div><span className="text-muted-foreground">積分：</span>{detailMember.task_points ?? 0}</div>
                 <div><span className="text-muted-foreground">課程等級：</span>{detailMember.course_level || "—"}</div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">平台帳號：</span>
