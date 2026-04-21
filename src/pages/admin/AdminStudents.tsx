@@ -221,6 +221,7 @@ const AdminStudents = () => {
             roleBadge={roleBadge}
             getPrimaryRole={getPrimaryRole}
             memberPointsMap={memberPointsMap}
+            memberTaskPointsMap={memberTaskPointsMap}
           />
         </TabsContent>
 
