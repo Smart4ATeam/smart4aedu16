@@ -1,5 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { verifyAdminToken, corsHeaders, jsonResponse } from "../_shared/verify-admin-token.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -7,9 +18,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const auth = await verifyAdminToken(req);
-    if (!auth.ok) {
-      return jsonResponse({ error: auth.error }, auth.status ?? 401);
+    const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
+    if (!authHeader?.toLowerCase().startsWith("bearer ")) {
+      return jsonResponse({ error: "Missing Bearer token" }, 401);
+    }
+    const token = authHeader.slice(7).trim();
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, anonKey);
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+    const userId = claimsData.claims.sub;
+
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: isAdmin, error: roleErr } = await admin.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (roleErr || !isAdmin) {
+      return jsonResponse({ error: "Forbidden: admin role required" }, 403);
     }
 
     if (req.method !== "POST") {
@@ -21,12 +56,6 @@ Deno.serve(async (req) => {
     if (!content) {
       return jsonResponse({ error: "Missing required field: content" }, 400);
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     // 1. Create system conversation
     const { data: conversation, error: convErr } = await admin
