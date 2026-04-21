@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     // ====== POST: apply with quote ======
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
-      const { task_id, quoted_amount } = body;
+      const { task_id, quoted_amount, applied_note } = body;
       if (!task_id || typeof quoted_amount !== "number") {
         return jsonResponse({ error: "task_id and quoted_amount required", code: "INVALID_INPUT" }, 400);
       }
@@ -112,9 +112,14 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (existing) return jsonResponse({ error: "已申請過此任務", code: "ALREADY_APPLIED" }, 400);
 
+      const insertPayload: Record<string, unknown> = { task_id, user_id: userId, quoted_amount };
+      if (typeof applied_note === "string" && applied_note.trim()) {
+        insertPayload.applied_note = applied_note.trim().slice(0, 1000);
+      }
+
       const { data: created, error } = await admin
         .from("task_applications")
-        .insert({ task_id, user_id: userId, quoted_amount })
+        .insert(insertPayload)
         .select()
         .single();
       if (error) throw error;

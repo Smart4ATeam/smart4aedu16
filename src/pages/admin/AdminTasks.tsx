@@ -457,14 +457,14 @@ const AdminTasks = () => {
                 <DialogDescription>設定任務詳細資訊與金額範圍</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-                <FieldGroup label="任務標題" hint="學員列表上看到的主標題，請簡潔有力">
+                <FieldGroup label="任務標題 *" hint="學員列表上看到的主標題，請簡潔有力">
                   <Input placeholder="例：協助製作 LINE 官方帳號自動回覆機器人" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
                 </FieldGroup>
-                <FieldGroup label="任務說明" hint="詳細需求、交付標準、可用工具等">
+                <FieldGroup label="任務說明 *" hint="詳細需求、交付標準、可用工具等">
                   <Textarea placeholder="任務內容、預期交付物、驗收標準..." value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} rows={3} />
                 </FieldGroup>
                 <div className="grid grid-cols-2 gap-3">
-                  <FieldGroup label="任務等級" hint="影響推薦對象">
+                  <FieldGroup label="任務等級 *" hint="影響推薦對象">
                     <Select value={newTask.difficulty} onValueChange={(v) => setNewTask({ ...newTask, difficulty: v })}>
                       <SelectTrigger><SelectValue placeholder="請選擇" /></SelectTrigger>
                       <SelectContent>
@@ -472,7 +472,7 @@ const AdminTasks = () => {
                       </SelectContent>
                     </Select>
                   </FieldGroup>
-                  <FieldGroup label="任務類別" hint="用於分類與篩選">
+                  <FieldGroup label="任務類別 *" hint="用於分類與篩選">
                     <Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}>
                       <SelectTrigger><SelectValue placeholder="請選擇" /></SelectTrigger>
                       <SelectContent>
@@ -481,19 +481,19 @@ const AdminTasks = () => {
                     </Select>
                   </FieldGroup>
                 </div>
-                <FieldGroup label="報價區間" hint="學員報價需落在此範圍內，超出會被擋下">
+                <FieldGroup label="報價區間 *" hint="學員報價需落在此範圍內，超出會被擋下">
                   <div className="grid grid-cols-2 gap-3">
                     <Input type="number" placeholder="最低金額" value={newTask.amount_min || ""} onChange={(e) => setNewTask({ ...newTask, amount_min: Number(e.target.value) })} />
                     <Input type="number" placeholder="最高金額" value={newTask.amount_max || ""} onChange={(e) => setNewTask({ ...newTask, amount_max: Number(e.target.value) })} />
                   </div>
                 </FieldGroup>
-                <FieldGroup label="技術標籤" hint="逗號分隔，例：Dify, Make.com, n8n">
+                <FieldGroup label="技術標籤 *" hint="逗號分隔，例：Dify, Make.com, n8n">
                   <Input placeholder="Dify, Make.com" value={newTask.tags} onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })} />
                 </FieldGroup>
-                <FieldGroup label="截止日期" hint="過期後系統會自動關閉，留空表示無期限">
+                <FieldGroup label="截止日期 *" hint="過期後系統會自動關閉">
                   <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
                 </FieldGroup>
-                <FieldGroup label="管理員備註" hint="僅後台可見，學員看不到">
+                <FieldGroup label="管理員備註（選填）" hint="僅後台可見，學員看不到">
                   <Textarea placeholder="例：客戶聯絡方式、預算來源、注意事項" value={newTask.admin_notes} onChange={(e) => setNewTask({ ...newTask, admin_notes: e.target.value })} rows={2} />
                 </FieldGroup>
               </div>
