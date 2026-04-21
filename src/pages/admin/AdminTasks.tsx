@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins } from "lucide-react";
+import { StatCard } from "@/components/StatCard";
 import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,40 @@ const AdminTasks = () => {
 
   // Stats cache for review table
   const [statsCache, setStatsCache] = useState<Record<string, UserStats>>({});
+
+  // 統計卡片：日期區間
+  const [statStart, setStatStart] = useState<string>("");
+  const [statEnd, setStatEnd] = useState<string>("");
+
+  const cardStats = useMemo(() => {
+    const inRange = (iso: string | null | undefined) => {
+      if (!iso) return false;
+      const d = iso.slice(0, 10);
+      if (statStart && d < statStart) return false;
+      if (statEnd && d > statEnd) return false;
+      return true;
+    };
+    const hasFilter = !!(statStart || statEnd);
+    const tasksInRange = hasFilter ? tasks.filter(t => inRange(t.created_at)) : tasks;
+    const appsInRange = hasFilter ? applications.filter(a => inRange(a.applied_at)) : applications;
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const monthlyNew = tasks.filter(t => (t.created_at || "").slice(0, 10) >= monthStart).length;
+
+    const totalPaid = appsInRange
+      .filter(a => a.status === "completed")
+      .reduce((sum, a) => sum + Number(a.final_amount ?? a.quoted_amount ?? 0), 0);
+
+    return {
+      total: tasksInRange.length,
+      inProgress: appsInRange.filter(a => a.status === "approved" || a.status === "pending_completion").length,
+      pending: appsInRange.filter(a => a.status === "applied").length,
+      completed: appsInRange.filter(a => a.status === "completed").length,
+      monthlyNew,
+      totalPaid,
+    };
+  }, [tasks, applications, statStart, statEnd]);
 
   const fetchUserStats = async (userId: string) => {
     if (statsCache[userId]) return statsCache[userId];
@@ -353,13 +388,44 @@ const AdminTasks = () => {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h2 className="text-2xl font-bold text-foreground">任務與審核管理</h2>
+        <h2 className="text-2xl font-bold text-foreground">任務管理</h2>
         <p className="text-sm text-muted-foreground mt-1">發布任務、審核學員報價、查看戰績</p>
       </motion.div>
 
+      {/* 統計區：日期篩選 + 6 張卡 */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">統計起始日</Label>
+            <Input type="date" value={statStart} onChange={(e) => setStatStart(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">統計結束日</Label>
+            <Input type="date" value={statEnd} onChange={(e) => setStatEnd(e.target.value)} className="h-9 w-[160px]" />
+          </div>
+          {(statStart || statEnd) && (
+            <Button variant="ghost" size="sm" onClick={() => { setStatStart(""); setStatEnd(""); }}>
+              清除日期
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground ml-auto">
+            {(statStart || statEnd) ? "依日期區間統計" : "顯示全部資料"}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard icon={<ClipboardList className="w-5 h-5" />} value={cardStats.total} label="總任務數" variant="primary" delay={0} />
+          <StatCard icon={<Loader2 className="w-5 h-5" />} value={cardStats.inProgress} label="進行中" variant="info" delay={0.05} />
+          <StatCard icon={<Clock className="w-5 h-5" />} value={cardStats.pending} label="待審核" variant="warning" delay={0.1} />
+          <StatCard icon={<FileCheck className="w-5 h-5" />} value={cardStats.completed} label="已完成" variant="success" delay={0.15} />
+          <StatCard icon={<CalendarPlus className="w-5 h-5" />} value={cardStats.monthlyNew} label="本月新增" variant="info" delay={0.2} />
+          <StatCard icon={<Coins className="w-5 h-5" />} value={`$${cardStats.totalPaid.toLocaleString()}`} label="總發放金額" variant="warning" delay={0.25} />
+        </div>
+      </div>
+
+
       <Tabs defaultValue="tasks" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="tasks">任務管理</TabsTrigger>
+          <TabsTrigger value="tasks">任務列表</TabsTrigger>
           <TabsTrigger value="review">申請審核</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>

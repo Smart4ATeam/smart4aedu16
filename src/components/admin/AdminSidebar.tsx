@@ -24,7 +24,7 @@ const navItems = [
   { title: "營運看板", url: "/admin", icon: LayoutDashboard },
   { title: "使用者管理", url: "/admin/students", icon: Users },
   { title: "學習中心", url: "/admin/learning", icon: BookOpen },
-  { title: "任務審核", url: "/admin/tasks", icon: ClipboardCheck },
+  { title: "任務管理", url: "/admin/tasks", icon: ClipboardCheck },
   { title: "資源管理", url: "/admin/resources", icon: FolderOpen },
   { title: "訊息廣播", url: "/admin/broadcast", icon: Megaphone },
   

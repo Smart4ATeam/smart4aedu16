@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search, FileUp } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search, FileUp, Package, Flame, FlaskConical, DownloadCloud, LayoutGrid, Beaker } from "lucide-react";
+import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -391,14 +392,17 @@ const AdminContent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterAuthor, setFilterAuthor] = useState("all");
+  const [trialTotalCount, setTrialTotalCount] = useState<number>(0);
 
   const fetchAll = async () => {
-    const [resResult, scResult] = await Promise.all([
+    const [resResult, scResult, trialCountResult] = await Promise.all([
     supabase.from("resources").select("*").order("sort_order"),
-    supabase.from("resource_sub_categories").select("*").order("sort_order")]
+    supabase.from("resource_sub_categories").select("*").order("sort_order"),
+    supabase.from("resource_trials").select("id", { count: "exact", head: true })]
     );
     if (resResult.data) setResources(resResult.data);
     if (scResult.data) setSubCategories(scResult.data as SubCategory[]);
+    setTrialTotalCount(trialCountResult.count || 0);
     setLoading(false);
   };
 
@@ -613,12 +617,43 @@ const AdminContent = () => {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  const totalInstalls = resources.reduce((sum, r) => sum + Number(r.installs || 0), 0);
+  const hotCount = resources.filter((r) => r.is_hot).length;
+  const trialEnabledCount = resources.filter((r) => r.trial_enabled).length;
+  const categoryCounts = categoryOptions.map((c) => ({
+    label: c.label,
+    count: resources.filter((r) => r.category === c.value).length,
+  }));
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <h2 className="text-2xl font-bold text-foreground">資源管理</h2>
         <p className="text-sm text-muted-foreground mt-1">管理所有學習資源，上架供學員瀏覽與使用</p>
       </motion.div>
+
+      {/* 統計卡片 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard icon={<Package className="w-5 h-5" />} value={resources.length} label="總資源數" variant="primary" delay={0} />
+        <StatCard icon={<Flame className="w-5 h-5" />} value={hotCount} label="熱門資源" variant="warning" delay={0.05} />
+        <StatCard icon={<FlaskConical className="w-5 h-5" />} value={trialEnabledCount} label="可試用" variant="info" delay={0.1} />
+        <StatCard icon={<DownloadCloud className="w-5 h-5" />} value={totalInstalls.toLocaleString()} label="總安裝次數" variant="success" delay={0.15} />
+        <StatCard icon={<Beaker className="w-5 h-5" />} value={trialTotalCount} label="試用申請總數" variant="info" delay={0.2} />
+        <div className="glass-card p-4 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>各分類數量</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
+            {categoryCounts.map((c) => (
+              <div key={c.label} className="flex items-baseline justify-between text-xs">
+                <span className="text-muted-foreground">{c.label}</span>
+                <span className="font-bold text-foreground">{c.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <Tabs value={adminTab} onValueChange={setAdminTab}>
         <TabsList>
