@@ -568,6 +568,7 @@ const AdminTasks = () => {
                   <TableHead>類別</TableHead>
                   <TableHead>等級</TableHead>
                   <TableHead>金額範圍</TableHead>
+                  <TableHead>完成積分</TableHead>
                   <TableHead>截止日</TableHead>
                   <TableHead>申請</TableHead>
                   <TableHead>狀態</TableHead>
