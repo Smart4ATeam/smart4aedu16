@@ -18,10 +18,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { difficultyColors } from "@/lib/category-colors";
+import { useTaskOptions } from "@/hooks/useTaskOptions";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Task = Tables<"tasks">;
@@ -39,7 +41,6 @@ interface UserStats {
   success_rate: number;
 }
 
-const DIFFICULTY_OPTIONS = ["初級", "中級", "高級"];
 const TASK_STATUSES = [
   { value: "available", label: "已發布" },
   { value: "in_progress", label: "進行中" },
@@ -49,6 +50,7 @@ const TASK_STATUSES = [
 
 const AdminTasks = () => {
   const { user } = useAuth();
+  const { activeDifficulties, activeCategories, categoryLabel } = useTaskOptions();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [applications, setApplications] = useState<TaskApplication[]>([]);
   const [loading, setLoading] = useState(true);
