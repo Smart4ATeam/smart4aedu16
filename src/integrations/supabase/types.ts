@@ -1471,6 +1471,7 @@ export type Database = {
           description: string
           difficulty: string
           id: string
+          reward_points: number
           status: string
           tags: string[]
           title: string
@@ -1488,6 +1489,7 @@ export type Database = {
           description?: string
           difficulty?: string
           id?: string
+          reward_points?: number
           status?: string
           tags?: string[]
           title: string
@@ -1505,6 +1507,7 @@ export type Database = {
           description?: string
           difficulty?: string
           id?: string
+          reward_points?: number
           status?: string
           tags?: string[]
           title?: string
