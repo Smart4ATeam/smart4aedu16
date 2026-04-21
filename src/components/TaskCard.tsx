@@ -194,6 +194,9 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             {task.tags.length > 0 && <p><span className="text-muted-foreground">技術標籤：</span><span className="text-foreground">{task.tags.join("、")}</span></p>}
             {task.deadline && <p><span className="text-muted-foreground">截止日期：</span><span className="text-foreground">{task.deadline}</span></p>}
             <p><span className="text-muted-foreground">獎勵範圍：</span><span className="text-primary font-bold">${amountRange}</span></p>
+            {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
+              <p><span className="text-muted-foreground">完成積分：</span><span className="text-chart-yellow font-bold">+{task.rewardPoints} 點</span></p>
+            )}
             {task.failedReason && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                 <p className="text-xs text-muted-foreground mb-1">失敗原因：</p>
