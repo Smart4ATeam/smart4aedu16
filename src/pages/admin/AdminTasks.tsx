@@ -60,13 +60,13 @@ const AdminTasks = () => {
   const [newTask, setNewTask] = useState({
     title: "", description: "", difficulty: "中級",
     amount_min: 0, amount_max: 0, category: "general",
-    tags: "", deadline: "", admin_notes: "",
+    tags: "", deadline: "", admin_notes: "", reward_points: 0,
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editForm, setEditForm] = useState({
     title: "", description: "", difficulty: "",
     amount_min: 0, amount_max: 0, category: "general",
-    tags: "", deadline: "", status: "", admin_notes: "",
+    tags: "", deadline: "", status: "", admin_notes: "", reward_points: 0,
   });
   const [selectedApplicant, setSelectedApplicant] = useState<TaskApplication | null>(null);
   const [applicantStats, setApplicantStats] = useState<UserStats | null>(null);
@@ -217,10 +217,11 @@ const AdminTasks = () => {
       deadline: newTask.deadline || null,
       created_by: user.id,
       status: "available",
+      reward_points: newTask.reward_points || 0,
     });
     if (error) { toast.error("新增失敗：" + error.message); return; }
     toast.success("任務已發布");
-    setNewTask({ title: "", description: "", difficulty: "中級", amount_min: 0, amount_max: 0, category: "general", tags: "", deadline: "", admin_notes: "" });
+    setNewTask({ title: "", description: "", difficulty: "中級", amount_min: 0, amount_max: 0, category: "general", tags: "", deadline: "", admin_notes: "", reward_points: 0 });
     setShowNewTask(false);
     fetchData();
   };
@@ -238,6 +239,7 @@ const AdminTasks = () => {
       deadline: t.deadline || "",
       status: t.status,
       admin_notes: t.admin_notes || "",
+      reward_points: Number((t as Task & { reward_points?: number }).reward_points ?? 0),
     });
   };
 
@@ -259,6 +261,7 @@ const AdminTasks = () => {
       tags: editForm.tags.split(",").map(t => t.trim()).filter(Boolean),
       deadline: editForm.deadline || null,
       status: editForm.status,
+      reward_points: editForm.reward_points || 0,
     }).eq("id", editingTask.id);
     if (error) { toast.error("更新失敗：" + error.message); return; }
     toast.success("任務已更新");
@@ -521,9 +524,14 @@ const AdminTasks = () => {
                 <FieldGroup label="技術標籤 *" hint="逗號分隔，例：Dify, Make.com, n8n">
                   <Input placeholder="Dify, Make.com" value={newTask.tags} onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })} />
                 </FieldGroup>
-                <FieldGroup label="截止日期 *" hint="過期後系統會自動關閉">
-                  <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
-                </FieldGroup>
+                <div className="grid grid-cols-2 gap-3">
+                  <FieldGroup label="截止日期 *" hint="過期後系統會自動關閉">
+                    <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
+                  </FieldGroup>
+                  <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+                    <Input type="number" min={0} placeholder="例：50" value={newTask.reward_points || ""} onChange={(e) => setNewTask({ ...newTask, reward_points: Number(e.target.value) })} />
+                  </FieldGroup>
+                </div>
                 <FieldGroup label="管理員備註（選填）" hint="僅後台可見，學員看不到">
                   <Textarea placeholder="例：客戶聯絡方式、預算來源、注意事項" value={newTask.admin_notes} onChange={(e) => setNewTask({ ...newTask, admin_notes: e.target.value })} rows={2} />
                 </FieldGroup>
@@ -761,6 +769,9 @@ const AdminTasks = () => {
                 </Select>
               </FieldGroup>
             </div>
+            <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+              <Input type="number" min={0} placeholder="例：50" value={editForm.reward_points || ""} onChange={(e) => setEditForm({ ...editForm, reward_points: Number(e.target.value) })} />
+            </FieldGroup>
             <FieldGroup label="管理員備註" hint="僅後台可見">
               <Textarea value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={2} />
             </FieldGroup>
