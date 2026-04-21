@@ -75,6 +75,7 @@ const AdminTasks = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingTaskApplicants, setViewingTaskApplicants] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
