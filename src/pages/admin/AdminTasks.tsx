@@ -586,6 +586,13 @@ const AdminTasks = () => {
                       <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
                       <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
                       <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
+                      <TableCell className="text-sm">
+                        {(t as Task & { reward_points?: number }).reward_points ? (
+                          <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
+                            <Coins className="w-3.5 h-3.5" />+{(t as Task & { reward_points?: number }).reward_points}
+                          </span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setViewingTaskApplicants(t.id)} disabled={taskApps.length === 0}>
