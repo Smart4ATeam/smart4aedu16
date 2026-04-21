@@ -45,28 +45,21 @@ const AdminBroadcast = () => {
   const handleBroadcast = async () => {
     if (!newBroadcast.title || !newBroadcast.content || !user) return;
 
-    // Create a new system conversation for the broadcast
-    const { data: conv, error: convErr } = await supabase
-      .from("conversations")
-      .insert({ title: `[${newBroadcast.priority}] ${newBroadcast.title}`, category: "system" })
-      .select()
-      .single();
+    // Use api-messages edge function to broadcast to all activated users
+    const { data, error } = await supabase.functions.invoke("api-messages", {
+      body: {
+        title: `[${newBroadcast.priority}] ${newBroadcast.title}`,
+        content: newBroadcast.content,
+        category: "system",
+      },
+    });
 
-    if (convErr || !conv) {
-      toast.error("廣播失敗：" + (convErr?.message || "未知錯誤"));
+    if (error || !data?.success) {
+      toast.error("廣播失敗：" + (error?.message || data?.error || "未知錯誤"));
       return;
     }
 
-    // Add admin as participant and send the message
-    await supabase.from("conversation_participants").insert({ conversation_id: conv.id, user_id: user.id });
-    await supabase.from("messages").insert({
-      conversation_id: conv.id,
-      sender_id: user.id,
-      content: newBroadcast.content,
-      is_system: true,
-    });
-
-    toast.success("廣播已發送");
+    toast.success(`廣播已發送給 ${data.data?.recipients ?? 0} 位學員`);
     setNewBroadcast({ title: "", content: "", priority: "一般" });
     fetchBroadcasts();
   };
