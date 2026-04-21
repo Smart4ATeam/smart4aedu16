@@ -243,8 +243,25 @@ const AdminTasks = () => {
     });
   };
 
+  const editingHasApplications = useMemo(
+    () => !!editingTask && applications.some(a => a.task_id === editingTask.id),
+    [editingTask, applications]
+  );
+
   const handleEditTask = async () => {
     if (!editingTask) return;
+    if (editingHasApplications) {
+      // 已有人申請：僅允許更新 admin_notes 與 status
+      const { error } = await supabase.from("tasks").update({
+        admin_notes: editForm.admin_notes,
+        status: editForm.status,
+      }).eq("id", editingTask.id);
+      if (error) { toast.error("更新失敗：" + error.message); return; }
+      toast.success("已更新備註與狀態");
+      setEditingTask(null);
+      fetchData();
+      return;
+    }
     if (editForm.amount_max < editForm.amount_min) {
       toast.error("最高金額不能小於最低金額");
       return;
