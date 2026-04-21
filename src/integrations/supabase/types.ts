@@ -1343,6 +1343,7 @@ export type Database = {
         Row: {
           admin_notes: string
           applied_at: string
+          applied_note: string | null
           completed_at: string | null
           deliverable_note: string | null
           deliverable_url: string | null
@@ -1359,6 +1360,7 @@ export type Database = {
         Insert: {
           admin_notes?: string
           applied_at?: string
+          applied_note?: string | null
           completed_at?: string | null
           deliverable_note?: string | null
           deliverable_url?: string | null
@@ -1375,6 +1377,7 @@ export type Database = {
         Update: {
           admin_notes?: string
           applied_at?: string
+          applied_note?: string | null
           completed_at?: string | null
           deliverable_note?: string | null
           deliverable_url?: string | null

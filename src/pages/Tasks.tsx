@@ -135,14 +135,16 @@ const Tasks = () => {
     return { available, pending, inProgress, totalRevenue };
   }, [tasksWithUserStatus]);
 
-  const handleApply = async (taskId: string, quotedAmount: number) => {
+  const handleApply = async (taskId: string, quotedAmount: number, appliedNote: string) => {
     if (!user) return;
     setApplying(taskId);
-    const { error } = await supabase.from("task_applications").insert({
+    const payload: Record<string, unknown> = {
       task_id: taskId,
       user_id: user.id,
       quoted_amount: quotedAmount,
-    });
+    };
+    if (appliedNote) payload.applied_note = appliedNote;
+    const { error } = await supabase.from("task_applications").insert(payload as never);
     setApplying(null);
     if (error) toast.error(error.message);
     else { toast.success("已送出報價，等待審核中！"); fetchData(); }
@@ -226,7 +228,7 @@ const Tasks = () => {
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">目前沒有符合條件的任務</div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filtered.map((task, i) => (
             <TaskCard
               key={task.id}
@@ -248,7 +250,7 @@ const Tasks = () => {
                 applicantCount: appCounts[task.id] || 0,
               }}
               delay={i * 0.03}
-              onApply={(q) => handleApply(task.id, q)}
+              onApply={(q, note) => handleApply(task.id, q, note)}
               onReportComplete={(url, note) => handleReportComplete(task.applicationId!, url, note)}
               applying={applying === task.id}
               reporting={reporting === task.applicationId}

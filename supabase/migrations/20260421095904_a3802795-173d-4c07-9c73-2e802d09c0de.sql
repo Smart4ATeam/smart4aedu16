@@ -1,0 +1,1 @@
+ALTER TABLE public.task_applications ADD COLUMN IF NOT EXISTS applied_note text;
