@@ -492,6 +492,7 @@ const AdminTasks = () => {
         <TabsList>
           <TabsTrigger value="tasks">任務列表</TabsTrigger>
           <TabsTrigger value="review">申請審核</TabsTrigger>
+          <TabsTrigger value="point-logs">積分發放紀錄</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>
 
