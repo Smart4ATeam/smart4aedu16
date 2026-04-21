@@ -243,8 +243,25 @@ const AdminTasks = () => {
     });
   };
 
+  const editingHasApplications = useMemo(
+    () => !!editingTask && applications.some(a => a.task_id === editingTask.id),
+    [editingTask, applications]
+  );
+
   const handleEditTask = async () => {
     if (!editingTask) return;
+    if (editingHasApplications) {
+      // 已有人申請：僅允許更新 admin_notes 與 status
+      const { error } = await supabase.from("tasks").update({
+        admin_notes: editForm.admin_notes,
+        status: editForm.status,
+      }).eq("id", editingTask.id);
+      if (error) { toast.error("更新失敗：" + error.message); return; }
+      toast.success("已更新備註與狀態");
+      setEditingTask(null);
+      fetchData();
+      return;
+    }
     if (editForm.amount_max < editForm.amount_min) {
       toast.error("最高金額不能小於最低金額");
       return;
@@ -713,22 +730,28 @@ const AdminTasks = () => {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>編輯任務</DialogTitle>
-            <DialogDescription>修改任務資訊</DialogDescription>
+            <DialogDescription>
+              {editingHasApplications ? "此任務已有學員申請，僅能調整狀態與管理員備註" : "修改任務資訊"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {editingHasApplications && (
+              <div className="rounded-md border border-chart-yellow/40 bg-chart-yellow/10 px-3 py-2 text-sm text-chart-yellow">
+                ⚠️ 已有學員申請此任務，內容已鎖定。如需大幅修改，請關閉此任務後另開新任務。
+              </div>
+            )}
             <FieldGroup label="任務標題">
-              <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+              <Input disabled={editingHasApplications} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
             </FieldGroup>
             <FieldGroup label="任務說明">
-              <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
+              <Textarea disabled={editingHasApplications} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
             </FieldGroup>
             <div className="grid grid-cols-2 gap-3">
               <FieldGroup label="任務等級">
-                <Select value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
+                <Select disabled={editingHasApplications} value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {activeDifficulties.map(d => <SelectItem key={d.id} value={d.label}>{d.label}</SelectItem>)}
-                    {/* 容錯：若舊任務的 difficulty 不在啟用清單，仍提供原值 */}
                     {editForm.difficulty && !activeDifficulties.find(d => d.label === editForm.difficulty) && (
                       <SelectItem value={editForm.difficulty}>{editForm.difficulty}（已停用）</SelectItem>
                     )}
@@ -736,7 +759,7 @@ const AdminTasks = () => {
                 </Select>
               </FieldGroup>
               <FieldGroup label="任務類別">
-                <Select value={editForm.category} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
+                <Select disabled={editingHasApplications} value={editForm.category} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {activeCategories.map(c => <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>)}
@@ -749,16 +772,16 @@ const AdminTasks = () => {
             </div>
             <FieldGroup label="報價區間" hint="學員報價需落在此範圍內">
               <div className="grid grid-cols-2 gap-3">
-                <Input type="number" placeholder="最低金額" value={editForm.amount_min || ""} onChange={(e) => setEditForm({ ...editForm, amount_min: Number(e.target.value) })} />
-                <Input type="number" placeholder="最高金額" value={editForm.amount_max || ""} onChange={(e) => setEditForm({ ...editForm, amount_max: Number(e.target.value) })} />
+                <Input disabled={editingHasApplications} type="number" placeholder="最低金額" value={editForm.amount_min || ""} onChange={(e) => setEditForm({ ...editForm, amount_min: Number(e.target.value) })} />
+                <Input disabled={editingHasApplications} type="number" placeholder="最高金額" value={editForm.amount_max || ""} onChange={(e) => setEditForm({ ...editForm, amount_max: Number(e.target.value) })} />
               </div>
             </FieldGroup>
             <FieldGroup label="技術標籤" hint="逗號分隔">
-              <Input value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
+              <Input disabled={editingHasApplications} value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
             </FieldGroup>
             <div className="grid grid-cols-2 gap-3">
               <FieldGroup label="截止日期">
-                <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
+                <Input disabled={editingHasApplications} type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
               </FieldGroup>
               <FieldGroup label="任務狀態">
                 <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
@@ -770,7 +793,7 @@ const AdminTasks = () => {
               </FieldGroup>
             </div>
             <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
-              <Input type="number" min={0} placeholder="例：50" value={editForm.reward_points || ""} onChange={(e) => setEditForm({ ...editForm, reward_points: Number(e.target.value) })} />
+              <Input disabled={editingHasApplications} type="number" min={0} placeholder="例：50" value={editForm.reward_points || ""} onChange={(e) => setEditForm({ ...editForm, reward_points: Number(e.target.value) })} />
             </FieldGroup>
             <FieldGroup label="管理員備註" hint="僅後台可見">
               <Textarea value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={2} />
