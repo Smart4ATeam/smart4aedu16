@@ -131,7 +131,8 @@ const AdminStudents = () => {
       .eq("user_id", profile.id);
     const userRoles = getRoles(profile.id);
     const pts = memberPointsMap.get(profile.id) ?? 0;
-    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts });
+    const taskPts = memberTaskPointsMap.get(profile.id) ?? 0;
+    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts, memberTaskPoints: taskPts });
     setShowDetail(true);
   };
 
