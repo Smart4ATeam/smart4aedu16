@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock } from "lucide-react";
+import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock, Coins } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -26,6 +26,7 @@ interface Task {
   quotedAmount?: number;
   finalAmount?: number;
   applicantCount?: number;
+  rewardPoints?: number;
 }
 
 interface TaskCardProps {
@@ -101,6 +102,12 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
               <DollarSign className="w-4 h-4 text-primary" />
               <span className="text-base font-bold text-primary">{amountRange}</span>
             </div>
+            {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
+              <div className="flex items-center gap-1 text-xs font-semibold text-chart-yellow border border-chart-yellow/30 bg-chart-yellow/10 px-2 py-0.5 rounded-md">
+                <Coins className="w-3.5 h-3.5" />
+                完成 +{task.rewardPoints} 點
+              </div>
+            )}
           </div>
           {statusBadge()}
         </div>
@@ -187,6 +194,9 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             {task.tags.length > 0 && <p><span className="text-muted-foreground">技術標籤：</span><span className="text-foreground">{task.tags.join("、")}</span></p>}
             {task.deadline && <p><span className="text-muted-foreground">截止日期：</span><span className="text-foreground">{task.deadline}</span></p>}
             <p><span className="text-muted-foreground">獎勵範圍：</span><span className="text-primary font-bold">${amountRange}</span></p>
+            {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
+              <p><span className="text-muted-foreground">完成積分：</span><span className="text-chart-yellow font-bold">+{task.rewardPoints} 點</span></p>
+            )}
             {task.failedReason && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                 <p className="text-xs text-muted-foreground mb-1">失敗原因：</p>

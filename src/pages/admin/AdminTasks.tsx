@@ -99,6 +99,60 @@ const AdminTasks = () => {
   // Stats cache for review table
   const [statsCache, setStatsCache] = useState<Record<string, UserStats>>({});
 
+  // 任務積分發放紀錄
+  type PointLog = {
+    id: string;
+    points_delta: number;
+    description: string | null;
+    created_at: string;
+    member_id: string;
+    member_name?: string;
+    member_no?: string;
+    task_title?: string;
+  };
+  const [pointLogs, setPointLogs] = useState<PointLog[]>([]);
+  const [pointLogsLoading, setPointLogsLoading] = useState(false);
+  const [pointLogSearch, setPointLogSearch] = useState("");
+
+  const fetchPointLogs = async () => {
+    setPointLogsLoading(true);
+    const { data, error } = await supabase
+      .from("reg_point_transactions")
+      .select("id, points_delta, description, created_at, member_id")
+      .like("description", "任務完成積分獎勵%")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) { toast.error("載入失敗：" + error.message); setPointLogsLoading(false); return; }
+    const memberIds = [...new Set((data ?? []).map(d => d.member_id))];
+    const { data: members } = memberIds.length
+      ? await supabase.from("reg_members").select("id, name, member_no").in("id", memberIds)
+      : { data: [] as { id: string; name: string; member_no: string | null }[] };
+    const memberMap = new Map((members ?? []).map(m => [m.id, m]));
+    const enriched: PointLog[] = (data ?? []).map(d => {
+      const m = memberMap.get(d.member_id);
+      const title = (d.description || "").replace(/^任務完成積分獎勵：?/, "").trim();
+      return {
+        id: d.id, points_delta: d.points_delta, description: d.description, created_at: d.created_at,
+        member_id: d.member_id, member_name: m?.name, member_no: m?.member_no || undefined,
+        task_title: title || "—",
+      };
+    });
+    setPointLogs(enriched);
+    setPointLogsLoading(false);
+  };
+
+  useEffect(() => { fetchPointLogs(); }, []);
+
+  const filteredPointLogs = useMemo(() => {
+    const q = pointLogSearch.trim().toLowerCase();
+    if (!q) return pointLogs;
+    return pointLogs.filter(p =>
+      (p.task_title || "").toLowerCase().includes(q) ||
+      (p.member_name || "").toLowerCase().includes(q) ||
+      (p.member_no || "").toLowerCase().includes(q)
+    );
+  }, [pointLogs, pointLogSearch]);
+
   // 統計卡片：日期區間
   const [statStart, setStatStart] = useState<string>("");
   const [statEnd, setStatEnd] = useState<string>("");
@@ -323,6 +377,7 @@ const AdminTasks = () => {
     setSelectedApplicant(null);
     setStatsCache({});
     fetchData();
+    fetchPointLogs();
   };
 
   const openRejectDialog = (id: string) => { setRejectTarget(id); setRejectReason(""); };
@@ -492,6 +547,7 @@ const AdminTasks = () => {
         <TabsList>
           <TabsTrigger value="tasks">任務列表</TabsTrigger>
           <TabsTrigger value="review">申請審核</TabsTrigger>
+          <TabsTrigger value="point-logs">積分發放紀錄</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>
 
@@ -568,6 +624,7 @@ const AdminTasks = () => {
                   <TableHead>類別</TableHead>
                   <TableHead>等級</TableHead>
                   <TableHead>金額範圍</TableHead>
+                  <TableHead>完成積分</TableHead>
                   <TableHead>截止日</TableHead>
                   <TableHead>申請</TableHead>
                   <TableHead>狀態</TableHead>
@@ -585,6 +642,13 @@ const AdminTasks = () => {
                       <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
                       <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
                       <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
+                      <TableCell className="text-sm">
+                        {(t as Task & { reward_points?: number }).reward_points ? (
+                          <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
+                            <Coins className="w-3.5 h-3.5" />+{(t as Task & { reward_points?: number }).reward_points}
+                          </span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setViewingTaskApplicants(t.id)} disabled={taskApps.length === 0}>
@@ -717,6 +781,59 @@ const AdminTasks = () => {
                 })}
               </TableBody>
             </Table>
+          </motion.div>
+        </TabsContent>
+
+        <TabsContent value="point-logs" className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Coins className="w-5 h-5 text-chart-yellow" />
+              <h3 className="text-base font-semibold">任務完成積分發放紀錄</h3>
+              <span className="text-xs text-muted-foreground">共 {filteredPointLogs.length} 筆</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="搜尋任務 / 接案人 / 學號"
+                value={pointLogSearch}
+                onChange={(e) => setPointLogSearch(e.target.value)}
+                className="w-64"
+              />
+              <Button size="sm" variant="outline" onClick={fetchPointLogs}>重新整理</Button>
+            </div>
+          </div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="glass-card p-5">
+            {pointLogsLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>發放時間</TableHead>
+                    <TableHead>任務</TableHead>
+                    <TableHead>接案人</TableHead>
+                    <TableHead>學號</TableHead>
+                    <TableHead className="text-right">積分</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPointLogs.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">尚無發放紀錄</TableCell></TableRow>
+                  ) : filteredPointLogs.map(log => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString("zh-TW")}</TableCell>
+                      <TableCell className="font-medium">{log.task_title}</TableCell>
+                      <TableCell>{log.member_name || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{log.member_no || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
+                          <Coins className="w-3.5 h-3.5" />+{log.points_delta}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </motion.div>
         </TabsContent>
 

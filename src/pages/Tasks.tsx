@@ -248,6 +248,7 @@ const Tasks = () => {
                 quotedAmount: task.quotedAmount,
                 finalAmount: task.finalAmount,
                 applicantCount: appCounts[task.id] || 0,
+                rewardPoints: Number((task as { reward_points?: number }).reward_points ?? 0),
               }}
               delay={i * 0.03}
               onApply={(q, note) => handleApply(task.id, q, note)}
