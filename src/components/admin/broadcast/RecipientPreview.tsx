@@ -13,12 +13,18 @@ export function RecipientPreview({ result, loading }: { result: PreviewResult | 
   }
 
   const list = expanded ? result.preview : result.sample;
+  const unactivated = result.unactivated_count || 0;
 
   return (
     <div className="border rounded p-3 space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Users className="w-4 h-4" /> 預計送達 <span className="text-primary">{result.total}</span> 位學員
+        <Users className="w-4 h-4" /> 預計送達 <span className="text-primary">{result.total}</span> 位已啟用學員
       </div>
+      {unactivated > 0 && (
+        <div className="text-xs text-muted-foreground">
+          ⚠️ 另有 <span className="font-medium text-foreground">{unactivated}</span> 位符合條件但尚未註冊網站帳號，無法收到訊息。
+        </div>
+      )}
       {result.total > 0 && (
         <>
           <ul className="text-xs text-muted-foreground space-y-0.5 max-h-40 overflow-auto">

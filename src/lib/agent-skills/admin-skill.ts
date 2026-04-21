@@ -313,7 +313,9 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
 { "recipient_filter": { "mode": "all" | "specific" | "filter", ... } }
 \`\`\`
 
-回傳：\`{ total, sample: [...前10位], preview: [...全部] }\`
+回傳：\`{ total, unactivated_count, sample: [...前10位], preview: [...全部] }\`
+- \`total\`：可實際收到訊息的「已啟用帳號」人數
+- \`unactivated_count\`：符合條件但 reg_member 尚未綁定 user（未註冊網站帳號），無法收訊息
 
 ### 11b. 發送廣播 \`api-admin-agent-broadcast\`
 
@@ -343,12 +345,17 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
   "filters": {
     "course_ids": ["uuid"],               // 上過任一堂
     "course_ids_all": ["uuid"],           // 必須全部都上過（與 course_ids 二擇一）
-    "session_ids": ["uuid"],              // 報名特定梯次
-    "session_date_from": "YYYY-MM-DD",
+    "session_keys": [                      // 報名特定梯次（用 course_id + session_date 配對）
+      { "course_id": "uuid", "session_date": "2026/04/16" }
+    ],
+    "session_date_from": "YYYY-MM-DD",    // ISO，後端會轉成 YYYY/MM/DD 比對
     "session_date_to":   "YYYY-MM-DD",
-    "enrollment_status": ["enrolled","paid","checked_in","completed"],
+    "enrollment_status": ["enrolled","confirmed","completed","cancelled"],
     "course_category":   ["basic","advanced","..."],
     "exclude_user_ids":  ["uuid"]
+    // ⚠️ 注意：reg_enrollments.session_id 多為 NULL，請務必用 session_keys 而非 session_ids
+    // ⚠️ session_date 在 DB 內為字串 "YYYY/MM/DD"（單日）或 "YYYY/MM/DD-MM/DD"（跨日）
+    // ⚠️ 預設會排除 status='cancelled'，除非明確列入 enrollment_status
   }
 }
 \`\`\`
@@ -371,7 +378,7 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
 | 「發給所有學員」 | \`{ mode: "all" }\` |
 | 「發給上過 Make 入門的」 | 先查 course_id → \`{ mode: "filter", filters: { course_ids: [入門 id] } }\` |
 | 「上過入門+初階的」 | \`{ mode: "filter", filters: { course_ids_all: [入門, 初階] } }\` |
-| 「7/9 入門梯次的學員」 | 查 session_id → \`{ mode: "filter", filters: { session_ids: [梯次 id] } }\` |
+| 「7/9 入門梯次的學員」 | 查梯次 course_id + start_date → \`{ mode: "filter", filters: { session_keys: [{ course_id: "...", session_date: "2026/07/09" }] } }\` |
 | 「8 月所有上課的人」 | \`{ mode: "filter", filters: { session_date_from: "2025-08-01", session_date_to: "2025-08-31" } }\` |
 | 「發給王小明跟陳大華」 | 先 search-members 拿 user_id → \`{ mode: "specific", user_ids: [...] }\` |
 

@@ -53,10 +53,11 @@ Deno.serve(async (req) => {
     if (!filter?.mode) return jsonResponse({ error: "recipient_filter.mode required" }, 400);
 
     const admin = getAdminClient();
-    const { user_ids, preview } = await resolveRecipients(admin, filter);
+    const { user_ids, preview, unactivated_count } = await resolveRecipients(admin, filter);
 
     return jsonResponse({
       total: user_ids.length,
+      unactivated_count,
       sample: preview.slice(0, 10),
       preview,
     });

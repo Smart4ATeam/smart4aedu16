@@ -7,13 +7,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import type { RecipientFilter } from "@/lib/broadcast/types";
+import { ENROLLMENT_STATUS_LABELS, type RecipientFilter, type SessionKey } from "@/lib/broadcast/types";
 
 interface Course { id: string; title: string; course_code: string | null; category: string }
 interface Session { id: string; course_id: string; start_date: string | null; title_suffix: string | null }
 interface MemberSearchResult { user_id: string; name: string; member_no: string | null; email: string | null }
 
-const STATUS_OPTS = ["enrolled", "paid", "checked_in", "completed"];
+const STATUS_OPTS = ["enrolled", "confirmed", "completed", "cancelled"];
+
+/** 把 ISO "YYYY-MM-DD" 轉成 DB 中 session_date 用的 "YYYY/MM/DD" */
+function isoToSlash(iso: string): string {
+  return iso.replace(/-/g, "/");
+}
 
 export function RecipientSelector({
   value,
@@ -53,10 +58,19 @@ export function RecipientSelector({
     updateFilters({ [key]: next, [requireAll ? "course_ids" : "course_ids_all"]: [] });
   };
 
-  const toggleSession = (id: string) => {
-    const current = value.filters?.session_ids || [];
-    const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
-    updateFilters({ session_ids: next });
+  const sessionKeyEq = (a: SessionKey, b: SessionKey) =>
+    a.course_id === b.course_id && a.session_date === b.session_date;
+
+  const toggleSession = (s: Session) => {
+    if (!s.start_date) return;
+    const key: SessionKey = {
+      course_id: s.course_id,
+      session_date: isoToSlash(s.start_date),
+    };
+    const current = value.filters?.session_keys || [];
+    const exists = current.find((x) => sessionKeyEq(x, key));
+    const next = exists ? current.filter((x) => !sessionKeyEq(x, key)) : [...current, key];
+    updateFilters({ session_keys: next });
   };
 
   const toggleStatus = (s: string) => {
@@ -138,14 +152,18 @@ export function RecipientSelector({
           <Label className="text-xs">梯次（多選）</Label>
           <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto p-2 border rounded mt-1">
             {sessions.slice(0, 50).map((s) => {
-              const active = (value.filters?.session_ids || []).includes(s.id);
+              if (!s.start_date) return null;
+              const key: SessionKey = { course_id: s.course_id, session_date: isoToSlash(s.start_date) };
+              const active = (value.filters?.session_keys || []).some(
+                (x) => sessionKeyEq(x, key),
+              );
               const course = courses.find((c) => c.id === s.course_id);
               return (
                 <Badge
                   key={s.id}
                   variant={active ? "default" : "outline"}
                   className="cursor-pointer"
-                  onClick={() => toggleSession(s.id)}
+                  onClick={() => toggleSession(s)}
                 >
                   {s.start_date} {course?.title}{s.title_suffix ? ` ${s.title_suffix}` : ""}
                 </Badge>
@@ -154,28 +172,33 @@ export function RecipientSelector({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-xs">日期起</Label>
-            <Input type="date" value={value.filters?.session_date_from || ""}
-              onChange={(e) => updateFilters({ session_date_from: e.target.value || undefined })} />
+        <div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">梯次日期範圍 — 起（選填）</Label>
+              <Input type="date" value={value.filters?.session_date_from || ""}
+                onChange={(e) => updateFilters({ session_date_from: e.target.value || undefined })} />
+            </div>
+            <div>
+              <Label className="text-xs">梯次日期範圍 — 迄（選填）</Label>
+              <Input type="date" value={value.filters?.session_date_to || ""}
+                onChange={(e) => updateFilters({ session_date_to: e.target.value || undefined })} />
+            </div>
           </div>
-          <div>
-            <Label className="text-xs">日期迄</Label>
-            <Input type="date" value={value.filters?.session_date_to || ""}
-              onChange={(e) => updateFilters({ session_date_to: e.target.value || undefined })} />
-          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            💡 不勾梯次時，可用此區間批次抓某段時間所有梯次的學員。
+          </p>
         </div>
 
         <div>
-          <Label className="text-xs">報名狀態</Label>
+          <Label className="text-xs">報名狀態（不選 = 預設排除「已取消」）</Label>
           <div className="flex flex-wrap gap-1.5 mt-1">
             {STATUS_OPTS.map((s) => {
               const active = (value.filters?.enrollment_status || []).includes(s);
               return (
                 <Badge key={s} variant={active ? "default" : "outline"}
                   className="cursor-pointer" onClick={() => toggleStatus(s)}>
-                  {s}
+                  {ENROLLMENT_STATUS_LABELS[s] || s}
                 </Badge>
               );
             })}
