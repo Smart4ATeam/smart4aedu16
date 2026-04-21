@@ -48,6 +48,39 @@ ${SUPABASE_FUNCTIONS_BASE}
 \`sessions\` 為該課程目前 \`status=scheduled\` 且尚未過期的所有梯次（含 \`start_date / end_date / location / registration_url\`）。
 若要查跨課程的梯次（例如「5 月有哪些課」），請用 \`/api-agent-sessions\`。
 
+### 2.5 開課梯次查詢（跨課程，按日期）
+\`GET /api-agent-sessions\`
+
+可選查詢參數：
+- \`course_id\`：指定課程
+- \`category\`：例如 \`basic\` / \`quest\`
+- \`date_from\` / \`date_to\`：YYYY-MM-DD，**用於「5 月有哪些課」「下個月開哪幾梯」這類問題**
+- \`status\`：預設 \`scheduled\`（可報名），可傳 \`all\`
+- \`upcoming=true\`：只回 \`start_date >= 今天\`
+
+回傳：
+\`\`\`json
+{
+  "sessions": [{
+    "id": "...",
+    "course_id": "...",
+    "title_suffix": "5月梯",
+    "start_date": "2026-05-09",
+    "end_date": "2026-05-10",
+    "location": "台北",
+    "max_students": 20,
+    "price": 6000,
+    "registration_url": "https://...",
+    "status": "scheduled",
+    "course": { "title": "基礎課", "course_code": "...", "category": "basic", "price": 6000 }
+  }],
+  "total": 1
+}
+\`\`\`
+
+> 僅回傳 \`courses.status='published'\` 的課程下的梯次。
+> 若要查「某月開哪些課」，**一定要用這支**，不要只查 \`/api-agent-courses\`（那支沒有日期欄位）。
+
 ### 3. 我的報名／出席記錄
 \`GET /api-agent-my-enrollments\`
 
