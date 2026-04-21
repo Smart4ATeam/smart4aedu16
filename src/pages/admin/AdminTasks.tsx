@@ -580,6 +580,10 @@ const AdminTasks = () => {
             </Table>
           </motion.div>
         </TabsContent>
+
+        <TabsContent value="options">
+          <TaskOptionsManager />
+        </TabsContent>
       </Tabs>
 
       {/* Edit Task Dialog */}
