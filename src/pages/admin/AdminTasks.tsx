@@ -73,6 +73,7 @@ const AdminTasks = () => {
   const [applicantStats, setApplicantStats] = useState<UserStats | null>(null);
   const [applicantHistory, setApplicantHistory] = useState<(Tables<"task_applications"> & { task_title?: string })[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [reviewTaskFilter, setReviewTaskFilter] = useState<string>("all");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [viewingTaskApplicants, setViewingTaskApplicants] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -527,11 +528,19 @@ const AdminTasks = () => {
     return "";
   };
 
+  const reviewTaskOptions = useMemo(() => {
+    const ids = new Set(applications.map(a => a.task_id));
+    return tasks.filter(t => ids.has(t.id));
+  }, [tasks, applications]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const filteredApps = applications.filter(a => statusFilter === "all" || a.status === statusFilter);
+  const filteredApps = applications.filter(a =>
+    (statusFilter === "all" || a.status === statusFilter) &&
+    (reviewTaskFilter === "all" || a.task_id === reviewTaskFilter)
+  );
   const selectableApps = filteredApps.filter(a => a.status === "applied");
 
   return (
@@ -790,6 +799,20 @@ const AdminTasks = () => {
                 {f.label}
               </Button>
             ))}
+            <Select value={reviewTaskFilter} onValueChange={(v) => { setReviewTaskFilter(v); setSelectedAppIds(new Set()); }}>
+              <SelectTrigger className="h-9 w-[240px]">
+                <SelectValue placeholder="篩選任務" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部任務</SelectItem>
+                {reviewTaskOptions.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {reviewTaskFilter !== "all" && (
+              <Button size="sm" variant="ghost" onClick={() => setReviewTaskFilter("all")}>清除任務篩選</Button>
+            )}
             {selectedAppIds.size > 0 && (
               <div className="ml-auto flex gap-2">
                 <span className="text-xs text-muted-foreground self-center">已選 {selectedAppIds.size} 筆</span>
