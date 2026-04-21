@@ -18,10 +18,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { difficultyColors } from "@/lib/category-colors";
+import { useTaskOptions } from "@/hooks/useTaskOptions";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Task = Tables<"tasks">;
@@ -39,7 +41,6 @@ interface UserStats {
   success_rate: number;
 }
 
-const DIFFICULTY_OPTIONS = ["初級", "中級", "高級"];
 const TASK_STATUSES = [
   { value: "available", label: "已發布" },
   { value: "in_progress", label: "進行中" },
@@ -49,6 +50,7 @@ const TASK_STATUSES = [
 
 const AdminTasks = () => {
   const { user } = useAuth();
+  const { activeDifficulties, activeCategories, categoryLabel } = useTaskOptions();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [applications, setApplications] = useState<TaskApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -372,25 +374,46 @@ const AdminTasks = () => {
                 <DialogTitle>發布新任務</DialogTitle>
                 <DialogDescription>設定任務詳細資訊與金額範圍</DialogDescription>
               </DialogHeader>
-              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                <Input placeholder="任務標題" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
-                <Textarea placeholder="任務描述" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} rows={3} />
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                <FieldGroup label="任務標題" hint="學員列表上看到的主標題，請簡潔有力">
+                  <Input placeholder="例：協助製作 LINE 官方帳號自動回覆機器人" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} />
+                </FieldGroup>
+                <FieldGroup label="任務說明" hint="詳細需求、交付標準、可用工具等">
+                  <Textarea placeholder="任務內容、預期交付物、驗收標準..." value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} rows={3} />
+                </FieldGroup>
                 <div className="grid grid-cols-2 gap-3">
-                  <Select value={newTask.difficulty} onValueChange={(v) => setNewTask({ ...newTask, difficulty: v })}>
-                    <SelectTrigger><SelectValue placeholder="難度" /></SelectTrigger>
-                    <SelectContent>
-                      {DIFFICULTY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input placeholder="類別（如：開發、設計）" value={newTask.category} onChange={(e) => setNewTask({ ...newTask, category: e.target.value })} />
+                  <FieldGroup label="任務等級" hint="影響推薦對象">
+                    <Select value={newTask.difficulty} onValueChange={(v) => setNewTask({ ...newTask, difficulty: v })}>
+                      <SelectTrigger><SelectValue placeholder="請選擇" /></SelectTrigger>
+                      <SelectContent>
+                        {activeDifficulties.map(d => <SelectItem key={d.id} value={d.label}>{d.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FieldGroup>
+                  <FieldGroup label="任務類別" hint="用於分類與篩選">
+                    <Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}>
+                      <SelectTrigger><SelectValue placeholder="請選擇" /></SelectTrigger>
+                      <SelectContent>
+                        {activeCategories.map(c => <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FieldGroup>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input type="number" placeholder="最低金額" value={newTask.amount_min || ""} onChange={(e) => setNewTask({ ...newTask, amount_min: Number(e.target.value) })} />
-                  <Input type="number" placeholder="最高金額" value={newTask.amount_max || ""} onChange={(e) => setNewTask({ ...newTask, amount_max: Number(e.target.value) })} />
-                </div>
-                <Input placeholder="技術標籤（逗號分隔）" value={newTask.tags} onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })} />
-                <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
-                <Textarea placeholder="管理員內部備註（學員看不到）" value={newTask.admin_notes} onChange={(e) => setNewTask({ ...newTask, admin_notes: e.target.value })} rows={2} />
+                <FieldGroup label="報價區間" hint="學員報價需落在此範圍內，超出會被擋下">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input type="number" placeholder="最低金額" value={newTask.amount_min || ""} onChange={(e) => setNewTask({ ...newTask, amount_min: Number(e.target.value) })} />
+                    <Input type="number" placeholder="最高金額" value={newTask.amount_max || ""} onChange={(e) => setNewTask({ ...newTask, amount_max: Number(e.target.value) })} />
+                  </div>
+                </FieldGroup>
+                <FieldGroup label="技術標籤" hint="逗號分隔，例：Dify, Make.com, n8n">
+                  <Input placeholder="Dify, Make.com" value={newTask.tags} onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })} />
+                </FieldGroup>
+                <FieldGroup label="截止日期" hint="過期後系統會自動關閉，留空表示無期限">
+                  <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
+                </FieldGroup>
+                <FieldGroup label="管理員備註" hint="僅後台可見，學員看不到">
+                  <Textarea placeholder="例：客戶聯絡方式、預算來源、注意事項" value={newTask.admin_notes} onChange={(e) => setNewTask({ ...newTask, admin_notes: e.target.value })} rows={2} />
+                </FieldGroup>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowNewTask(false)}>取消</Button>
@@ -421,7 +444,7 @@ const AdminTasks = () => {
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px]">{t.category || "general"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
                       <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
                       <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
@@ -564,31 +587,63 @@ const AdminTasks = () => {
             <DialogTitle>編輯任務</DialogTitle>
             <DialogDescription>修改任務資訊</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="標題" />
-            <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} placeholder="描述" />
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <FieldGroup label="任務標題">
+              <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+            </FieldGroup>
+            <FieldGroup label="任務說明">
+              <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
+            </FieldGroup>
             <div className="grid grid-cols-2 gap-3">
-              <Select value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{DIFFICULTY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} placeholder="類別" />
+              <FieldGroup label="任務等級">
+                <Select value={editForm.difficulty} onValueChange={(v) => setEditForm({ ...editForm, difficulty: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {activeDifficulties.map(d => <SelectItem key={d.id} value={d.label}>{d.label}</SelectItem>)}
+                    {/* 容錯：若舊任務的 difficulty 不在啟用清單，仍提供原值 */}
+                    {editForm.difficulty && !activeDifficulties.find(d => d.label === editForm.difficulty) && (
+                      <SelectItem value={editForm.difficulty}>{editForm.difficulty}（已停用）</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </FieldGroup>
+              <FieldGroup label="任務類別">
+                <Select value={editForm.category} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {activeCategories.map(c => <SelectItem key={c.id} value={c.value}>{c.label}</SelectItem>)}
+                    {editForm.category && !activeCategories.find(c => c.value === editForm.category) && (
+                      <SelectItem value={editForm.category}>{categoryLabel(editForm.category)}（已停用）</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </FieldGroup>
             </div>
+            <FieldGroup label="報價區間" hint="學員報價需落在此範圍內">
+              <div className="grid grid-cols-2 gap-3">
+                <Input type="number" placeholder="最低金額" value={editForm.amount_min || ""} onChange={(e) => setEditForm({ ...editForm, amount_min: Number(e.target.value) })} />
+                <Input type="number" placeholder="最高金額" value={editForm.amount_max || ""} onChange={(e) => setEditForm({ ...editForm, amount_max: Number(e.target.value) })} />
+              </div>
+            </FieldGroup>
+            <FieldGroup label="技術標籤" hint="逗號分隔">
+              <Input value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
+            </FieldGroup>
             <div className="grid grid-cols-2 gap-3">
-              <Input type="number" placeholder="最低金額" value={editForm.amount_min || ""} onChange={(e) => setEditForm({ ...editForm, amount_min: Number(e.target.value) })} />
-              <Input type="number" placeholder="最高金額" value={editForm.amount_max || ""} onChange={(e) => setEditForm({ ...editForm, amount_max: Number(e.target.value) })} />
+              <FieldGroup label="截止日期">
+                <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
+              </FieldGroup>
+              <FieldGroup label="任務狀態">
+                <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FieldGroup>
             </div>
-            <Input placeholder="技術標籤（逗號分隔）" value={editForm.tags} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} />
-            <div className="grid grid-cols-2 gap-3">
-              <Input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} />
-              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TASK_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Textarea placeholder="管理員內部備註（學員看不到）" value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={2} />
+            <FieldGroup label="管理員備註" hint="僅後台可見">
+              <Textarea value={editForm.admin_notes} onChange={(e) => setEditForm({ ...editForm, admin_notes: e.target.value })} rows={2} />
+            </FieldGroup>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTask(null)}>取消</Button>
@@ -856,6 +911,16 @@ function InfoItem({ label, value }: { label: string; value: string }) {
     <div className="glass-card p-2.5 rounded-lg">
       <p className="text-[10px] text-muted-foreground mb-0.5">{label}</p>
       <p className="text-sm font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function FieldGroup({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-foreground">{label}</Label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>}
     </div>
   );
 }
