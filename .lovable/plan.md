@@ -1,98 +1,69 @@
 
 
-## 目標
-Admin Agent 擴充學習中心相關 function：課程/梯次/合作單位/講師 CRUD、訂單/報名明細查詢、成就頒發/撤銷。所有寫入操作（特別是刪除）必須先在 Skill 中要求 Agent 跟管理者口頭確認。
+# 修復 Joyce 報名 / 學習進度查不到的問題
 
-## 設計策略
+## 根本原因（已查證）
 
-### Endpoint 拆分原則
-為避免單一 function 過大，按「實體」分檔，每支 function 內以 `action` 區分動作（GET 用 query string、寫入用 POST body 帶 `action`）。全部複用 `verify-admin-token.ts` + 寫 `reg_operation_logs`。
+我直接撈資料對齊，找到兩個問題：
 
-### 新增的 Edge Functions（共 6 支）
+### 問題 1：`api-agent-my-enrollments` 用錯欄位
+這支端點是用 `reg_enrollments.user_id = <登入者>` 來撈，但 Joyce 那 6 筆 enrollments 的 `user_id` 全部是 **NULL**，只有 `member_id` 有值。
 
-| Function | Methods / Actions | 說明 |
-|---|---|---|
-| `api-admin-agent-courses` | GET 列表/單筆、POST `create`/`update`/`delete` | 課程 CRUD |
-| `api-admin-agent-sessions` | GET 列表（帶 course/date/status filter）、POST `create`/`update`/`delete` | 梯次 CRUD |
-| `api-admin-agent-partners` | GET 列表、POST `create`/`update`/`delete` | 合作單位 CRUD |
-| `api-admin-agent-instructors` | GET 列表、POST `create`/`update`/`delete` | 講師 CRUD |
-| `api-admin-agent-registrations` | GET `orders`（搜尋訂單）、GET `enrollments`（搜尋報名明細） | 報名報到查詢 |
-| `api-admin-agent-achievements` | GET 列表、POST `award`/`revoke` | 成就頒發/撤銷 |
+- profile 與 reg_member 已正確綁定（`profiles.id` = `reg_members.user_id` = `741f8db…`）
+- 但 enrollments 是由 `api-reg-split` 在訂單拆解時建立的，那支只寫了 `member_id`、沒寫 `user_id`
+- 之後 Joyce 才綁定帳號，舊 enrollments 的 `user_id` 沒被回填 → 端點查不到
 
-### 報名明細查詢設計（重點）
-`GET /api-admin-agent-registrations?type=enrollments` 支援組合條件：
-- `q`：關鍵字（比對學員姓名 / member_no / email / phone / 訂單編號）
-- `course_id` 或 `course_code`（可任一）
-- `session_date_from` / `session_date_to`：日期區間
-- `status`：`enrolled | paid | checked_in | cancelled | completed`
-- `payment_status`：`pending | paid | refunded`
-- `checked_in`：`true|false`
-- `limit`（預設 50、最多 200）/ `offset`
+正確的查法應該透過 `reg_members.user_id → reg_members.id → reg_enrollments.member_id` 這條路徑。
 
-回傳每筆含：學員姓名 / member_no / email / phone、課程名稱 / course_code、session_date、status、payment_status、checked_in、test_score、enrolled_at。
-另外回 `summary`：`{ total, by_status: {...}, by_course: [...] }` 讓 Agent 可摘要。
+### 問題 2：`api-agent-my-progress` 查的是空表
+這支查的是 `user_learning_progress` 表，但 Joyce 在這張表裡 **沒有任何資料**（0 筆）。
 
-訂單查詢 `?type=orders` 支援：`q`（訂單號 / P1~P3 姓名 / email / phone）、`payment_status`、`date_from/to`、`limit/offset`。
+事實上整個系統的「課程完成 / 學習進度」是由 `reg_enrollments.status`（`enrolled` / `completed` / `cancelled`）在表達的，`user_learning_progress` 是另一條舊的學習路徑系統，目前並沒有跟報名系統打通。
 
-### 安全規範（寫進 Skill）
-1. **新增/修改**：Agent 必須先用自然語言完整覆述所有欄位，操作者明確同意才送 `confirm: true`
-2. **刪除**：必須兩段式確認
-   - 先呼叫 GET 取得該筆資料 → 念出「要刪除：[名稱/標題/學員]，這個動作無法復原」
-   - 操作者明確說「確認刪除」才送 `confirm: true` + `confirm_delete: true`（雙旗標）
-3. **撤銷成就**：等同刪除，需雙確認
-4. 所有寫入 / 刪除都記錄到 `reg_operation_logs`（entity_type 對應 `course/session/partner/instructor/enrollment/achievement_award`）
+Joyce 的真實學習進度（從 enrollments 推得）：
+- 入門課（quest）2026/04/16 → **completed**
+- 基礎課（basic）2026/05/09-10 → **enrolled**（已繳費，待上課）
+- 另有 4 筆 cancelled 的舊紀錄
 
-### 必填欄位定義（Skill 中明列）
+## 修改方案
 
-| 實體 | 新增必填 | 修改 | 刪除 |
-|---|---|---|---|
-| 課程 | title | id + 任一欄位 | id + confirm_delete |
-| 梯次 | course_id, start_date, end_date | id | id + confirm_delete |
-| 合作單位 | name | id | id + confirm_delete |
-| 講師 | name | id | id + confirm_delete |
-| 頒發成就 | user_id 或 student_id 或 email, achievement_id 或 achievement_name | — | award_id + confirm_delete |
+### 1. 修 `supabase/functions/api-agent-my-enrollments/index.ts`
+改成走 `reg_members` 中介查詢：
+1. 先用 `user_id` 查 `reg_members.id`
+2. 再用 `member_id` 查 `reg_enrollments`（這樣不管是新舊資料、之後綁定都查得到）
+3. 同時順便把對應的課程資訊（title / course_code / category）一起回傳，Agent 不必再多一次查詢
+4. 預設過濾掉 `status = 'cancelled'`，可加 `?include_cancelled=true` 還原
 
-### Skill 文件擴充（`admin-skill.ts`）
-在現有 admin skill 後追加 6 個新區塊：「課程管理 / 梯次管理 / 合作單位 / 講師 / 報名查詢 / 成就管理」，每個區塊含端點、欄位表、確認流程範例對話。
+### 2. 修 `supabase/functions/api-agent-my-progress/index.ts`
+這支改成「以 enrollments 為事實來源」，不再查 `user_learning_progress`。回傳：
+- `completed_courses`：`status = completed` 的課程清單（含完成日、測驗分數、證書）
+- `in_progress_courses`：`status = enrolled` 且已繳費的課程（含 session_date）
+- 仍支援 `?completed=true|false` 篩選
 
-範例對話（刪除）：
-```
-使用者：把「Make 進階班」這個課程刪掉
-Agent：[GET courses?q=Make 進階班] 找到課程「Make 進階班 (course_code: MK-ADV-001)」，
-      狀態：published、已有 3 個梯次。
-      ⚠️ 刪除課程會影響相關梯次與報名資料，無法復原。
-      確認要刪除嗎？
-使用者：確認刪除
-Agent：[POST action=delete with confirm=true, confirm_delete=true]
-      已刪除。
-```
+如果你之後還想保留 `user_learning_progress` 給「自學路徑」用，這支可加 `source=path` 參數切回舊邏輯，預設走 enrollments。
 
-## 變動檔案
+### 3. 補資料：回填舊 enrollments 的 `user_id`
+寫一支 migration，一次性把所有 `reg_enrollments.user_id IS NULL` 但對應 `reg_members.user_id` 已綁定的紀錄補上，並建立一個 trigger：往後 `reg_members.user_id` 一旦設定，自動把該 member 名下所有 enrollments 的 `user_id` 同步補齊。這樣未來不管哪支端點用 `user_id` 查都不會再漏。
 
+### 4. 同步更新 `src/lib/agent-skills/learning-skill.ts`
+把 `/api-agent-my-enrollments` 與 `/api-agent-my-progress` 的回傳欄位、`include_cancelled` 參數、以及「進度=來自 enrollments」的說明補進去，讓 Agent 給管理者/學員的回覆更精準。
+
+## 不會動到的部分
+- 不動 `reg_members` / `reg_enrollments` 的 schema 結構（只回填資料 + 加 trigger）
+- 不動學員端 UI（Learning 頁原本就是用 member_id 的方式查，本來就看得到）
+- 不動 admin Agent 端點
+
+## 影響檔案總覽
 | 檔案 | 動作 |
 |---|---|
-| `supabase/functions/api-admin-agent-courses/index.ts` | 新建 |
-| `supabase/functions/api-admin-agent-sessions/index.ts` | 新建 |
-| `supabase/functions/api-admin-agent-partners/index.ts` | 新建 |
-| `supabase/functions/api-admin-agent-instructors/index.ts` | 新建 |
-| `supabase/functions/api-admin-agent-registrations/index.ts` | 新建 |
-| `supabase/functions/api-admin-agent-achievements/index.ts` | 新建 |
-| `src/lib/agent-skills/admin-skill.ts` | 擴充新區塊 |
-
-### 不動的部分
-- 不動現有 admin UI、不動學員端 Agent、不動資料表 schema、不動其他 edge functions
-- 共用現有 `user_api_tokens` + `verify-admin-token.ts`
+| `supabase/functions/api-agent-my-enrollments/index.ts` | 改查詢邏輯 |
+| `supabase/functions/api-agent-my-progress/index.ts` | 改為從 enrollments 推導 |
+| `src/lib/agent-skills/learning-skill.ts` | 更新 Skill 文件 |
+| 新 migration | 回填 `reg_enrollments.user_id` + 建立同步 trigger |
 
 ## 需要你確認
 
-1. **梯次刪除若已有報名怎麼處理？** 三選一：
-   - (a) 直接拒絕刪除，回 `HAS_ENROLLMENTS` 錯誤（最安全，建議）
-   - (b) 允許刪除但連帶刪 enrollments
-   - (c) 允許刪除但保留 enrollments（孤兒資料）
-
-2. **課程/合作單位/講師被引用時的刪除策略？** 同上，建議一律 (a) 拒絕，回傳引用數量。
-
-3. **報名明細查詢是否要包含已 cancelled 的？** 預設排除，可用 `include_cancelled=true` 加回來。
-
-4. **這次先做這 6 支？** 之後若要再加（例如：批次建立梯次、匯入報名、寄通知信）可下輪擴充。
+1. **學習進度資料來源**：同意改成「以 reg_enrollments 為主」嗎？（這是目前實際在用的那套）`user_learning_progress` 那張表先擱著、不刪，未來如要做自學路徑再啟用。
+2. **trigger 範圍**：trigger 在 `reg_members.user_id` 從 NULL 變成有值時觸發，把對應 enrollments 全部補上 user_id。同意嗎？
+3. **cancelled 預設**：學員端 Agent 查自己的報名，預設要不要排除已取消的？我傾向 **預設排除**，加 `?include_cancelled=true` 才顯示（避免一堆舊取消單干擾）。
 
