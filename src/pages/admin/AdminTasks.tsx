@@ -425,7 +425,7 @@ const AdminTasks = () => {
 
       <Tabs defaultValue="tasks" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="tasks">任務管理</TabsTrigger>
+          <TabsTrigger value="tasks">任務列表</TabsTrigger>
           <TabsTrigger value="review">申請審核</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>
