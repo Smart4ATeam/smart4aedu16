@@ -105,7 +105,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
               <div className="flex items-center gap-1 text-xs font-semibold text-chart-yellow border border-chart-yellow/30 bg-chart-yellow/10 px-2 py-0.5 rounded-md">
                 <Coins className="w-3.5 h-3.5" />
-                完成 +{task.rewardPoints} 點
+                完成 +{task.rewardPoints} 分
               </div>
             )}
           </div>
@@ -195,7 +195,7 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
             {task.deadline && <p><span className="text-muted-foreground">截止日期：</span><span className="text-foreground">{task.deadline}</span></p>}
             <p><span className="text-muted-foreground">獎勵範圍：</span><span className="text-primary font-bold">${amountRange}</span></p>
             {task.rewardPoints !== undefined && task.rewardPoints > 0 && (
-              <p><span className="text-muted-foreground">完成積分：</span><span className="text-chart-yellow font-bold">+{task.rewardPoints} 點</span></p>
+              <p><span className="text-muted-foreground">完成積分：</span><span className="text-chart-yellow font-bold">+{task.rewardPoints} 分</span></p>
             )}
             {task.failedReason && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
