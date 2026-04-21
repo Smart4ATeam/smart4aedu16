@@ -348,6 +348,7 @@ function PlatformUsersTab({
                 <TableHead>姓名</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>學號</TableHead>
+                <TableHead>點數</TableHead>
                 <TableHead>積分</TableHead>
                 <TableHead>學習天數</TableHead>
                 <TableHead>加入日期</TableHead>
@@ -361,6 +362,7 @@ function PlatformUsersTab({
                   <TableCell className="text-xs text-muted-foreground">{p.email || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{p.student_id || "—"}</TableCell>
                   <TableCell className="text-xs">{memberPointsMap.get(p.id)?.toLocaleString() ?? 0}</TableCell>
+                  <TableCell className="text-xs">{memberTaskPointsMap.get(p.id)?.toLocaleString() ?? 0}</TableCell>
                   <TableCell className="text-xs">{p.learning_days} 天</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("zh-TW")}</TableCell>
                   <TableCell>
@@ -369,7 +371,7 @@ function PlatformUsersTab({
                 </TableRow>
               ))}
               {filteredActivated.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">沒有符合條件的使用者</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">沒有符合條件的使用者</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
