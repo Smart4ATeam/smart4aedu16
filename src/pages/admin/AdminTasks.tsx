@@ -377,6 +377,7 @@ const AdminTasks = () => {
     setSelectedApplicant(null);
     setStatsCache({});
     fetchData();
+    fetchPointLogs();
   };
 
   const openRejectDialog = (id: string) => { setRejectTarget(id); setRejectReason(""); };
