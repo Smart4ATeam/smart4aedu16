@@ -9,4 +9,5 @@ export interface StudentDetail {
   roles: UserRole[];
   progress: LearningProgress[];
   memberPoints?: number;
+  memberTaskPoints?: number;
 }
