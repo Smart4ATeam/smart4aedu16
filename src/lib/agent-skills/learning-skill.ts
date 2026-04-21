@@ -40,11 +40,13 @@ ${SUPABASE_FUNCTIONS_BASE}
 
 > 本 API 僅回傳 \`status = published\` 的課程，未上架課程不會出現。
 
-### 2. 課程詳情（含單元與內容）
+### 2. 課程詳情（含單元、內容、開課梯次）
 \`GET /api-agent-courses?id=<course_id>\`
 
-回傳：\`{ course, units: [{ id, title, sections: [...] }] }\`
+回傳：\`{ course, units: [{ id, title, sections: [...] }], sessions: [...] }\`
 \`course\` 物件同上，包含 \`registration_url\` 可作為報名連結。
+\`sessions\` 為該課程目前 \`status=scheduled\` 且尚未過期的所有梯次（含 \`start_date / end_date / location / registration_url\`）。
+若要查跨課程的梯次（例如「5 月有哪些課」），請用 \`/api-agent-sessions\`。
 
 ### 3. 我的報名／出席記錄
 \`GET /api-agent-my-enrollments\`
