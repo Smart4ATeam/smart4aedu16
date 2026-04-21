@@ -423,6 +423,11 @@ function RegMembersTab() {
   const [editingMember, setEditingMember] = useState<RegMember | null>(null);
   const [editFields, setEditFields] = useState({ name: "", phone: "", email: "", notes: "" });
   const [detailMember, setDetailMember] = useState<RegMember | null>(null);
+  const [loginEmailMember, setLoginEmailMember] = useState<RegMember | null>(null);
+  const [newLoginEmail, setNewLoginEmail] = useState("");
+  const [bindMember, setBindMember] = useState<RegMember | null>(null);
+  const [bindSearch, setBindSearch] = useState("");
+  const [bindSelectedUserId, setBindSelectedUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -442,6 +447,33 @@ function RegMembersTab() {
         .order("created_at", { ascending: false });
       if (error) return [] as RegMember[];
       return (data || []) as RegMember[];
+    },
+  });
+
+  // 取得已綁定使用者的 profile email（顯示登入相關 email 用）
+  const boundUserIds = members.map(m => m.user_id).filter(Boolean) as string[];
+  const { data: boundProfiles = [] } = useQuery({
+    queryKey: ["reg-bound-profiles", boundUserIds.sort().join(",")],
+    enabled: boundUserIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, email, display_name").in("id", boundUserIds);
+      return data || [];
+    },
+  });
+  const profileMap = new Map(boundProfiles.map(p => [p.id, p as { id: string; email: string | null; display_name: string }]));
+
+  // 綁定 dialog 用：搜尋未綁定的 profiles
+  const { data: searchProfiles = [] } = useQuery({
+    queryKey: ["bind-search-profiles", bindSearch],
+    enabled: !!bindMember && bindSearch.length >= 2,
+    queryFn: async () => {
+      const s = `%${bindSearch}%`;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, email, student_id")
+        .or(`display_name.ilike.${s},email.ilike.${s},student_id.ilike.${s}`)
+        .limit(20);
+      return data || [];
     },
   });
 
@@ -479,9 +511,65 @@ function RegMembersTab() {
       });
     },
     onSuccess: () => {
-      toast.success("學員資料已更新");
+      toast.success("學員資料已更新（已自動同步至平台帳號顯示資料）");
       queryClient.invalidateQueries({ queryKey: ["reg-members-paid"] });
+      queryClient.invalidateQueries({ queryKey: ["reg-bound-profiles"] });
       setEditingMember(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateLoginEmailMutation = useMutation({
+    mutationFn: async () => {
+      if (!loginEmailMember?.user_id) throw new Error("此學員尚未綁定平台帳號");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newLoginEmail)) throw new Error("請輸入合法 Email");
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-login-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ user_id: loginEmailMember.user_id, new_email: newLoginEmail }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "變更失敗");
+    },
+    onSuccess: () => {
+      toast.success("登入 Email 已三邊同步更新");
+      queryClient.invalidateQueries({ queryKey: ["reg-members-paid"] });
+      queryClient.invalidateQueries({ queryKey: ["reg-bound-profiles"] });
+      setLoginEmailMember(null);
+      setNewLoginEmail("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bindMutation = useMutation({
+    mutationFn: async () => {
+      if (!bindMember || !bindSelectedUserId) throw new Error("請選擇要綁定的使用者");
+      const { error } = await (supabase as any)
+        .from("reg_members")
+        .update({ user_id: bindSelectedUserId })
+        .eq("id", bindMember.id);
+      if (error) throw error;
+      await (supabase as any).from("reg_operation_logs").insert({
+        entity_type: "member", entity_id: bindMember.id, action: "manual_bind_user",
+        new_value: { user_id: bindSelectedUserId },
+        reason: "管理員手動綁定報名學員到平台帳號", operated_by: user?.id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("已綁定平台帳號");
+      queryClient.invalidateQueries({ queryKey: ["reg-members-paid"] });
+      queryClient.invalidateQueries({ queryKey: ["reg-bound-profiles"] });
+      setBindMember(null);
+      setBindSearch("");
+      setBindSelectedUserId(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -489,6 +577,11 @@ function RegMembersTab() {
   const openEdit = (m: RegMember) => {
     setEditingMember(m);
     setEditFields({ name: m.name, phone: m.phone || "", email: m.email || "", notes: m.notes || "" });
+  };
+
+  const openLoginEmail = (m: RegMember) => {
+    setLoginEmailMember(m);
+    setNewLoginEmail(profileMap.get(m.user_id || "")?.email || m.email || "");
   };
 
   const filtered = members.filter(m => {
@@ -501,6 +594,8 @@ function RegMembersTab() {
     const map: Record<string, string> = { enrolled: "已報名", completed: "已完課", cancelled: "已取消", attended: "已出席" };
     return map[s] || s;
   };
+
+  const editingLoginEmail = editingMember?.user_id ? profileMap.get(editingMember.user_id)?.email : null;
 
   return (
     <div className="space-y-4 mt-4">
@@ -520,36 +615,50 @@ function RegMembersTab() {
               <TableHead>姓名</TableHead>
               <TableHead>電話</TableHead>
               <TableHead>信箱</TableHead>
+              <TableHead className="w-24">綁定狀態</TableHead>
               <TableHead className="w-20">點數</TableHead>
               <TableHead className="w-28">建立日期</TableHead>
-              <TableHead className="w-24">操作</TableHead>
+              <TableHead className="w-32">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
-            ) : filtered.map(m => (
-              <TableRow key={m.id}>
-                <TableCell className="font-mono text-xs">{m.member_no || "—"}</TableCell>
-                <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{m.phone || "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{m.email || "—"}</TableCell>
-                <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailMember(m)} title="查看詳情">
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)} title="編輯資料">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
+            ) : filtered.map(m => {
+              const bound = !!m.user_id;
+              return (
+                <TableRow key={m.id}>
+                  <TableCell className="font-mono text-xs">{m.member_no || "—"}</TableCell>
+                  <TableCell className="font-medium">{m.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{m.phone || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{m.email || "—"}</TableCell>
+                  <TableCell>
+                    {bound
+                      ? <Badge variant="default" className="text-[10px]">已綁定</Badge>
+                      : <Badge variant="secondary" className="text-[10px]">未綁定</Badge>}
+                  </TableCell>
+                  <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailMember(m)} title="查看詳情">
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)} title="編輯資料">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      {!bound && (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setBindMember(m); setBindSearch(""); setBindSelectedUserId(null); }} title="綁定平台帳號">
+                          綁定
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -568,6 +677,12 @@ function RegMembersTab() {
                 <div><span className="text-muted-foreground">信箱：</span>{detailMember.email || "—"}</div>
                 <div><span className="text-muted-foreground">點數：</span>{detailMember.points}</div>
                 <div><span className="text-muted-foreground">課程等級：</span>{detailMember.course_level || "—"}</div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">平台帳號：</span>
+                  {detailMember.user_id
+                    ? <span className="text-green-600 dark:text-green-400">已綁定（{profileMap.get(detailMember.user_id)?.email || "—"}）</span>
+                    : <span className="text-muted-foreground">未綁定</span>}
+                </div>
               </div>
               {detailMember.notes && (
                 <div><span className="text-muted-foreground">備註：</span>{detailMember.notes}</div>
@@ -615,8 +730,18 @@ function RegMembersTab() {
               <Input value={editFields.phone} onChange={e => setEditFields(f => ({ ...f, phone: e.target.value }))} className="h-9" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">信箱</label>
+              <label className="text-xs text-muted-foreground">信箱（通訊／顯示用，不影響登入帳號）</label>
               <Input value={editFields.email} onChange={e => setEditFields(f => ({ ...f, email: e.target.value }))} className="h-9" />
+              {editingMember?.user_id && (
+                <div className="flex items-center justify-between gap-2 text-[11px] mt-1">
+                  <span className="text-muted-foreground">
+                    目前登入 Email：<span className="font-mono">{editingLoginEmail || "—"}</span>
+                  </span>
+                  <Button variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => { setEditingMember(null); openLoginEmail(editingMember); }}>
+                    變更登入 Email
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">備註</label>
@@ -626,6 +751,100 @@ function RegMembersTab() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingMember(null)}>取消</Button>
             <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editFields.name.trim()}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Login Email Dialog */}
+      <Dialog open={!!loginEmailMember} onOpenChange={v => { if (!v) { setLoginEmailMember(null); setNewLoginEmail(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>變更登入 Email</DialogTitle>
+            <DialogDescription>
+              將同步更新 <strong>登入帳號 + 平台顯示 + 報名資料</strong> 三邊的 Email
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground">
+              學員：{loginEmailMember?.name}（{loginEmailMember?.member_no || "—"}）<br />
+              目前登入 Email：<span className="font-mono">{profileMap.get(loginEmailMember?.user_id || "")?.email || "—"}</span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">新登入 Email</label>
+              <Input
+                type="email"
+                value={newLoginEmail}
+                onChange={e => setNewLoginEmail(e.target.value)}
+                placeholder="new-email@example.com"
+                className="h-9"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              ⚠️ 變更後使用者必須以新 Email 登入，請務必通知本人。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLoginEmailMember(null)}>取消</Button>
+            <Button
+              onClick={() => updateLoginEmailMutation.mutate()}
+              disabled={updateLoginEmailMutation.isPending || !newLoginEmail.trim()}
+            >
+              {updateLoginEmailMutation.isPending ? "更新中…" : "確認變更"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bind User Dialog */}
+      <Dialog open={!!bindMember} onOpenChange={v => { if (!v) { setBindMember(null); setBindSearch(""); setBindSelectedUserId(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>綁定平台帳號</DialogTitle>
+            <DialogDescription>
+              將「{bindMember?.name}（{bindMember?.member_no || "—"}）」綁定到既有的平台使用者
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="輸入姓名、Email 或學號搜尋（至少 2 字）"
+                className="pl-9 h-9"
+                value={bindSearch}
+                onChange={e => { setBindSearch(e.target.value); setBindSelectedUserId(null); }}
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto border border-border rounded-md divide-y divide-border">
+              {bindSearch.length < 2 ? (
+                <p className="text-xs text-muted-foreground p-3 text-center">輸入至少 2 字開始搜尋</p>
+              ) : searchProfiles.length === 0 ? (
+                <p className="text-xs text-muted-foreground p-3 text-center">查無使用者</p>
+              ) : searchProfiles.map((p: any) => (
+                <button
+                  key={p.id}
+                  onClick={() => setBindSelectedUserId(p.id)}
+                  className={cn(
+                    "w-full text-left px-3 py-2 hover:bg-accent transition-colors",
+                    bindSelectedUserId === p.id && "bg-accent"
+                  )}
+                >
+                  <div className="text-sm font-medium flex items-center gap-1.5">
+                    {p.display_name}
+                    {bindSelectedUserId === p.id && <Check className="w-3.5 h-3.5 text-primary" />}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{p.email || "—"} {p.student_id && `· ${p.student_id}`}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBindMember(null)}>取消</Button>
+            <Button
+              onClick={() => bindMutation.mutate()}
+              disabled={bindMutation.isPending || !bindSelectedUserId}
+            >
+              {bindMutation.isPending ? "綁定中…" : "確認綁定"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
