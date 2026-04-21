@@ -293,8 +293,14 @@ Deno.serve(async (req) => {
       status: 201,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error("api-resource-trial error:", err);
+    if (err?.code === "23505") {
+      return new Response(
+        JSON.stringify({ error: "今日已領用過此資源，請明天再試", code: "ALREADY_CLAIMED_TODAY" }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     const message = err instanceof Error ? err.message : JSON.stringify(err);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
