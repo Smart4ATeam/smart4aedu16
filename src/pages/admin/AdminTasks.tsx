@@ -444,7 +444,7 @@ const AdminTasks = () => {
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px]">{t.category || "general"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
                       <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
                       <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
