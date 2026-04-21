@@ -502,10 +502,12 @@ Body：\`{ "resource_id": "<uuid>" }\`
 - \`NO_TEMPLATE_FILE\` / \`NO_APP_ID\`：資源設定不完整
 - \`MISSING_ORG_ID\`：學員尚未填組織編號（請引導去設定頁）
 - \`DAILY_LIMIT_REACHED\`：今日該類別已領過（429）
+- \`ALREADY_CLAIMED_TODAY\`：競態下重複領取同一資源（409，等同每日限制觸發）
 - \`SIGNED_URL_FAILED\` / \`INTERNAL_ERROR\`：系統錯誤
 
 #### 領取規則（請務必遵守並向學員說明）
 - **每天每類別只能領 1 個**（套件 / 模板分開計算，台灣時間 UTC+8 當日）
+- **試用序號 / 下載連結 24 小時內有效**；隔天可重新領取同一資源（不再受「同一資源僅能領一次」限制）
 - 領取前必須先設定 \`organization_id\`（組織編號）
 - 套件序號需等 webhook 回拋，不會在 claim 回應中直接給；請呼叫 my-trials 查詢
 - 範本連結為 signed URL，**24 小時後失效**，逾期需重新領取
