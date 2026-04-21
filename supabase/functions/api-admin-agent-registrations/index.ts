@@ -1,39 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
-
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-async function verifyAdmin(req: Request): Promise<{ ok: boolean; userId?: string; status?: number; error?: string }> {
-  const auth = req.headers.get("Authorization") ?? req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) return { ok: false, status: 401, error: "Missing bearer token" };
-  const token = auth.slice(7);
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const admin = createClient(url, serviceKey);
-  const { data: u, error: uErr } = await admin.auth.getUser(token);
-  if (uErr || !u?.user) return { ok: false, status: 401, error: "Invalid token" };
-  const { data: hasRole, error: rErr } = await admin.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-  if (rErr) return { ok: false, status: 500, error: "Role check failed" };
-  if (!hasRole) return { ok: false, status: 403, error: "Forbidden: admin role required" };
-  return { ok: true, userId: u.user.id };
-}
+import { verifyAdminToken, jsonResponse, corsHeaders } from "../_shared/verify-admin-token.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405);
 
-  const v = await verifyAdmin(req);
+  const v = await verifyAdminToken(req);
   if (!v.ok) return jsonResponse({ error: v.error }, v.status ?? 401);
 
   const admin = createClient(
