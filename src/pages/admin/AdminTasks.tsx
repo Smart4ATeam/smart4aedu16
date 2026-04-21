@@ -664,33 +664,109 @@ const AdminTasks = () => {
                   const taskApps = applications.filter(a => a.task_id === t.id);
                   const min = Number(t.amount_min ?? t.amount);
                   const max = Number(t.amount_max ?? t.amount);
+                  const isExpanded = expandedTaskId === t.id;
                   return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
-                      <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
-                      <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
-                      <TableCell className="text-sm">
-                        {(t as Task & { reward_points?: number }).reward_points ? (
-                          <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
-                            <Coins className="w-3.5 h-3.5" />+{(t as Task & { reward_points?: number }).reward_points}
-                          </span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setViewingTaskApplicants(t.id)} disabled={taskApps.length === 0}>
-                          <Users className="w-3.5 h-3.5" />{taskApps.length}
-                        </Button>
-                      </TableCell>
-                      <TableCell><Badge className={statusColor(t.status)}>{statusLabel(t.status)}</Badge></TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEditTask(t)}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(t.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow key={t.id} className={isExpanded ? "border-b-0" : ""}>
+                        <TableCell className="font-medium">{t.title}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[10px]">{categoryLabel(t.category || "general")}</Badge></TableCell>
+                        <TableCell><Badge className={`text-xs border ${difficultyColors[t.difficulty] || ""}`}>{t.difficulty}</Badge></TableCell>
+                        <TableCell className="text-sm">{min === max ? `$${min.toLocaleString()}` : `$${min.toLocaleString()} ~ $${max.toLocaleString()}`}</TableCell>
+                        <TableCell className="text-sm">
+                          {(t as Task & { reward_points?: number }).reward_points ? (
+                            <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
+                              <Coins className="w-3.5 h-3.5" />+{(t as Task & { reward_points?: number }).reward_points}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{t.deadline || "—"}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-xs"
+                            onClick={() => setExpandedTaskId(isExpanded ? null : t.id)}
+                            disabled={taskApps.length === 0}
+                          >
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            <Users className="w-3.5 h-3.5" />{taskApps.length}
+                          </Button>
+                        </TableCell>
+                        <TableCell><Badge className={statusColor(t.status)}>{statusLabel(t.status)}</Badge></TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditTask(t)}><Pencil className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(t.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && taskApps.length > 0 && (
+                        <TableRow key={t.id + "-expanded"} className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell colSpan={9} className="py-3">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+                                <Users className="w-3.5 h-3.5" />
+                                申請者列表（{taskApps.length}）
+                              </div>
+                              <div className="rounded-md border border-border bg-background overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                                      <TableHead className="h-8 text-xs">接案人員</TableHead>
+                                      <TableHead className="h-8 text-xs">學號 / Email</TableHead>
+                                      <TableHead className="h-8 text-xs">申請時間</TableHead>
+                                      <TableHead className="h-8 text-xs">報價</TableHead>
+                                      <TableHead className="h-8 text-xs">狀態</TableHead>
+                                      <TableHead className="h-8 text-xs">戰績（成/敗/率）</TableHead>
+                                      <TableHead className="h-8 text-xs text-right">操作</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {taskApps.map((a) => {
+                                      const s = statsCache[a.user_id];
+                                      return (
+                                        <TableRow key={a.id}>
+                                          <TableCell className="py-2">
+                                            <div className="flex items-center gap-2">
+                                              <Avatar className="w-6 h-6">
+                                                {a.applicant?.avatar_url ? <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} /> : null}
+                                                <AvatarFallback className="text-[10px] bg-muted">{a.applicant?.display_name?.slice(0, 1) || "?"}</AvatarFallback>
+                                              </Avatar>
+                                              <span className="text-xs font-medium">{a.applicant?.display_name || "未知"}</span>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell className="py-2 text-xs text-muted-foreground">{a.applicant?.student_id || a.applicant?.email || "—"}</TableCell>
+                                          <TableCell className="py-2 text-xs text-muted-foreground">{new Date(a.applied_at).toLocaleString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</TableCell>
+                                          <TableCell className="py-2 text-xs">{a.quoted_amount ? `$${Number(a.quoted_amount).toLocaleString()}` : "—"}</TableCell>
+                                          <TableCell className="py-2"><Badge className={`text-[10px] ${statusColor(a.status)}`}>{statusLabel(a.status)}</Badge></TableCell>
+                                          <TableCell className="py-2">
+                                            {s ? (
+                                              <div className="flex items-center gap-1 text-xs">
+                                                <TrendingUp className="w-3 h-3 text-muted-foreground" />
+                                                <span className="text-chart-green">{s.completed_count}</span>
+                                                <span className="text-muted-foreground">/</span>
+                                                <span className="text-destructive">{s.failed_count}</span>
+                                                <span className="text-muted-foreground">/</span>
+                                                <span className="font-semibold">{s.success_rate}%</span>
+                                              </div>
+                                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                                          </TableCell>
+                                          <TableCell className="py-2 text-right">
+                                            <Button size="sm" variant="ghost" className="h-7" onClick={() => openApplicantDetail(a)} title="查看詳情">
+                                              <Eye className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   );
                 })}
               </TableBody>
