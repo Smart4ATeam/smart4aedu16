@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Send, Megaphone } from "lucide-react";
+import { Send, Megaphone, Eye, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,11 +15,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { RecipientSelector } from "@/components/admin/broadcast/RecipientSelector";
 import { RecipientPreview } from "@/components/admin/broadcast/RecipientPreview";
+import { MessageContent } from "@/components/messages/MessageContent";
 import type { RecipientFilter, PreviewResult } from "@/lib/broadcast/types";
 
 interface BroadcastConversation {
@@ -28,6 +32,7 @@ interface BroadcastConversation {
   category: string;
   created_at: string;
   recipient_count: number | null;
+  content: string;
 }
 
 const AdminBroadcast = () => {
@@ -40,16 +45,31 @@ const AdminBroadcast = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [viewing, setViewing] = useState<BroadcastConversation | null>(null);
   const debounceRef = useRef<number | null>(null);
 
   const fetchBroadcasts = async () => {
-    const { data } = await supabase
+    const { data: convs } = await supabase
       .from("conversations")
       .select("id,title,category,created_at,recipient_count")
       .eq("category", "system")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (data) setBroadcasts(data);
+    if (!convs) { setLoading(false); return; }
+
+    const ids = convs.map((c) => c.id);
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("conversation_id,content,created_at")
+      .in("conversation_id", ids)
+      .order("created_at", { ascending: true });
+
+    const contentMap = new Map<string, string>();
+    msgs?.forEach((m) => {
+      if (!contentMap.has(m.conversation_id)) contentMap.set(m.conversation_id, m.content);
+    });
+
+    setBroadcasts(convs.map((c) => ({ ...c, content: contentMap.get(c.id) ?? "" })));
     setLoading(false);
   };
 
@@ -108,6 +128,20 @@ const AdminBroadcast = () => {
     return "bg-muted text-muted-foreground";
   };
 
+  const getPriority = (title: string) =>
+    title.includes("緊急") ? "緊急" : title.includes("重要") ? "重要" : "一般";
+
+  const truncate = (s: string, n = 60) => (s.length > n ? s.slice(0, n) + "…" : s);
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("已複製內容");
+    } catch {
+      toast.error("複製失敗");
+    }
+  };
+
   const canSend = form.title && form.content && (preview?.total ?? 0) > 0;
 
   if (loading) {
@@ -139,7 +173,12 @@ const AdminBroadcast = () => {
         <div className="space-y-2">
           <h4 className="text-xs font-medium text-muted-foreground">3. 訊息內容</h4>
           <Input placeholder="標題" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <Textarea placeholder="內容" rows={4} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+          <Textarea
+            placeholder="內容（支援換行；貼上 https:// 網址會自動變成連結）"
+            rows={4}
+            value={form.content}
+            onChange={(e) => setForm({ ...form, content: e.target.value })}
+          />
           <div className="flex gap-3">
             <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
@@ -161,7 +200,9 @@ const AdminBroadcast = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12"></TableHead>
               <TableHead>標題</TableHead>
+              <TableHead>內容預覽</TableHead>
               <TableHead>重要程度</TableHead>
               <TableHead>收件人數</TableHead>
               <TableHead>日期</TableHead>
@@ -169,13 +210,19 @@ const AdminBroadcast = () => {
           </TableHeader>
           <TableBody>
             {broadcasts.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">尚無廣播紀錄</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">尚無廣播紀錄</TableCell></TableRow>
             ) : broadcasts.map((b) => (
-              <TableRow key={b.id}>
+              <TableRow key={b.id} className="cursor-pointer" onClick={() => setViewing(b)}>
+                <TableCell>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setViewing(b); }}>
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
+                </TableCell>
                 <TableCell className="font-medium">{b.title}</TableCell>
-                <TableCell><Badge className={priorityColor(b.title)}>
-                  {b.title.includes("緊急") ? "緊急" : b.title.includes("重要") ? "重要" : "一般"}
-                </Badge></TableCell>
+                <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                  {b.content ? truncate(b.content) : <span className="italic opacity-60">（無內容）</span>}
+                </TableCell>
+                <TableCell><Badge className={priorityColor(b.title)}>{getPriority(b.title)}</Badge></TableCell>
                 <TableCell className="text-xs">{b.recipient_count ?? "—"}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{new Date(b.created_at).toLocaleDateString("zh-TW")}</TableCell>
               </TableRow>
@@ -200,6 +247,40 @@ const AdminBroadcast = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewing && <Badge className={priorityColor(viewing.title)}>{getPriority(viewing.title)}</Badge>}
+              <span className="flex-1">{viewing?.title}</span>
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-3 text-xs">
+              <span>{viewing && new Date(viewing.created_at).toLocaleString("zh-TW")}</span>
+              <span>·</span>
+              <span>收件人 {viewing?.recipient_count ?? "—"} 人</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-muted/30 p-4 max-h-[50vh] overflow-y-auto text-sm">
+            {viewing?.content ? (
+              <MessageContent text={viewing.content} />
+            ) : (
+              <span className="text-muted-foreground italic">（無內容）</span>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => viewing && handleCopy(viewing.content)}
+              disabled={!viewing?.content}
+            >
+              <Copy className="w-3.5 h-3.5" /> 複製內容
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
