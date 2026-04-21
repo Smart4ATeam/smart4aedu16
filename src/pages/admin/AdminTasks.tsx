@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins } from "lucide-react";
+import { StatCard } from "@/components/StatCard";
 import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
