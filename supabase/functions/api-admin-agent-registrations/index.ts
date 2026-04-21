@@ -41,8 +41,31 @@ Deno.serve(async (req) => {
     // enrollments
     const courseId = url.searchParams.get("course_id");
     const courseCode = url.searchParams.get("course_code");
-    const sessionDateFrom = url.searchParams.get("session_date_from");
-    const sessionDateTo = url.searchParams.get("session_date_to");
+    // session_date 在 DB 是 text，格式為 YYYY/MM/DD 或 YYYY/MM/DD-MM/DD，需在 JS 層解析過濾
+    const normalizeDate = (s: string | null): string | null => {
+      if (!s) return null;
+      const t = s.trim();
+      // YYYY-MM-DD 或 YYYY/MM/DD
+      let m = t.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+      // M/D 或 MM/DD（補當年）
+      m = t.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) {
+        const y = new Date().getFullYear();
+        return `${y}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+      }
+      return null;
+    };
+    const sessionDateFrom = normalizeDate(url.searchParams.get("session_date_from"));
+    const sessionDateTo = normalizeDate(url.searchParams.get("session_date_to"));
+    const parseSessionDate = (raw: string | null): string | null => {
+      if (!raw) return null;
+      // 取區間首日："2025/04/26-04/27" → "2025/04/26"；"2025/04/26" → "2025/04/26"
+      const head = raw.split("-")[0].trim();
+      const m = head.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (!m) return null;
+      return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    };
     const status = url.searchParams.get("status");
     const paymentStatus = url.searchParams.get("payment_status");
     const checkedIn = url.searchParams.get("checked_in");
