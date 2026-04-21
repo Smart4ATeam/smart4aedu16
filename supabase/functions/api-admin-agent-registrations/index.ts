@@ -106,10 +106,28 @@ Deno.serve(async (req) => {
       query = query.or(filters.join(","));
     }
 
-    const { data, error, count } = await query.range(offset, offset + limit - 1);
+    // 若需 JS 層日期過濾，先抓更大範圍（最多 2000 筆），最後再切片
+    const needJsDateFilter = !!(sessionDateFrom || sessionDateTo);
+    const fetchLimit = needJsDateFilter ? 2000 : limit;
+    const fetchOffset = needJsDateFilter ? 0 : offset;
+    const { data, error } = await query.range(fetchOffset, fetchOffset + fetchLimit - 1);
     if (error) return jsonResponse({ error: error.message }, 500);
 
-    const flat = (data ?? []).map((e: any) => ({
+    let rows = data ?? [];
+    if (needJsDateFilter) {
+      rows = rows.filter((e: any) => {
+        const d = parseSessionDate(e.session_date);
+        if (!d) return false;
+        if (sessionDateFrom && d < sessionDateFrom) return false;
+        if (sessionDateTo && d > sessionDateTo) return false;
+        return true;
+      });
+    }
+
+    const totalCount = needJsDateFilter ? rows.length : (rows.length); // 後者會以 count 取代下方
+    const pagedRows = needJsDateFilter ? rows.slice(offset, offset + limit) : rows;
+
+    const flat = pagedRows.map((e: any) => ({
       enrollment_id: e.id,
       member_name: e.reg_members?.name ?? null,
       member_no: e.reg_members?.member_no ?? null,
