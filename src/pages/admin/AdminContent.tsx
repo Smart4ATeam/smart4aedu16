@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search, FileUp } from "lucide-react";
+import { Plus, Trash2, Star, Upload, X, FileSpreadsheet, Settings2, Download, ImagePlus, Pencil, Eye, EyeOff, Copy, Check, Search, FileUp, Package, Flame, FlaskConical, DownloadCloud, LayoutGrid, Beaker } from "lucide-react";
+import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
