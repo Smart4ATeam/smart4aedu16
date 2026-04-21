@@ -1,5 +1,10 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+export interface SessionKey {
+  course_id: string;
+  session_date: string; // 可能是 "YYYY/MM/DD" 或 "YYYY/MM/DD-MM/DD"
+}
+
 export interface RecipientFilter {
   mode: "all" | "specific" | "filter";
   user_ids?: string[];
@@ -7,9 +12,9 @@ export interface RecipientFilter {
   filters?: {
     course_ids?: string[];
     course_ids_all?: string[];
-    session_ids?: string[];
-    session_date_from?: string;
-    session_date_to?: string;
+    session_keys?: SessionKey[];
+    session_date_from?: string; // ISO YYYY-MM-DD
+    session_date_to?: string;   // ISO YYYY-MM-DD
     enrollment_status?: string[];
     course_category?: string[];
     exclude_user_ids?: string[];
@@ -19,6 +24,7 @@ export interface RecipientFilter {
 export interface ResolveResult {
   user_ids: string[];
   preview: { user_id: string; name: string; email: string | null; member_no: string | null }[];
+  unactivated_count: number;
 }
 
 export function getAdminClient(): SupabaseClient {
@@ -27,12 +33,18 @@ export function getAdminClient(): SupabaseClient {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-/** 解析 recipient_filter → 已啟用學員 user_id 清單 + 預覽資料。 */
+/** ISO "YYYY-MM-DD" → "YYYY/MM/DD"（DB 內 session_date 字串格式） */
+function isoToSlash(iso: string): string {
+  return iso.replace(/-/g, "/");
+}
+
+/** 解析 recipient_filter → 已啟用學員 user_id 清單 + 預覽 + 未啟用人數。 */
 export async function resolveRecipients(
   admin: SupabaseClient,
   filter: RecipientFilter,
 ): Promise<ResolveResult> {
   let userIds = new Set<string>();
+  let unactivatedCount = 0;
 
   if (filter.mode === "all") {
     const { data } = await admin.from("profiles").select("id").eq("activated", true);
@@ -50,60 +62,98 @@ export async function resolveRecipients(
   } else if (filter.mode === "filter") {
     const f = filter.filters || {};
 
-    // Build base enrollments query
+    // 取得所有符合條件的 enrollment 列（含 user_id IS NULL 的，用來算 unactivated_count）
     let q = admin.from("reg_enrollments").select("user_id, course_id, session_id, status, session_date");
 
     if (f.course_ids?.length) q = q.in("course_id", f.course_ids);
-    if (f.session_ids?.length) q = q.in("session_id", f.session_ids);
-    if (f.enrollment_status?.length) q = q.in("status", f.enrollment_status);
-    if (f.session_date_from) q = q.gte("session_date", f.session_date_from);
-    if (f.session_date_to) q = q.lte("session_date", f.session_date_to);
 
-    // course_category needs course join
-    let allowedCourseIds: string[] | null = null;
+    // status：未指定時預設排除 cancelled；指定則完全照使用者選的
+    if (f.enrollment_status?.length) {
+      q = q.in("status", f.enrollment_status);
+    } else {
+      q = q.neq("status", "cancelled");
+    }
+
+    // course_category 需要 join courses
     if (f.course_category?.length) {
       const { data: cs } = await admin.from("courses").select("id").in("category", f.course_category);
-      allowedCourseIds = (cs || []).map((c: { id: string }) => c.id);
+      const allowedCourseIds = (cs || []).map((c: { id: string }) => c.id);
+      if (allowedCourseIds.length === 0) {
+        return { user_ids: [], preview: [], unactivated_count: 0 };
+      }
       q = q.in("course_id", allowedCourseIds);
     }
 
-    const { data: enrollments } = await q.not("user_id", "is", null);
-    const rows = (enrollments || []) as { user_id: string; course_id: string | null }[];
-
-    if (f.course_ids_all?.length) {
-      // require user has enrollment in EVERY course in course_ids_all
-      const userToCourses = new Map<string, Set<string>>();
-      for (const r of rows) {
-        if (!r.user_id || !r.course_id) continue;
-        if (!userToCourses.has(r.user_id)) userToCourses.set(r.user_id, new Set());
-        userToCourses.get(r.user_id)!.add(r.course_id);
+    // session_keys：用 (course_id, session_date LIKE) 配對。session_date 可能是 "YYYY/MM/DD" 或 "YYYY/MM/DD-MM/DD"
+    if (f.session_keys?.length) {
+      const orParts: string[] = [];
+      for (const sk of f.session_keys) {
+        // session_date 格式：開頭一定是 YYYY/MM/DD（單日或跨日字串都吃）
+        orParts.push(`and(course_id.eq.${sk.course_id},session_date.like.${sk.session_date}%)`);
       }
-      // we need ALL courses → fetch separately if course_ids was empty
-      let extraRows = rows;
-      if (!f.course_ids?.length) {
-        const { data: extra } = await admin
-          .from("reg_enrollments")
-          .select("user_id, course_id")
-          .in("course_id", f.course_ids_all)
-          .not("user_id", "is", null);
-        extraRows = (extra || []) as { user_id: string; course_id: string | null }[];
-        for (const r of extraRows) {
-          if (!r.user_id || !r.course_id) continue;
-          if (!userToCourses.has(r.user_id)) userToCourses.set(r.user_id, new Set());
-          userToCourses.get(r.user_id)!.add(r.course_id);
-        }
-      }
-      const required = new Set(f.course_ids_all);
-      for (const [uid, set] of userToCourses) {
-        let ok = true;
-        for (const c of required) if (!set.has(c)) { ok = false; break; }
-        if (ok) userIds.add(uid);
-      }
-    } else {
-      rows.forEach((r) => r.user_id && userIds.add(r.user_id));
+      q = q.or(orParts.join(","));
     }
 
-    // Filter to activated users only
+    // session_date_from / to：把 ISO 轉成 YYYY/MM/DD 後做字串比對（格式固定可以排序）
+    if (f.session_date_from) q = q.gte("session_date", isoToSlash(f.session_date_from));
+    if (f.session_date_to) {
+      // 用 lte 比對到 "YYYY/MM/DD~"（斜線 / 後面任何字元，把跨日字串也含進來）
+      q = q.lte("session_date", isoToSlash(f.session_date_to) + "~");
+    }
+
+    const { data: enrollments } = await q;
+    const rows = (enrollments || []) as { user_id: string | null; course_id: string | null }[];
+
+    // 統計未啟用 (user_id IS NULL) 的筆數，用 member 維度去重
+    // 簡單算：直接以「user_id 為 null 的列數」回報（避免再多查），UI 顯示「另有 N 筆無法收訊息」
+    let candidateRows = rows;
+
+    if (f.course_ids_all?.length) {
+      // 必須全部都上過。需要每個 user 的完整課程集合
+      const { data: extra } = await admin
+        .from("reg_enrollments")
+        .select("user_id, course_id")
+        .in("course_id", f.course_ids_all)
+        .not("user_id", "is", null)
+        .neq("status", "cancelled");
+      const userToCourses = new Map<string, Set<string>>();
+      (extra || []).forEach((r: { user_id: string | null; course_id: string | null }) => {
+        if (!r.user_id || !r.course_id) return;
+        if (!userToCourses.has(r.user_id)) userToCourses.set(r.user_id, new Set());
+        userToCourses.get(r.user_id)!.add(r.course_id);
+      });
+      const required = new Set(f.course_ids_all);
+      const ok = new Set<string>();
+      for (const [uid, set] of userToCourses) {
+        let pass = true;
+        for (const c of required) if (!set.has(c)) { pass = false; break; }
+        if (pass) ok.add(uid);
+      }
+      // 如果同時有其他條件，跟 candidateRows 取交集
+      const candidateUserIds = new Set(
+        candidateRows.filter((r) => r.user_id).map((r) => r.user_id as string),
+      );
+      const hasOtherFilters =
+        (f.course_ids?.length || 0) > 0 ||
+        (f.session_keys?.length || 0) > 0 ||
+        !!f.session_date_from ||
+        !!f.session_date_to ||
+        (f.course_category?.length || 0) > 0;
+      if (hasOtherFilters) {
+        for (const uid of ok) if (candidateUserIds.has(uid)) userIds.add(uid);
+      } else {
+        ok.forEach((uid) => userIds.add(uid));
+      }
+      // unactivated 在 course_ids_all 模式下意義不大，仍以 candidateRows 為準
+      unactivatedCount = candidateRows.filter((r) => !r.user_id).length;
+    } else {
+      candidateRows.forEach((r) => {
+        if (r.user_id) userIds.add(r.user_id);
+      });
+      unactivatedCount = candidateRows.filter((r) => !r.user_id).length;
+    }
+
+    // 過濾出已啟用的 user
     if (userIds.size > 0) {
       const ids = [...userIds];
       const { data: prof } = await admin
@@ -112,6 +162,8 @@ export async function resolveRecipients(
         .in("id", ids)
         .eq("activated", true);
       const activated = new Set((prof || []).map((p: { id: string }) => p.id));
+      const inactive = ids.filter((id) => !activated.has(id));
+      unactivatedCount += inactive.length;
       userIds = new Set([...ids].filter((id) => activated.has(id)));
     }
 
@@ -129,7 +181,6 @@ export async function resolveRecipients(
     (members || []).forEach((m: { user_id: string; name: string; email: string | null; member_no: string | null }) => {
       if (m.user_id) byUser.set(m.user_id, { name: m.name, email: m.email, member_no: m.member_no });
     });
-    // fallback to profiles for names
     const missing = ids.filter((id) => !byUser.has(id));
     if (missing.length > 0) {
       const { data: profs } = await admin
@@ -148,5 +199,5 @@ export async function resolveRecipients(
     }));
   }
 
-  return { user_ids: ids, preview };
+  return { user_ids: ids, preview, unactivated_count: unactivatedCount };
 }
