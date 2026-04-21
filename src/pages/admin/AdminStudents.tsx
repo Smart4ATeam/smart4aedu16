@@ -31,14 +31,14 @@ import { EditDataDialog } from "@/components/admin/students/EditDataDialog";
 // ── Reg types ──
 type RegMember = {
   id: string; member_no: string | null; name: string; phone: string | null;
-  email: string | null; course_level: string | null; points: number;
+  email: string | null; course_level: string | null; points: number; task_points: number;
   referral_code: string | null; notes: string | null; created_at: string;
   user_id: string | null;
 };
 
 type RegPointTx = {
   id: string; member_id: string; order_id: string | null;
-  points_delta: number; type: string; description: string | null; created_at: string;
+  points_delta: number; type: string; category: string; description: string | null; created_at: string;
   reg_members?: { name: string; member_no: string | null } | null;
 };
 
@@ -58,6 +58,7 @@ const AdminStudents = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [memberPointsMap, setMemberPointsMap] = useState<Map<string, number>>(new Map());
+  const [memberTaskPointsMap, setMemberTaskPointsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<StudentDetail | null>(null);
@@ -70,16 +71,21 @@ const AdminStudents = () => {
     const [profileRes, roleRes, regMembersRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("reg_members").select("user_id, points"),
+      supabase.from("reg_members").select("user_id, points, task_points"),
     ]);
     if (profileRes.data) setProfiles(profileRes.data);
     if (roleRes.data) setRoles(roleRes.data as UserRole[]);
     if (regMembersRes.data) {
       const map = new Map<string, number>();
-      for (const m of regMembersRes.data) {
-        if (m.user_id) map.set(m.user_id, m.points || 0);
+      const taskMap = new Map<string, number>();
+      for (const m of regMembersRes.data as any[]) {
+        if (m.user_id) {
+          map.set(m.user_id, m.points || 0);
+          taskMap.set(m.user_id, m.task_points || 0);
+        }
       }
       setMemberPointsMap(map);
+      setMemberTaskPointsMap(taskMap);
     }
     setLoading(false);
   };
@@ -125,7 +131,8 @@ const AdminStudents = () => {
       .eq("user_id", profile.id);
     const userRoles = getRoles(profile.id);
     const pts = memberPointsMap.get(profile.id) ?? 0;
-    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts });
+    const taskPts = memberTaskPointsMap.get(profile.id) ?? 0;
+    setDetail({ profile, roles: userRoles, progress: (progress || []) as LearningProgress[], memberPoints: pts, memberTaskPoints: taskPts });
     setShowDetail(true);
   };
 
@@ -214,6 +221,7 @@ const AdminStudents = () => {
             roleBadge={roleBadge}
             getPrimaryRole={getPrimaryRole}
             memberPointsMap={memberPointsMap}
+            memberTaskPointsMap={memberTaskPointsMap}
           />
         </TabsContent>
 
@@ -271,7 +279,7 @@ const AdminStudents = () => {
 // Platform Users Sub-Tab
 // ═══════════════════════════════════════
 function PlatformUsersTab({
-  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole, memberPointsMap,
+  search, setSearch, filteredPending, filteredActivated, openDetail, isSelf, roleBadge, getPrimaryRole, memberPointsMap, memberTaskPointsMap,
 }: {
   search: string;
   setSearch: (s: string) => void;
@@ -282,6 +290,7 @@ function PlatformUsersTab({
   roleBadge: (role: Enums<"app_role">) => JSX.Element;
   getPrimaryRole: (id: string) => Enums<"app_role">;
   memberPointsMap: Map<string, number>;
+  memberTaskPointsMap: Map<string, number>;
 }) {
   return (
     <div className="space-y-6 mt-4">
@@ -339,6 +348,7 @@ function PlatformUsersTab({
                 <TableHead>姓名</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>學號</TableHead>
+                <TableHead>點數</TableHead>
                 <TableHead>積分</TableHead>
                 <TableHead>學習天數</TableHead>
                 <TableHead>加入日期</TableHead>
@@ -352,6 +362,7 @@ function PlatformUsersTab({
                   <TableCell className="text-xs text-muted-foreground">{p.email || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{p.student_id || "—"}</TableCell>
                   <TableCell className="text-xs">{memberPointsMap.get(p.id)?.toLocaleString() ?? 0}</TableCell>
+                  <TableCell className="text-xs">{memberTaskPointsMap.get(p.id)?.toLocaleString() ?? 0}</TableCell>
                   <TableCell className="text-xs">{p.learning_days} 天</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("zh-TW")}</TableCell>
                   <TableCell>
@@ -360,7 +371,7 @@ function PlatformUsersTab({
                 </TableRow>
               ))}
               {filteredActivated.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">沒有符合條件的使用者</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">沒有符合條件的使用者</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -617,15 +628,16 @@ function RegMembersTab() {
               <TableHead>信箱</TableHead>
               <TableHead className="w-24">綁定狀態</TableHead>
               <TableHead className="w-20">點數</TableHead>
+              <TableHead className="w-20">積分</TableHead>
               <TableHead className="w-28">建立日期</TableHead>
               <TableHead className="w-32">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
             ) : filtered.map(m => {
               const bound = !!m.user_id;
               return (
@@ -640,6 +652,7 @@ function RegMembersTab() {
                       : <Badge variant="secondary" className="text-[10px]">未綁定</Badge>}
                   </TableCell>
                   <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{m.task_points ?? 0}</Badge></TableCell>
                   <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -676,6 +689,7 @@ function RegMembersTab() {
                 <div><span className="text-muted-foreground">電話：</span>{detailMember.phone || "—"}</div>
                 <div><span className="text-muted-foreground">信箱：</span>{detailMember.email || "—"}</div>
                 <div><span className="text-muted-foreground">點數：</span>{detailMember.points}</div>
+                <div><span className="text-muted-foreground">積分：</span>{detailMember.task_points ?? 0}</div>
                 <div><span className="text-muted-foreground">課程等級：</span>{detailMember.course_level || "—"}</div>
                 <div className="col-span-2">
                   <span className="text-muted-foreground">平台帳號：</span>
@@ -891,6 +905,8 @@ function PointsTab() {
     },
   });
 
+  const [pointCategory, setPointCategory] = useState<"points" | "task_points">("points");
+
   const addMutation = useMutation({
     mutationFn: async () => {
       if (!selectedMemberId) throw new Error("請選擇學員");
@@ -901,13 +917,14 @@ function PointsTab() {
         member_id: selectedMemberId,
         points_delta: pointsDelta,
         type: pointType,
+        category: pointCategory,
         description: pointDesc || null,
       } as any);
       if (error) throw error;
 
       await supabase.from("reg_operation_logs" as any).insert({
         entity_type: "member", entity_id: selectedMemberId, action: "manual_points",
-        new_value: { points_delta: pointsDelta, type: pointType, description: pointDesc },
+        new_value: { points_delta: pointsDelta, type: pointType, category: pointCategory, description: pointDesc },
         reason, operated_by: user?.id,
       } as any);
     },
@@ -947,7 +964,8 @@ function PointsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>學員</TableHead>
-              <TableHead className="w-24">點數</TableHead>
+              <TableHead className="w-20">分類</TableHead>
+              <TableHead className="w-24">數值</TableHead>
               <TableHead className="w-24">類型</TableHead>
               <TableHead>說明</TableHead>
               <TableHead className="w-32">時間</TableHead>
@@ -955,14 +973,19 @@ function PointsTab() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : transactions.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">尚無點數紀錄</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">尚無點數紀錄</TableCell></TableRow>
             ) : transactions.map(tx => (
               <TableRow key={tx.id}>
                 <TableCell>
                   <div className="text-sm font-medium">{(tx.reg_members as any)?.name || "—"}</div>
                   <div className="text-xs text-muted-foreground">{(tx.reg_members as any)?.member_no || ""}</div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={(tx.category ?? "points") === "task_points" ? "default" : "secondary"} className="text-[10px]">
+                    {(tx.category ?? "points") === "task_points" ? "積分" : "點數"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <span className={`text-sm font-mono font-bold ${tx.points_delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
