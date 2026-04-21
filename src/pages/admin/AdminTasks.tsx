@@ -767,7 +767,7 @@ const AdminTasks = () => {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
