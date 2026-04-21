@@ -784,6 +784,59 @@ const AdminTasks = () => {
           </motion.div>
         </TabsContent>
 
+        <TabsContent value="point-logs" className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Coins className="w-5 h-5 text-chart-yellow" />
+              <h3 className="text-base font-semibold">任務完成積分發放紀錄</h3>
+              <span className="text-xs text-muted-foreground">共 {filteredPointLogs.length} 筆</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="搜尋任務 / 接案人 / 學號"
+                value={pointLogSearch}
+                onChange={(e) => setPointLogSearch(e.target.value)}
+                className="w-64"
+              />
+              <Button size="sm" variant="outline" onClick={fetchPointLogs}>重新整理</Button>
+            </div>
+          </div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="glass-card p-5">
+            {pointLogsLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>發放時間</TableHead>
+                    <TableHead>任務</TableHead>
+                    <TableHead>接案人</TableHead>
+                    <TableHead>學號</TableHead>
+                    <TableHead className="text-right">積分</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPointLogs.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">尚無發放紀錄</TableCell></TableRow>
+                  ) : filteredPointLogs.map(log => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString("zh-TW")}</TableCell>
+                      <TableCell className="font-medium">{log.task_title}</TableCell>
+                      <TableCell>{log.member_name || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{log.member_no || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
+                          <Coins className="w-3.5 h-3.5" />+{log.points_delta}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </motion.div>
+        </TabsContent>
+
         <TabsContent value="options">
           <TaskOptionsManager />
         </TabsContent>
