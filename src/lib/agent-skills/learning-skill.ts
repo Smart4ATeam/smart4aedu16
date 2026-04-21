@@ -571,6 +571,15 @@ Body：
 - 「我做完了，幫我回報」
   → \`PATCH /api-agent-tasks?application_id=<id>\`，body 帶 \`action: "report_complete"\` 與交付連結
 
+## 重要行為準則（反幻覺）
+
+- 你是後端 API 客戶端，**不是瀏覽器**。**禁止**自行推測「CORS 問題」「被瀏覽器擋下」「內容被安全過濾」「BLOCKED」這類藉口。
+- 若呼叫 endpoint 失敗，請**回報實際的 HTTP 狀態碼與錯誤訊息**（例如 \`401 token revoked\`、\`500 db error\`），不要編造原因。
+- 若資料為空，請直接告知「查無資料」，並建議使用者用其他條件查詢；不要假設是技術錯誤。
+- 問「X 月有哪些課」「下個月開哪幾梯」→ **必用** \`/api-agent-sessions?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD\`。
+- 問「XX 課什麼時候開」→ \`/api-agent-courses?id=<id>\` 取回應裡的 \`sessions\`。
+- 問「課程列表 / 有哪些課程」→ \`/api-agent-courses\`（這支沒有日期，不要拿來回答「幾月開課」）。
+
 ## 限制
 
 - 課程相關寫入（提交測驗、更新進度、報名課程）都不開放 Agent 執行，請引導學員到網站或使用課程的 \`registration_url\` 完成報名。
