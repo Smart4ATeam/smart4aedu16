@@ -981,7 +981,34 @@ const AdminTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Complete with final amount */}
+      {/* Retry / 補件 */}
+      <Dialog open={!!retryTarget} onOpenChange={(open) => { if (!open) { setRetryTarget(null); setRetryNote(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重試 / 補件</DialogTitle>
+            <DialogDescription>
+              將此申請從「已失敗」轉回「已通過（進行中）」，學員可重新提交完成。請填寫補件說明。
+            </DialogDescription>
+          </DialogHeader>
+          {retryTarget?.failed_reason && (
+            <div className="text-xs bg-muted/50 rounded p-2">
+              <span className="text-muted-foreground">原失敗原因：</span>
+              <span className="text-foreground">{retryTarget.failed_reason}</span>
+            </div>
+          )}
+          <Textarea
+            placeholder="例如：交付檔案無法開啟，請於 2 天內重新提交完整內容"
+            value={retryNote}
+            onChange={(e) => setRetryNote(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRetryTarget(null); setRetryNote(""); }}>取消</Button>
+            <Button onClick={handleConfirmRetry}>確認補件</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!completeTarget} onOpenChange={(open) => { if (!open) setCompleteTarget(null); }}>
         <DialogContent>
           <DialogHeader>
