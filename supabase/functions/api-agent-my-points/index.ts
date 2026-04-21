@@ -14,58 +14,77 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // 取 profile 拿 email 作 fallback
   const { data: profile } = await admin
     .from("profiles")
-    .select("email")
+    .select("email, total_revenue")
     .eq("id", userId)
     .maybeSingle();
 
-  // 先用 user_id 找
   let { data: member } = await admin
     .from("reg_members")
-    .select("id, member_no, name, points, email")
+    .select("id, member_no, name, points, task_points, email")
     .eq("user_id", userId)
     .maybeSingle();
 
-  // fallback：用 email 找
   if (!member && profile?.email) {
     const { data } = await admin
       .from("reg_members")
-      .select("id, member_no, name, points, email")
+      .select("id, member_no, name, points, task_points, email")
       .eq("email", profile.email)
       .maybeSingle();
     member = data ?? null;
   }
 
   if (!member) {
-    return jsonResponse({ member: null, balance: 0, transactions: [] });
+    return jsonResponse({
+      member: null,
+      balance: 0,
+      task_points: 0,
+      total_revenue: Number(profile?.total_revenue ?? 0),
+      transactions: [],
+    });
   }
 
   const url = new URL(req.url);
   const wantHistory = url.searchParams.get("history") === "true";
+  const category = url.searchParams.get("category"); // 'points' | 'task_points' | null=all
+
+  const memberPayload = {
+    member_no: member.member_no,
+    name: member.name,
+    points: member.points,
+    task_points: member.task_points ?? 0,
+  };
 
   if (wantHistory) {
     const limitRaw = parseInt(url.searchParams.get("limit") ?? "50", 10);
     const limit = Math.min(Math.max(isNaN(limitRaw) ? 50 : limitRaw, 1), 200);
 
-    const { data: txs, error } = await admin
+    let q = admin
       .from("reg_point_transactions")
-      .select("id, points_delta, type, description, created_at, order_id")
+      .select("id, points_delta, type, category, description, created_at, order_id")
       .eq("member_id", member.id)
       .order("created_at", { ascending: false })
       .limit(limit);
+    if (category === "points" || category === "task_points") {
+      q = q.eq("category", category);
+    }
+    const { data: txs, error } = await q;
     if (error) return jsonResponse({ error: error.message }, 500);
 
     return jsonResponse({
-      member: { member_no: member.member_no, name: member.name, points: member.points },
+      member: memberPayload,
       balance: member.points,
+      task_points: member.task_points ?? 0,
+      total_revenue: Number(profile?.total_revenue ?? 0),
       transactions: txs ?? [],
     });
   }
 
   return jsonResponse({
-    member: { member_no: member.member_no, name: member.name, points: member.points },
+    member: memberPayload,
     balance: member.points,
+    task_points: member.task_points ?? 0,
+    total_revenue: Number(profile?.total_revenue ?? 0),
   });
 });
