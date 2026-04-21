@@ -1329,6 +1329,9 @@ const AdminTasks = () => {
             <div className="text-xs text-muted-foreground">
               學員報價：<span className="text-foreground font-semibold">${Number(completeTarget?.quoted_amount ?? 0).toLocaleString()}</span>
             </div>
+            <div className="text-xs text-muted-foreground">
+              完成積分：<span className="text-foreground font-semibold">{Number(tasks.find(t => t.id === completeTarget?.task_id)?.reward_points ?? 0).toLocaleString()} 分</span>
+            </div>
             <div>
               <label className="text-xs text-muted-foreground">最終金額（可調整）</label>
               <Input type="number" value={finalAmount || ""} onChange={(e) => setFinalAmount(Number(e.target.value))} />
