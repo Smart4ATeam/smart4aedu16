@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     const needJsDateFilter = !!(sessionDateFrom || sessionDateTo);
     const fetchLimit = needJsDateFilter ? 2000 : limit;
     const fetchOffset = needJsDateFilter ? 0 : offset;
-    const { data, error } = await query.range(fetchOffset, fetchOffset + fetchLimit - 1);
+    const { data, error, count } = await query.range(fetchOffset, fetchOffset + fetchLimit - 1);
     if (error) return jsonResponse({ error: error.message }, 500);
 
     let rows = data ?? [];
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const totalCount = needJsDateFilter ? rows.length : (rows.length); // 後者會以 count 取代下方
+    const totalCount = needJsDateFilter ? rows.length : (count ?? rows.length);
     const pagedRows = needJsDateFilter ? rows.slice(offset, offset + limit) : rows;
 
     const flat = pagedRows.map((e: any) => ({
