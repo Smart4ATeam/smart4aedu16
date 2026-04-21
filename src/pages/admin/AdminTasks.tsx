@@ -99,6 +99,36 @@ const AdminTasks = () => {
   const [statStart, setStatStart] = useState<string>("");
   const [statEnd, setStatEnd] = useState<string>("");
 
+  const cardStats = useMemo(() => {
+    const inRange = (iso: string | null | undefined) => {
+      if (!iso) return false;
+      const d = iso.slice(0, 10);
+      if (statStart && d < statStart) return false;
+      if (statEnd && d > statEnd) return false;
+      return true;
+    };
+    const hasFilter = !!(statStart || statEnd);
+    const tasksInRange = hasFilter ? tasks.filter(t => inRange(t.created_at)) : tasks;
+    const appsInRange = hasFilter ? applications.filter(a => inRange(a.applied_at)) : applications;
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const monthlyNew = tasks.filter(t => (t.created_at || "").slice(0, 10) >= monthStart).length;
+
+    const totalPaid = appsInRange
+      .filter(a => a.status === "completed")
+      .reduce((sum, a) => sum + Number(a.final_amount ?? a.quoted_amount ?? 0), 0);
+
+    return {
+      total: tasksInRange.length,
+      inProgress: appsInRange.filter(a => a.status === "approved" || a.status === "pending_completion").length,
+      pending: appsInRange.filter(a => a.status === "applied").length,
+      completed: appsInRange.filter(a => a.status === "completed").length,
+      monthlyNew,
+      totalPaid,
+    };
+  }, [tasks, applications, statStart, statEnd]);
+
   const fetchUserStats = async (userId: string) => {
     if (statsCache[userId]) return statsCache[userId];
     const { data } = await supabase.rpc("get_user_task_stats", { _user_id: userId });
