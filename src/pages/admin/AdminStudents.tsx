@@ -58,6 +58,7 @@ const AdminStudents = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [memberPointsMap, setMemberPointsMap] = useState<Map<string, number>>(new Map());
+  const [memberTaskPointsMap, setMemberTaskPointsMap] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<StudentDetail | null>(null);
@@ -70,16 +71,21 @@ const AdminStudents = () => {
     const [profileRes, roleRes, regMembersRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("reg_members").select("user_id, points"),
+      supabase.from("reg_members").select("user_id, points, task_points"),
     ]);
     if (profileRes.data) setProfiles(profileRes.data);
     if (roleRes.data) setRoles(roleRes.data as UserRole[]);
     if (regMembersRes.data) {
       const map = new Map<string, number>();
-      for (const m of regMembersRes.data) {
-        if (m.user_id) map.set(m.user_id, m.points || 0);
+      const taskMap = new Map<string, number>();
+      for (const m of regMembersRes.data as any[]) {
+        if (m.user_id) {
+          map.set(m.user_id, m.points || 0);
+          taskMap.set(m.user_id, m.task_points || 0);
+        }
       }
       setMemberPointsMap(map);
+      setMemberTaskPointsMap(taskMap);
     }
     setLoading(false);
   };
