@@ -1,60 +1,110 @@
 
 
-# 修正試用領取規則：允許重複領取（每天 1 次仍生效）
+# 報名學員 ↔ 平台使用者 整合方案（含 Backfill 與登入 Email 安全機制）
 
-## 一、問題
+## 一、回答你的問題
 
-目前 `resource_trials` 有 `UNIQUE(user_id, resource_id)` 限制 → 同一使用者領過 LineRichMenu 後，隔天想再領一次序號（因試用碼只有 1 天有效）就會撞 23505 → 回 `INTERNAL_ERROR`。
+**Q: profiles.email 與 auth.users.email 分離後，萬一使用者改了 reg_members.email 後無法登入怎麼辦？**
 
-## 二、規則確認（修正後）
+關鍵釐清：**改 reg_members.email 不會影響登入**，因為登入只認 `auth.users.email`。所以分離本身是安全的。
 
-| 規則 | 狀態 |
+但要避免「使用者誤以為改了 email 就能用新 email 登入」造成混淆，方案如下：
+
+1. **UI 明確標示**：後台編輯 reg_member 時，email 欄位旁顯示「此為通訊／顯示用 Email，不影響登入帳號」。若該 user 已綁定，另外顯示「目前登入 Email：xxx@xxx」。
+2. **獨立「變更登入 Email」按鈕**：要改登入帳號必須走專屬流程（edge function `admin-update-login-email`），三邊（auth.users / profiles / reg_members）一起更新並寫 log。
+3. **救援機制**：
+   - 後台「重設密碼」功能維持（用 user_id 直接改，不靠 email）
+   - 後台可查 `reg_operation_logs` 找到歷次 email 變更紀錄
+   - 萬一真的改錯登入 email 鎖死自己 → 後台用「變更登入 Email」按鈕改回來即可（admin 用 service role 操作，不需要使用者本人）
+
+---
+
+## 二、整合策略總覽
+
+```text
+   reg_members (報名資料)              profiles (平台帳號顯示)        auth.users (登入)
+   ─────────────────                   ────────────────────           ─────────────
+   name        ◄──┐ trigger B          display_name                   email (登入用)
+   phone       ◄──┤ (profile→member)   phone                          ──────────
+   email       ──►│ trigger A          email (顯示用)                  獨立流程才動
+   member_no   ──►│ (member→profile)   student_id                     edge function
+   user_id     ───┴──────────────────► id ─────────────────────────► id
+```
+
+| 同步方向 | 觸發時機 | 同步欄位 | 不動 |
+|---|---|---|---|
+| reg_members → profiles | trigger A（reg_members UPDATE） | name→display_name、phone、email（顯示）、member_no→student_id | auth.users.email |
+| profiles → reg_members | trigger B（profiles UPDATE） | display_name→name、phone | email（避免覆蓋報名 email） |
+| 三邊登入 Email 同步 | edge function 手動觸發 | auth.users.email + profiles.email + reg_members.email | — |
+
+---
+
+## 三、實作清單
+
+### A. DB Migration
+
+1. **新增 trigger `sync_member_to_profile`**（reg_members AFTER UPDATE）
+   - 條件：`user_id IS NOT NULL`
+   - 同步 name / phone / email 到 profiles
+2. **新增 trigger `sync_profile_to_member`**（profiles AFTER UPDATE）
+   - 條件：對應 reg_members 存在
+   - 同步 display_name / phone 到 reg_members（不動 email）
+3. **修改 function `handle_new_user`**
+   - 找不到對應 reg_member 時不再 raise exception
+   - 仍建立 profile，並寫一筆 `reg_operation_logs`（action = `unmatched_signup`）
+4. **一次性 Backfill SQL**（migration 內執行一次）
+   ```sql
+   UPDATE profiles p SET 
+     display_name = COALESCE(NULLIF(m.name,''), p.display_name),
+     phone = COALESCE(m.phone, p.phone),
+     email = COALESCE(m.email, p.email),
+     updated_at = now()
+   FROM reg_members m
+   WHERE m.user_id = p.id;
+   ```
+
+### B. Edge Function
+
+5. **新增 `admin-update-login-email`**
+   - 驗證 admin token
+   - 用 `auth.admin.updateUserById` 更新登入 email
+   - 連動更新 profiles.email + reg_members.email
+   - 寫 `reg_operation_logs`
+
+### C. 前端
+
+6. **`RegMembersTab` 編輯 dialog**
+   - email 欄位旁加說明文字「通訊／顯示用，不影響登入」
+   - 若該 member 已綁定 user，顯示目前登入 email
+   - 新增「變更登入 Email」獨立按鈕（呼叫 edge function）
+7. **`RegMembersTab` 列表**
+   - 新增綁定狀態徽章（已綁定平台帳號 / 未綁定）
+   - 未綁定者顯示「綁定使用者」按鈕（搜尋 profiles 後手動綁）
+8. **`StudentDetailDialog`**
+   - 顯示對應 reg_member 資訊（若有），標示資料同步狀態
+
+---
+
+## 四、影響檔案
+
+| 檔案 | 變更 |
 |---|---|
-| 每位使用者「每天」整體只能領 1 個套件 + 1 個模板 | ✅ 維持（按 category 分） |
-| 同一使用者可「跨天」重複領同一個資源 | ✅ 新增允許 |
-| 同一天內針對同一資源只能領 1 次 | ✅ 由「每日 category 限制」自然涵蓋 |
+| 新 migration | 2 個 trigger + 修改 handle_new_user + backfill |
+| `supabase/functions/admin-update-login-email/index.ts` | 新增 |
+| `src/pages/admin/AdminStudents.tsx`（RegMembersTab、PointsTab 共用檔） | 編輯 dialog、綁定徽章、變更登入 email 按鈕 |
+| `src/components/admin/students/StudentDetailDialog.tsx` | 顯示 reg_member 連動資訊 |
 
-## 三、要動的東西
+---
 
-### A. 資料庫 migration
-- **移除** `resource_trials` 的 `UNIQUE(user_id, resource_id)` constraint  
-  （名稱推測為 `resource_trials_user_id_resource_id_key`，migration 內用 `IF EXISTS` 保險）
-- 不新增其他 unique；每日限制由 edge function 程式邏輯把關（已存在）
-- 既有資料完全不動
+## 五、驗收情境
 
-### B. Edge Function：`api-agent-claim-trial/index.ts`
-- 在 insert 失敗時補上 `error.code === '23505'` → 回 `409 ALREADY_CLAIMED_TODAY`，避免未來其他競態狀況再吐 500
-- 流程不變：仍先檢查當日 category 是否已領 → 已領回 429 `DAILY_LIMIT_REACHED`
+1. 後台改 reg_member.name → profiles.display_name 自動更新 ✅
+2. 使用者在 Settings 改 display_name → reg_members.name 自動更新 ✅
+3. 後台改 reg_member.email → 登入 email 不變、profiles.email 顯示更新 ✅
+4. 使用者用「舊 email」登入 → 仍可正常登入（auth.users.email 沒變）✅
+5. 後台用「變更登入 Email」→ 三邊一起更新，使用者用新 email 登入 ✅
+6. 新使用者用沒在 reg_members 的 email 註冊 → 不再被擋，profile 建立 + log 寫入待綁定清單 ✅
+7. Backfill 後，所有已綁定 profiles 的 name/phone/email 與 reg_members 對齊 ✅
 
-### C. Edge Function：`api-resource-trial/index.ts`（舊版同邏輯）
-- 同步加上 23505 → 409 防護
-- 維持每日 category 限制檢查
-
-### D. 前端：`src/pages/Resources.tsx`
-- 「我的試用」分頁與資源卡片狀態渲染不需邏輯變更（同一資源會出現多筆紀錄，按 `created_at desc` 排序顯示最新）
-- 確認 `MyTrialsTab` 不會因重複 resource_id 出錯（目前用 `trial_id` 當 key，沒問題）
-- 卡片上的「已領用」chip 改成判斷「今日是否已領用此 category」而非「此資源是否曾經領過」→ 跨天就能再次顯示「立即領用」按鈕
-
-### E. Agent skill：`src/lib/agent-skills/admin-skill.ts` 與 `learning-skill.ts`
-- 補一段說明：「試用序號 24 小時有效，跨天可重複領用同一資源；但每日仍受『每類別 1 次』限制」
-- 錯誤碼新增 `ALREADY_CLAIMED_TODAY (409)`，讓 agent 正確回覆使用者
-
-## 四、影響檔案總覽
-
-| 檔案 | 異動 |
-|---|---|
-| 新 migration | DROP CONSTRAINT `resource_trials_user_id_resource_id_key` |
-| `supabase/functions/api-agent-claim-trial/index.ts` | 23505 → 409 防護 |
-| `supabase/functions/api-resource-trial/index.ts` | 23505 → 409 防護 |
-| `src/pages/Resources.tsx` | 卡片「已領用」狀態改用「今日同類別是否已領」判斷 |
-| `src/lib/agent-skills/admin-skill.ts` | 新增規則說明與錯誤碼 |
-| `src/lib/agent-skills/learning-skill.ts` | 新增規則說明與錯誤碼 |
-
-## 五、驗收
-
-1. 今天領 LineRichMenu → 成功
-2. 今天再領 LineRichMenu → 收到 429 `DAILY_LIMIT_REACHED`（不是 500）
-3. 今天領完套件後再領模板 → 成功（不同 category）
-4. 明天再領 LineRichMenu → 成功（跨天解鎖）
-5. 「我的試用」可看到 2 筆 LineRichMenu 紀錄，各自序號獨立
+確認後切換執行模式依序實作。
 
