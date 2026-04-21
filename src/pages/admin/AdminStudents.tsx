@@ -628,15 +628,16 @@ function RegMembersTab() {
               <TableHead>信箱</TableHead>
               <TableHead className="w-24">綁定狀態</TableHead>
               <TableHead className="w-20">點數</TableHead>
+              <TableHead className="w-20">積分</TableHead>
               <TableHead className="w-28">建立日期</TableHead>
               <TableHead className="w-32">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">載入中...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">尚無已付款學員</TableCell></TableRow>
             ) : filtered.map(m => {
               const bound = !!m.user_id;
               return (
@@ -651,6 +652,7 @@ function RegMembersTab() {
                       : <Badge variant="secondary" className="text-[10px]">未綁定</Badge>}
                   </TableCell>
                   <TableCell><Badge variant="outline">{m.points}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{m.task_points ?? 0}</Badge></TableCell>
                   <TableCell className="text-xs text-muted-foreground">{formatDate(m.created_at)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
