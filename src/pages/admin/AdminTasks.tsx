@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Eye, CheckCircle, Users, XCircle, TrendingUp, ClipboardList, Loader2, Clock, FileCheck, CalendarPlus, Coins, RotateCcw, ChevronDown, Copy } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import ImportTasks from "@/components/admin/ImportTasks";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import TaskOptionsManager from "@/components/admin/TaskOptionsManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -302,6 +303,33 @@ const AdminTasks = () => {
     [editingTask, applications]
   );
 
+  const editingApplicants = useMemo(
+    () => editingTask ? applications.filter(a => a.task_id === editingTask.id) : [],
+    [editingTask, applications]
+  );
+
+  const [showApplicantList, setShowApplicantList] = useState(false);
+
+  const handleCloneAsNew = () => {
+    if (!editingTask) return;
+    setNewTask({
+      title: editForm.title + "（複製）",
+      description: editForm.description,
+      difficulty: editForm.difficulty,
+      amount_min: editForm.amount_min,
+      amount_max: editForm.amount_max,
+      category: editForm.category,
+      tags: editForm.tags,
+      deadline: editForm.deadline,
+      admin_notes: editForm.admin_notes,
+      reward_points: editForm.reward_points,
+    });
+    setEditingTask(null);
+    setShowApplicantList(false);
+    setShowNewTask(true);
+    toast.info("已帶入原任務內容，請調整後發布");
+  };
+
   const handleEditTask = async () => {
     if (!editingTask) return;
     if (editingHasApplications) {
@@ -372,7 +400,7 @@ const AdminTasks = () => {
       })
       .eq("id", completeTarget.id);
     if (error) { toast.error("更新失敗：" + error.message); return; }
-    toast.success("已確認完成，獎勵已撥點");
+    toast.success("已確認完成，積分獎勵已發放");
     setCompleteTarget(null);
     setSelectedApplicant(null);
     setStatsCache({});
@@ -601,7 +629,7 @@ const AdminTasks = () => {
                   <FieldGroup label="截止日期 *" hint="過期後系統會自動關閉">
                     <Input type="date" value={newTask.deadline} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })} />
                   </FieldGroup>
-                  <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+                  <FieldGroup label="完成積分（單位：分）" hint="完成後額外發給接案人員的積分">
                     <Input type="number" min={0} placeholder="例：50" value={newTask.reward_points || ""} onChange={(e) => setNewTask({ ...newTask, reward_points: Number(e.target.value) })} />
                   </FieldGroup>
                 </div>
@@ -812,7 +840,7 @@ const AdminTasks = () => {
                     <TableHead>任務</TableHead>
                     <TableHead>接案人</TableHead>
                     <TableHead>學號</TableHead>
-                    <TableHead className="text-right">積分</TableHead>
+                    <TableHead className="text-right">積分（分）</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -826,7 +854,7 @@ const AdminTasks = () => {
                       <TableCell className="text-xs text-muted-foreground">{log.member_no || "—"}</TableCell>
                       <TableCell className="text-right">
                         <span className="inline-flex items-center gap-1 text-chart-yellow font-semibold">
-                          <Coins className="w-3.5 h-3.5" />+{log.points_delta}
+                          <Coins className="w-3.5 h-3.5" />+{log.points_delta} 分
                         </span>
                       </TableCell>
                     </TableRow>
@@ -853,8 +881,39 @@ const AdminTasks = () => {
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             {editingHasApplications && (
-              <div className="rounded-md border border-chart-yellow/40 bg-chart-yellow/10 px-3 py-2 text-sm text-chart-yellow">
-                ⚠️ 已有學員申請此任務，內容已鎖定。如需大幅修改，請關閉此任務後另開新任務。
+              <div className="rounded-md border border-chart-yellow/40 bg-chart-yellow/10 px-3 py-2.5 text-sm text-chart-yellow space-y-2">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <p className="flex-1 min-w-0">⚠️ 已有 {editingApplicants.length} 位學員申請此任務，內容已鎖定。</p>
+                  <Button size="sm" variant="outline" className="h-7 gap-1.5 border-chart-yellow/40 text-chart-yellow hover:bg-chart-yellow/20" onClick={handleCloneAsNew}>
+                    <Copy className="w-3.5 h-3.5" />以此任務為範本新建
+                  </Button>
+                </div>
+                <Collapsible open={showApplicantList} onOpenChange={setShowApplicantList}>
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-1.5 text-xs hover:underline">
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showApplicantList ? "rotate-180" : ""}`} />
+                      {showApplicantList ? "收合" : "展開"}申請名單
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                    {editingApplicants.map(a => (
+                      <div key={a.id} className="flex items-center gap-2 text-xs bg-background/50 rounded px-2 py-1.5 border border-border">
+                        <Avatar className="w-6 h-6 shrink-0">
+                          {a.applicant?.avatar_url ? <AvatarImage src={a.applicant.avatar_url} alt={a.applicant.display_name} /> : null}
+                          <AvatarFallback className="text-[10px] bg-muted">{a.applicant?.display_name?.slice(0, 1) || "?"}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-foreground font-medium truncate">{a.applicant?.display_name || "未知"}</div>
+                          <div className="text-[10px] text-muted-foreground">{a.applicant?.student_id || a.applicant?.email || "—"}</div>
+                        </div>
+                        <Badge className={`shrink-0 text-[10px] ${statusColor(a.status)}`}>{statusLabel(a.status)}</Badge>
+                        <span className="text-[10px] text-muted-foreground shrink-0 w-[110px] text-right">
+                          {new Date(a.applied_at).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
             <FieldGroup label="任務標題">
@@ -909,7 +968,7 @@ const AdminTasks = () => {
                 </Select>
               </FieldGroup>
             </div>
-            <FieldGroup label="完成積分" hint="完成後額外發給接案人員的積分">
+            <FieldGroup label="完成積分（單位：分）" hint="完成後額外發給接案人員的積分">
               <Input disabled={editingHasApplications} type="number" min={0} placeholder="例：50" value={editForm.reward_points || ""} onChange={(e) => setEditForm({ ...editForm, reward_points: Number(e.target.value) })} />
             </FieldGroup>
             <FieldGroup label="管理員備註" hint="僅後台可見">

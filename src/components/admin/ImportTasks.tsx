@@ -150,7 +150,7 @@ const ImportTasks = ({ onComplete }: { onComplete: () => void }) => {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        CSV 欄位：title（必填）, description, difficulty（初級/中級/高級）, amount_min, amount_max, category, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）, reward_points（完成積分，預設 0）, admin_notes
+        CSV 欄位：title（必填）, description, difficulty（初級/中級/高級）, amount_min, amount_max, category, tags（逗號分隔，用引號包覆）, deadline（YYYY-MM-DD）, status（available）, reward_points（完成積分，單位：分，預設 0）, admin_notes
       </div>
 
       {result && (
