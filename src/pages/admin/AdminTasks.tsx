@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import TaskOptionsManager from "@/components/admin/TaskOptionsManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -360,6 +361,7 @@ const AdminTasks = () => {
         <TabsList>
           <TabsTrigger value="tasks">任務管理</TabsTrigger>
           <TabsTrigger value="review">申請審核</TabsTrigger>
+          <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
@@ -577,6 +579,10 @@ const AdminTasks = () => {
               </TableBody>
             </Table>
           </motion.div>
+        </TabsContent>
+
+        <TabsContent value="options">
+          <TaskOptionsManager />
         </TabsContent>
       </Tabs>
 
