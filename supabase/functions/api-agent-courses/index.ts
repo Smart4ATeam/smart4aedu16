@@ -43,12 +43,22 @@ Deno.serve(async (req) => {
           .order("sort_order")
       : { data: [] as any[] };
 
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: sessions } = await admin
+      .from("course_sessions")
+      .select("id, title_suffix, start_date, end_date, location, max_students, price, registration_url, status, schedule_type")
+      .eq("course_id", id)
+      .eq("status", "scheduled")
+      .or(`end_date.is.null,end_date.gte.${today}`)
+      .order("start_date", { ascending: true });
+
     return jsonResponse({
       course,
       units: (units ?? []).map((u) => ({
         ...u,
         sections: (sections ?? []).filter((s: any) => s.unit_id === u.id),
       })),
+      sessions: sessions ?? [],
     });
   }
 
