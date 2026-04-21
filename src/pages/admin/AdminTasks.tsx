@@ -528,6 +528,11 @@ const AdminTasks = () => {
     return "";
   };
 
+  const reviewTaskOptions = useMemo(() => {
+    const ids = new Set(applications.map(a => a.task_id));
+    return tasks.filter(t => ids.has(t.id));
+  }, [tasks, applications]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -537,10 +542,6 @@ const AdminTasks = () => {
     (reviewTaskFilter === "all" || a.task_id === reviewTaskFilter)
   );
   const selectableApps = filteredApps.filter(a => a.status === "applied");
-  const reviewTaskOptions = useMemo(() => {
-    const ids = new Set(applications.map(a => a.task_id));
-    return tasks.filter(t => ids.has(t.id));
-  }, [tasks, applications]);
 
   return (
     <div className="space-y-6">
