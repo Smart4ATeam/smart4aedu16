@@ -1,0 +1,1 @@
+ALTER TABLE public.resource_trials DROP CONSTRAINT IF EXISTS resource_trials_user_id_resource_id_key;
