@@ -33,6 +33,7 @@ type RegMember = {
   id: string; member_no: string | null; name: string; phone: string | null;
   email: string | null; course_level: string | null; points: number;
   referral_code: string | null; notes: string | null; created_at: string;
+  user_id: string | null;
 };
 
 type RegPointTx = {
