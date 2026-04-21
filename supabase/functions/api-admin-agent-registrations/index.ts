@@ -155,8 +155,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       enrollments: flat,
-      total: count,
-      summary: { total: count ?? flat.length, by_status, by_course },
+      total: totalCount,
+      summary: { total: totalCount, by_status, by_course },
       limit,
       offset,
     });
