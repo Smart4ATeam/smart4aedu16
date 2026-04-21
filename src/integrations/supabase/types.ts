@@ -185,23 +185,32 @@ export type Database = {
       }
       conversations: {
         Row: {
+          broadcast_filter: Json | null
           category: string
           created_at: string
+          created_by: string | null
           id: string
+          recipient_count: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          broadcast_filter?: Json | null
           category?: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          recipient_count?: number | null
           title?: string
           updated_at?: string
         }
         Update: {
+          broadcast_filter?: Json | null
           category?: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          recipient_count?: number | null
           title?: string
           updated_at?: string
         }

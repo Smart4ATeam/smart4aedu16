@@ -302,6 +302,81 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
 
 ---
 
+---
+
+## 11. 訊息廣播 ⚠️ 變更類
+
+### 11a. 預覽收件人 \`api-admin-agent-preview-recipients\`（唯讀，可頻繁呼叫）
+
+\`POST\` Body：
+\`\`\`json
+{ "recipient_filter": { "mode": "all" | "specific" | "filter", ... } }
+\`\`\`
+
+回傳：\`{ total, sample: [...前10位], preview: [...全部] }\`
+
+### 11b. 發送廣播 \`api-admin-agent-broadcast\`
+
+\`POST\` Body：
+\`\`\`json
+{
+  "title": "標題",
+  "content": "內容（必填）",
+  "priority": "一般" | "重要" | "緊急",
+  "category": "system",
+  "recipient_filter": { "mode": "...", ... },
+  "confirm": true
+}
+\`\`\`
+
+### recipient_filter 規格
+
+\`\`\`jsonc
+{
+  "mode": "all",                          // 全體已啟用學員
+  // 或
+  "mode": "specific",
+  "user_ids": ["uuid", ...],              // 直接指定 user_id
+  "member_ids": ["uuid", ...],            // 或 reg_members.id
+  // 或
+  "mode": "filter",
+  "filters": {
+    "course_ids": ["uuid"],               // 上過任一堂
+    "course_ids_all": ["uuid"],           // 必須全部都上過（與 course_ids 二擇一）
+    "session_ids": ["uuid"],              // 報名特定梯次
+    "session_date_from": "YYYY-MM-DD",
+    "session_date_to":   "YYYY-MM-DD",
+    "enrollment_status": ["enrolled","paid","checked_in","completed"],
+    "course_category":   ["basic","advanced","..."],
+    "exclude_user_ids":  ["uuid"]
+  }
+}
+\`\`\`
+
+### 工作流程（嚴格遵守）
+
+1. 解析使用者意圖 → 組出 recipient_filter（必要時先用 \`api-admin-agent-courses\` 或 \`api-admin-agent-sessions\` 查 id）
+2. 呼叫 **preview-recipients** 取得 total + sample
+3. 用自然語言完整覆述：
+   - 標題、優先級、內容
+   - 預計送達 N 位（列出前 3~5 位姓名）
+4. 等待使用者明確同意（「確認」「OK」「執行」）
+5. 呼叫 **broadcast** 帶 \`confirm: true\`
+6. 回報實際送達人數
+
+### 自然語言對應範例
+
+| 使用者說 | recipient_filter |
+|---|---|
+| 「發給所有學員」 | \`{ mode: "all" }\` |
+| 「發給上過 Make 入門的」 | 先查 course_id → \`{ mode: "filter", filters: { course_ids: [入門 id] } }\` |
+| 「上過入門+初階的」 | \`{ mode: "filter", filters: { course_ids_all: [入門, 初階] } }\` |
+| 「7/9 入門梯次的學員」 | 查 session_id → \`{ mode: "filter", filters: { session_ids: [梯次 id] } }\` |
+| 「8 月所有上課的人」 | \`{ mode: "filter", filters: { session_date_from: "2025-08-01", session_date_to: "2025-08-31" } }\` |
+| 「發給王小明跟陳大華」 | 先 search-members 拿 user_id → \`{ mode: "specific", user_ids: [...] }\` |
+
+---
+
 ## 錯誤碼補充
 | 狀態碼 | 意義 |
 |---|---|
