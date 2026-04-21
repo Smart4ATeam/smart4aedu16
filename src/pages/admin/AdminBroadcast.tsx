@@ -45,70 +45,20 @@ const AdminBroadcast = () => {
   const handleBroadcast = async () => {
     if (!newBroadcast.title || !newBroadcast.content || !user) return;
 
-    // 1. Create system conversation
-    const { data: conv, error: convErr } = await supabase
-      .from("conversations")
-      .insert({ title: `[${newBroadcast.priority}] ${newBroadcast.title}`, category: "system" })
-      .select()
-      .single();
-    if (convErr || !conv) {
-      toast.error("廣播失敗：" + (convErr?.message || "未知錯誤"));
-      return;
-    }
-
-    // 2. Insert system message
-    const { error: msgErr } = await supabase.from("messages").insert({
-      conversation_id: conv.id,
-      sender_id: null,
-      content: newBroadcast.content,
-      is_system: true,
+    const { data, error } = await supabase.functions.invoke("admin-broadcast", {
+      body: {
+        title: `[${newBroadcast.priority}] ${newBroadcast.title}`,
+        content: newBroadcast.content,
+        category: "system",
+      },
     });
-    if (msgErr) {
-      toast.error("訊息寫入失敗：" + msgErr.message);
+
+    if (error || (data && data.error)) {
+      toast.error("廣播失敗：" + (error?.message || data?.error || "未知錯誤"));
       return;
     }
 
-    // 3. Fetch all activated students
-    const { data: profiles, error: profErr } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("activated", true);
-    if (profErr) {
-      toast.error("讀取學員失敗：" + profErr.message);
-      return;
-    }
-    const userIds = (profiles || []).map((p) => p.id);
-
-    // 4. Filter out users who disabled show_info
-    let recipientIds = userIds;
-    if (userIds.length > 0) {
-      const { data: settings } = await supabase
-        .from("notification_settings")
-        .select("user_id, show_info")
-        .in("user_id", userIds);
-      const disabled = new Set(
-        (settings || []).filter((s) => s.show_info === false).map((s) => s.user_id)
-      );
-      recipientIds = userIds.filter((id) => !disabled.has(id));
-    }
-
-    // 5. Insert participants
-    if (recipientIds.length > 0) {
-      const participants = recipientIds.map((uid) => ({
-        conversation_id: conv.id,
-        user_id: uid,
-        unread: true,
-      }));
-      const { error: partErr } = await supabase
-        .from("conversation_participants")
-        .insert(participants);
-      if (partErr) {
-        toast.error("加入學員失敗：" + partErr.message);
-        return;
-      }
-    }
-
-    toast.success(`廣播已發送給 ${recipientIds.length} 位學員`);
+    toast.success(`廣播已發送給 ${data?.data?.recipients ?? 0} 位學員`);
     setNewBroadcast({ title: "", content: "", priority: "一般" });
     fetchBroadcasts();
   };
