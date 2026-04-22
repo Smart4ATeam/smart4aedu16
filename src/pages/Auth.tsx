@@ -70,7 +70,7 @@ export default function Auth() {
     if (!user) return;
 
     const check = async () => {
-      const handled = await verifyGoogleActivation(user.id);
+      const handled = await verifyGoogleActivation(user.id, user.email);
       if (!handled) {
         // Normal login — redirect to dashboard
         navigate("/", { replace: true });
