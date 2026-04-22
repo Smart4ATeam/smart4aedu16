@@ -267,8 +267,23 @@ export default function Auth() {
                       className="pl-10 bg-muted border-border"
                       required />
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      報名時提供的 Email <span className="text-destructive">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="pl-10 bg-muted border-border"
+                      required />
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      學員編號可前往智能助理查詢
+                      您的 Google 帳號 Email 必須與此 Email 一致才能成功啟用
                     </p>
                   </div>
                   <Button
@@ -279,9 +294,6 @@ export default function Auth() {
                     <GoogleIcon />
                     使用 Google 帳號啟用
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    請使用報名時提供的E-mail帳號或是學員綁定的E-mail帳號啟用
-                  </p>
                 </div>
 
                 {/* Divider */}
