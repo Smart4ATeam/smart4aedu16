@@ -33,6 +33,11 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
+  const [showResetLogin, setShowResetLogin] = useState(false);
+  const [resetLoginConfirm, setResetLoginConfirm] = useState("");
+  const [resetLoginReason, setResetLoginReason] = useState("");
+  const [resettingLogin, setResettingLogin] = useState(false);
+
   if (!detail) return null;
 
   const closeResetDialog = (open: boolean) => {
