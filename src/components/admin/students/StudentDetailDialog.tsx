@@ -215,8 +215,88 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
               </div>
             )}
           </div>
+
+          {!isSelf(detail.profile.id) && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-1.5 text-destructive">
+                <AlertTriangle className="w-4 h-4" /> 危險操作
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                若學員需要更換登入 Email（如 Google 帳號 → 學校信箱），可使用「重置登入帳號」：
+                會解除目前報名綁定、刪除舊登入帳號與個人資料，學員需用新 Email 重新註冊以重新啟用。
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowResetLogin(true)}
+                className="gap-1.5 text-xs"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> 重置登入帳號
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
+
+      {/* Reset Login Account Dialog */}
+      <Dialog open={showResetLogin} onOpenChange={closeResetLoginDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-1.5">
+              <AlertTriangle className="w-5 h-5" /> 重置登入帳號
+            </DialogTitle>
+            <DialogDescription>
+              此操作將不可復原地刪除以下資料：
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md bg-muted p-3 text-xs space-y-1">
+              <div>👤 <b>{detail.profile.display_name}</b>（{detail.profile.email || "—"}）</div>
+              <div>學號：{detail.profile.student_id || "—"}</div>
+              <ul className="mt-2 list-disc list-inside text-muted-foreground space-y-0.5">
+                <li>解除其名下所有 reg_members 報名綁定（user_id 設為 null）</li>
+                <li>刪除登入帳號（auth user）</li>
+                <li>清除 profile / user_roles / notification_settings</li>
+                <li>寫入操作日誌</li>
+              </ul>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">操作原因（必填，會寫入日誌）</Label>
+              <Textarea
+                placeholder="例：學員更換為學校 Email，需重新以新 Email 註冊"
+                value={resetLoginReason}
+                onChange={(e) => setResetLoginReason(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">
+                請輸入「<span className="text-destructive font-bold">重置</span>」二字以確認
+              </Label>
+              <Input
+                value={resetLoginConfirm}
+                onChange={(e) => setResetLoginConfirm(e.target.value)}
+                placeholder="重置"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              💡 完成後請通知學員：使用新 Email 至登入頁註冊（系統會自動依學員編號 / Email 比對重新綁定）。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => closeResetLoginDialog(false)} disabled={resettingLogin}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleResetLogin}
+              disabled={resettingLogin || resetLoginConfirm !== "重置" || resetLoginReason.trim().length < 2}
+            >
+              {resettingLogin ? "重置中…" : "確認重置"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reset Password Dialog */}
       <Dialog open={showResetPwd} onOpenChange={closeResetDialog}>
