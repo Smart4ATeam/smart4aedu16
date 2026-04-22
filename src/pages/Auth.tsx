@@ -35,11 +35,20 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
 
   // Verify Google activation after OAuth redirect
-  const verifyGoogleActivation = useCallback(async (userId: string) => {
+  const verifyGoogleActivation = useCallback(async (userId: string, userEmail: string | undefined) => {
     const pendingStudentId = sessionStorage.getItem("pending_activation_student_id");
+    const pendingEmail = sessionStorage.getItem("pending_activation_email");
     if (!pendingStudentId) return false; // Not a pending activation
 
     sessionStorage.removeItem("pending_activation_student_id");
+    sessionStorage.removeItem("pending_activation_email");
+
+    // Verify the Google account email matches the registration email
+    if (pendingEmail && userEmail && userEmail.toLowerCase() !== pendingEmail.toLowerCase()) {
+      toast.error(`啟用失敗：您使用的 Google 帳號 (${userEmail}) 與報名時提供的 Email (${pendingEmail}) 不一致。`);
+      await supabase.auth.signOut();
+      return true;
+    }
 
     const { data: profile } = await supabase.
     from("profiles").
@@ -61,7 +70,7 @@ export default function Auth() {
     if (!user) return;
 
     const check = async () => {
-      const handled = await verifyGoogleActivation(user.id);
+      const handled = await verifyGoogleActivation(user.id, user.email);
       if (!handled) {
         // Normal login — redirect to dashboard
         navigate("/", { replace: true });
@@ -105,8 +114,13 @@ export default function Auth() {
       toast.error("請先輸入學員編號");
       return;
     }
-    // Store student_id for post-OAuth verification
+    if (!email.trim()) {
+      toast.error("請先輸入報名時提供的 Email");
+      return;
+    }
+    // Store student_id + email for post-OAuth verification
     sessionStorage.setItem("pending_activation_student_id", studentId.trim());
+    sessionStorage.setItem("pending_activation_email", email.trim().toLowerCase());
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -116,6 +130,7 @@ export default function Auth() {
     });
     if (error) {
       sessionStorage.removeItem("pending_activation_student_id");
+      sessionStorage.removeItem("pending_activation_email");
       toast.error(error.message);
     }
   };
@@ -252,8 +267,23 @@ export default function Auth() {
                       className="pl-10 bg-muted border-border"
                       required />
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      報名時提供的 Email <span className="text-destructive">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="pl-10 bg-muted border-border"
+                      required />
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      學員編號可前往智能助理查詢
+                      您的 Google 帳號 Email 必須與此 Email 一致才能成功啟用
                     </p>
                   </div>
                   <Button
@@ -264,9 +294,6 @@ export default function Auth() {
                     <GoogleIcon />
                     使用 Google 帳號啟用
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    請使用報名時提供的E-mail帳號或是學員綁定的E-mail帳號啟用
-                  </p>
                 </div>
 
                 {/* Divider */}
