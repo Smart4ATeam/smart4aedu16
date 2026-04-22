@@ -92,6 +92,56 @@ export function StudentDetailDialog({ open, onOpenChange, detail, isSelf, getPri
     }
   };
 
+  const closeResetLoginDialog = (open: boolean) => {
+    setShowResetLogin(open);
+    if (!open) {
+      setResetLoginConfirm("");
+      setResetLoginReason("");
+    }
+  };
+
+  const handleResetLogin = async () => {
+    if (resetLoginConfirm !== "重置") {
+      toast.error('請輸入「重置」二字以確認');
+      return;
+    }
+    if (!resetLoginReason.trim() || resetLoginReason.trim().length < 2) {
+      toast.error("請填寫操作原因（至少 2 字）");
+      return;
+    }
+    setResettingLogin(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reset-login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            user_id: detail.profile.id,
+            reason: resetLoginReason.trim(),
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "重置失敗");
+      toast.success(
+        `已重置登入帳號（刪除 ${result.deleted_email || "—"}，解綁 ${result.unbound_member_count} 筆報名）。請通知學員用新 Email 重新註冊。`,
+        { duration: 8000 }
+      );
+      closeResetLoginDialog(false);
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error("重置失敗：" + err.message);
+    } finally {
+      setResettingLogin(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
