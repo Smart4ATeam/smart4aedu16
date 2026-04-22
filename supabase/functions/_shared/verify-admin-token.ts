@@ -47,7 +47,7 @@ export async function verifyAdminToken(req: Request): Promise<AdminVerifyResult>
     return { ok: false, status: 403, error: "Forbidden: admin role required" };
   }
 
-  return { ok: true, userId: v.userId };
+  return { ok: true, userId };
 }
 
 export async function logAdminAction(params: {
