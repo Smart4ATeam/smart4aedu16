@@ -156,6 +156,37 @@ Deno.serve(async (req) => {
         .eq("id", newUserId);
     }
 
+    // Safety net: bind any other unbound reg_members with same email
+    // (handles case where same person had multiple reg records, or signed up via Google first)
+    if (newUserId) {
+      const { data: orphanMembers } = await adminClient
+        .from("reg_members")
+        .select("id, name, member_no")
+        .ilike("email", normalizedEmail)
+        .is("user_id", null);
+
+      if (orphanMembers && orphanMembers.length > 0) {
+        await adminClient
+          .from("reg_members")
+          .update({ user_id: newUserId })
+          .in("id", orphanMembers.map((m: any) => m.id));
+      }
+
+      // Ensure profile display_name reflects the registration name (not email)
+      const { data: currentProfile } = await adminClient
+        .from("profiles")
+        .select("display_name, email")
+        .eq("id", newUserId)
+        .maybeSingle();
+
+      if (currentProfile && (currentProfile.display_name === currentProfile.email || !currentProfile.display_name)) {
+        await adminClient
+          .from("profiles")
+          .update({ display_name: displayName })
+          .eq("id", newUserId);
+      }
+    }
+
     if (newUserId) {
       await sendWelcomeMessage(adminClient, newUserId, displayName);
     }
