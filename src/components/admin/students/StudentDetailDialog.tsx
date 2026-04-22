@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Mail, BookOpen, Pencil, KeyRound } from "lucide-react";
+import { Mail, BookOpen, Pencil, KeyRound, AlertTriangle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
