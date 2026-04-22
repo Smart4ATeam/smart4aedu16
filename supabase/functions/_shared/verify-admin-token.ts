@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { verifyUserToken, jsonResponse, corsHeaders } from "./verify-user-token.ts";
+import { jsonResponse, corsHeaders } from "./verify-user-token.ts";
 
 export { jsonResponse, corsHeaders };
 
@@ -11,20 +11,32 @@ export interface AdminVerifyResult {
 }
 
 /**
- * 驗證 Bearer token + 該 user 必須是 admin。
+ * 驗證 Bearer Supabase session JWT + 該 user 必須是 admin。
+ * 適用於前端用 session.access_token 呼叫的後台管理功能。
  */
 export async function verifyAdminToken(req: Request): Promise<AdminVerifyResult> {
-  const v = await verifyUserToken(req);
-  if (!v.ok || !v.userId) {
-    return { ok: false, status: v.status ?? 401, error: v.error ?? "Unauthorized" };
+  const auth = req.headers.get("Authorization") ?? req.headers.get("authorization");
+  if (!auth || !auth.toLowerCase().startsWith("bearer ")) {
+    return { ok: false, status: 401, error: "Missing Bearer token" };
+  }
+  const token = auth.slice(7).trim();
+  if (!token) {
+    return { ok: false, status: 401, error: "Empty token" };
   }
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(url, serviceKey);
 
+  // 用 service role 驗 JWT 取得 user
+  const { data: userData, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return { ok: false, status: 401, error: "Invalid session token" };
+  }
+  const userId = userData.user.id;
+
   const { data, error } = await admin.rpc("has_role", {
-    _user_id: v.userId,
+    _user_id: userId,
     _role: "admin",
   });
 
