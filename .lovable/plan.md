@@ -1,110 +1,55 @@
 
 
-# 報名學員 ↔ 平台使用者 整合方案（含 Backfill 與登入 Email 安全機制）
+## 啟用後無法登入：問題分析與一次性修復計畫
 
-## 一、回答你的問題
+### 根因
+資料庫上原本應該掛在 `auth.users` 的 `on_auth_user_created` trigger（呼叫 `handle_new_user()`）**目前不存在**。任何透過 Google OAuth 或 Email 註冊／啟用的新帳號，都不會自動建立 `profiles`、`user_roles`、`notification_settings`，也不會自動綁定到 `reg_members`。結果：
+- 用戶能登入 auth，但前端讀 `profiles` 為空 → 看起來「登入失敗 / 無法進入系統」
+- `reg_members.user_id` 沒被回填 → 訂單、積分、課程通通對不上
 
-**Q: profiles.email 與 auth.users.email 分離後，萬一使用者改了 reg_members.email 後無法登入怎麼辦？**
+### 受影響帳號（已查到 5 個 auth user 完全沒 profile）
+| Email | Auth ID 後綴 | 對應 reg_member |
+|---|---|---|
+| gfrise25@gmail.com（謝億華） | …b67607d | SA25110108 ✅ 有 |
+| dolomite2004@gmail.com | …e790c8 | ❌ 無 |
+| hankhuang@pantaiwan.com.tw | …fca3e6 | ❌ 無 |
+| johnlee@pantaiwan.com.tw | …43b2f3 | ❌ 無 |
+| poo19970403@gmail.com | …8bdea0 | ❌ 無 |
 
-關鍵釐清：**改 reg_members.email 不會影響登入**，因為登入只認 `auth.users.email`。所以分離本身是安全的。
+### 修復步驟（一次性 migration）
 
-但要避免「使用者誤以為改了 email 就能用新 email 登入」造成混淆，方案如下：
-
-1. **UI 明確標示**：後台編輯 reg_member 時，email 欄位旁顯示「此為通訊／顯示用 Email，不影響登入帳號」。若該 user 已綁定，另外顯示「目前登入 Email：xxx@xxx」。
-2. **獨立「變更登入 Email」按鈕**：要改登入帳號必須走專屬流程（edge function `admin-update-login-email`），三邊（auth.users / profiles / reg_members）一起更新並寫 log。
-3. **救援機制**：
-   - 後台「重設密碼」功能維持（用 user_id 直接改，不靠 email）
-   - 後台可查 `reg_operation_logs` 找到歷次 email 變更紀錄
-   - 萬一真的改錯登入 email 鎖死自己 → 後台用「變更登入 Email」按鈕改回來即可（admin 用 service role 操作，不需要使用者本人）
-
----
-
-## 二、整合策略總覽
-
-```text
-   reg_members (報名資料)              profiles (平台帳號顯示)        auth.users (登入)
-   ─────────────────                   ────────────────────           ─────────────
-   name        ◄──┐ trigger B          display_name                   email (登入用)
-   phone       ◄──┤ (profile→member)   phone                          ──────────
-   email       ──►│ trigger A          email (顯示用)                  獨立流程才動
-   member_no   ──►│ (member→profile)   student_id                     edge function
-   user_id     ───┴──────────────────► id ─────────────────────────► id
+**Step 1：重新建立 auth.users → handle_new_user 的 trigger（治本）**
+```sql
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-| 同步方向 | 觸發時機 | 同步欄位 | 不動 |
-|---|---|---|---|
-| reg_members → profiles | trigger A（reg_members UPDATE） | name→display_name、phone、email（顯示）、member_no→student_id | auth.users.email |
-| profiles → reg_members | trigger B（profiles UPDATE） | display_name→name、phone | email（避免覆蓋報名 email） |
-| 三邊登入 Email 同步 | edge function 手動觸發 | auth.users.email + profiles.email + reg_members.email | — |
+**Step 2：修補 handle_new_user 的 email 比對邏輯（防呆）**
+- `WHERE email = NEW.email` → 改用 `LOWER(email) = LOWER(NEW.email)`，避免大小寫造成找不到 reg_member（正是 Google OAuth 常踩的雷，例如 `Syichg@gmail.com`）。
 
----
+**Step 3：補齊 5 位現有受影響帳號的資料**
+對每位用 `handle_new_user` 同樣的邏輯一次補齊：
+1. 若有對應 `reg_members`（例如謝億華 SA25110108）→ 建立 profile + 綁 user_id + 設 student_id = member_no
+2. 若無 reg_member → 建立基本 profile（display_name 用 email），並寫入 `reg_operation_logs` 標記為 unmatched_signup 待後台手動綁定
+3. 全部加上 `user_roles=user`、初始化 `notification_settings`
 
-## 三、實作清單
+**Step 4：全表掃描其他可能漏網之魚**
+```sql
+-- 找出所有 auth.users 中沒 profile 的，自動補建
+INSERT INTO profiles (id, display_name, email, activated)
+SELECT u.id, COALESCE(u.raw_user_meta_data->>'display_name', u.email), u.email, true
+FROM auth.users u
+WHERE NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = u.id);
+-- 補 user_roles、notification_settings 同理
+```
 
-### A. DB Migration
+### 驗收
+1. 修補後查詢 `auth.users LEFT JOIN profiles` 應為 0 筆缺漏
+2. 受影響的 5 位學員直接用原密碼或 Google 登入即可進入系統
+3. 之後新註冊／啟用會自動跑 trigger，不再遺失資料
 
-1. **新增 trigger `sync_member_to_profile`**（reg_members AFTER UPDATE）
-   - 條件：`user_id IS NOT NULL`
-   - 同步 name / phone / email 到 profiles
-2. **新增 trigger `sync_profile_to_member`**（profiles AFTER UPDATE）
-   - 條件：對應 reg_members 存在
-   - 同步 display_name / phone 到 reg_members（不動 email）
-3. **修改 function `handle_new_user`**
-   - 找不到對應 reg_member 時不再 raise exception
-   - 仍建立 profile，並寫一筆 `reg_operation_logs`（action = `unmatched_signup`）
-4. **一次性 Backfill SQL**（migration 內執行一次）
-   ```sql
-   UPDATE profiles p SET 
-     display_name = COALESCE(NULLIF(m.name,''), p.display_name),
-     phone = COALESCE(m.phone, p.phone),
-     email = COALESCE(m.email, p.email),
-     updated_at = now()
-   FROM reg_members m
-   WHERE m.user_id = p.id;
-   ```
-
-### B. Edge Function
-
-5. **新增 `admin-update-login-email`**
-   - 驗證 admin token
-   - 用 `auth.admin.updateUserById` 更新登入 email
-   - 連動更新 profiles.email + reg_members.email
-   - 寫 `reg_operation_logs`
-
-### C. 前端
-
-6. **`RegMembersTab` 編輯 dialog**
-   - email 欄位旁加說明文字「通訊／顯示用，不影響登入」
-   - 若該 member 已綁定 user，顯示目前登入 email
-   - 新增「變更登入 Email」獨立按鈕（呼叫 edge function）
-7. **`RegMembersTab` 列表**
-   - 新增綁定狀態徽章（已綁定平台帳號 / 未綁定）
-   - 未綁定者顯示「綁定使用者」按鈕（搜尋 profiles 後手動綁）
-8. **`StudentDetailDialog`**
-   - 顯示對應 reg_member 資訊（若有），標示資料同步狀態
-
----
-
-## 四、影響檔案
-
-| 檔案 | 變更 |
-|---|---|
-| 新 migration | 2 個 trigger + 修改 handle_new_user + backfill |
-| `supabase/functions/admin-update-login-email/index.ts` | 新增 |
-| `src/pages/admin/AdminStudents.tsx`（RegMembersTab、PointsTab 共用檔） | 編輯 dialog、綁定徽章、變更登入 email 按鈕 |
-| `src/components/admin/students/StudentDetailDialog.tsx` | 顯示 reg_member 連動資訊 |
-
----
-
-## 五、驗收情境
-
-1. 後台改 reg_member.name → profiles.display_name 自動更新 ✅
-2. 使用者在 Settings 改 display_name → reg_members.name 自動更新 ✅
-3. 後台改 reg_member.email → 登入 email 不變、profiles.email 顯示更新 ✅
-4. 使用者用「舊 email」登入 → 仍可正常登入（auth.users.email 沒變）✅
-5. 後台用「變更登入 Email」→ 三邊一起更新，使用者用新 email 登入 ✅
-6. 新使用者用沒在 reg_members 的 email 註冊 → 不再被擋，profile 建立 + log 寫入待綁定清單 ✅
-7. Backfill 後，所有已綁定 profiles 的 name/phone/email 與 reg_members 對齊 ✅
-
-確認後切換執行模式依序實作。
+### 對使用者
+完成後請通知 5 位學員直接登入即可，不需要重設密碼。其中 4 位（除謝億華外）目前在系統內沒有對應的報名學員資料，會以「未綁定學員」狀態存在，你可以到後台手動綁定到對應的 reg_member。
 
