@@ -114,8 +114,13 @@ export default function Auth() {
       toast.error("請先輸入學員編號");
       return;
     }
-    // Store student_id for post-OAuth verification
+    if (!email.trim()) {
+      toast.error("請先輸入報名時提供的 Email");
+      return;
+    }
+    // Store student_id + email for post-OAuth verification
     sessionStorage.setItem("pending_activation_student_id", studentId.trim());
+    sessionStorage.setItem("pending_activation_email", email.trim().toLowerCase());
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -125,6 +130,7 @@ export default function Auth() {
     });
     if (error) {
       sessionStorage.removeItem("pending_activation_student_id");
+      sessionStorage.removeItem("pending_activation_email");
       toast.error(error.message);
     }
   };
