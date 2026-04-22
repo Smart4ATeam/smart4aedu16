@@ -35,11 +35,20 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
 
   // Verify Google activation after OAuth redirect
-  const verifyGoogleActivation = useCallback(async (userId: string) => {
+  const verifyGoogleActivation = useCallback(async (userId: string, userEmail: string | undefined) => {
     const pendingStudentId = sessionStorage.getItem("pending_activation_student_id");
+    const pendingEmail = sessionStorage.getItem("pending_activation_email");
     if (!pendingStudentId) return false; // Not a pending activation
 
     sessionStorage.removeItem("pending_activation_student_id");
+    sessionStorage.removeItem("pending_activation_email");
+
+    // Verify the Google account email matches the registration email
+    if (pendingEmail && userEmail && userEmail.toLowerCase() !== pendingEmail.toLowerCase()) {
+      toast.error(`啟用失敗：您使用的 Google 帳號 (${userEmail}) 與報名時提供的 Email (${pendingEmail}) 不一致。`);
+      await supabase.auth.signOut();
+      return true;
+    }
 
     const { data: profile } = await supabase.
     from("profiles").
