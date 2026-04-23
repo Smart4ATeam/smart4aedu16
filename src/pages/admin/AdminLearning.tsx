@@ -438,6 +438,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           title_suffix: `${year}年${m}月班`,
           start_date: startDate,
           end_date: endDate,
+          start_time: batchForm.start_time || null,
+          end_time: batchForm.end_time || null,
           location: batchForm.location || "",
           max_students: batchForm.max_students ? +batchForm.max_students : null,
           schedule_type: "recurring",
