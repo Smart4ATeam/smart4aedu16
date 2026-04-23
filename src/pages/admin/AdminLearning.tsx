@@ -301,7 +301,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const [batchOpen, setBatchOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [filterCourse, setFilterCourse] = useState<string>("all");
-  const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
+  const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", start_time: "", end_time: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
 
   // Query enrollment counts per session
   const { data: enrollmentCounts = {} } = useQuery({
