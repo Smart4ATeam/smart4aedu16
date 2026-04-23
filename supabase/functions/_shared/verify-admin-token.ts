@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { jsonResponse, corsHeaders } from "./verify-user-token.ts";
+import { jsonResponse, corsHeaders, verifyUserToken } from "./verify-user-token.ts";
 
 export { jsonResponse, corsHeaders };
 
@@ -11,8 +11,11 @@ export interface AdminVerifyResult {
 }
 
 /**
- * 驗證 Bearer Supabase session JWT + 該 user 必須是 admin。
- * 適用於前端用 session.access_token 呼叫的後台管理功能。
+ * 驗證 Admin token。支援兩種來源：
+ * 1) sk_xxx：自家 user_api_tokens（與學員端相同），驗完再檢查 admin role
+ * 2) Supabase session JWT：直接 auth.getUser()，再檢查 admin role
+ *
+ * 這樣管理員可以用同一組 sk_xxx token 同時操作學員端 + 管理員端 API。
  */
 export async function verifyAdminToken(req: Request): Promise<AdminVerifyResult> {
   const auth = req.headers.get("Authorization") ?? req.headers.get("authorization");
@@ -28,12 +31,25 @@ export async function verifyAdminToken(req: Request): Promise<AdminVerifyResult>
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(url, serviceKey);
 
-  // 用 service role 驗 JWT 取得 user
-  const { data: userData, error: userErr } = await admin.auth.getUser(token);
-  if (userErr || !userData?.user) {
-    return { ok: false, status: 401, error: "Invalid session token" };
+  let userId: string | undefined;
+
+  if (token.startsWith("sk_")) {
+    // 走自家 token 表
+    const r = await verifyUserToken(req);
+    if (!r.ok) return { ok: false, status: r.status ?? 401, error: r.error ?? "Invalid token" };
+    userId = r.userId;
+  } else {
+    // 當作 Supabase session JWT
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return { ok: false, status: 401, error: "Invalid session token" };
+    }
+    userId = userData.user.id;
   }
-  const userId = userData.user.id;
+
+  if (!userId) {
+    return { ok: false, status: 401, error: "No user resolved from token" };
+  }
 
   const { data, error } = await admin.rpc("has_role", {
     _user_id: userId,
