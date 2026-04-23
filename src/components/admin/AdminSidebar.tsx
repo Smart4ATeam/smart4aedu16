@@ -28,7 +28,7 @@ const navItems = [
   { title: "資源管理", url: "/admin/resources", icon: FolderOpen },
   { title: "訊息廣播", url: "/admin/broadcast", icon: Megaphone },
   
-  { title: "行事曆管理", url: "/admin/settings", icon: CalendarDays },
+  { title: "行事曆管理", url: "/admin/calendar", icon: CalendarDays },
   { title: "API 串接", url: "/admin/integrations", icon: Plug },
   { title: "管理者 Agent", url: "/admin/agent", icon: Bot },
 ];

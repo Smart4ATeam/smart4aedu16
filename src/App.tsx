@@ -28,6 +28,7 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminIntegrations from "./pages/admin/AdminIntegrations";
 import AdminLearning from "./pages/admin/AdminLearning";
 import AdminAgent from "./pages/admin/AdminAgent";
+import AdminCalendar from "./pages/admin/AdminCalendar";
 
 import AdminImport from "./pages/admin/AdminImport";
 import Learning from "./pages/Learning";
