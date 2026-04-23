@@ -56,6 +56,13 @@ export default function AdminCalendar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  // filters
+  const [filterType, setFilterType] = useState<"all" | "global" | "personal" | "session">("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [filterKeyword, setFilterKeyword] = useState("");
+  const [scope, setScope] = useState<"month" | "range">("month");
+
   // linked-event warning dialog
   const [warning, setWarning] = useState<{ event: CalendarEvent; action: "edit" | "delete" } | null>(null);
 
