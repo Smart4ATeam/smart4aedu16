@@ -554,7 +554,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               </TableRow>
             ))}
             {sorted.length === 0 && (
-              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
