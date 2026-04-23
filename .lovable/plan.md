@@ -1,102 +1,116 @@
 
 
-# 課程梯次 ↔ 行事曆 整合連動規劃
+# 管理員 Agent：行事曆管理 整合規劃
 
 ## 目標
-梯次只要狀態非「排程中」就自動在行事曆建立對應活動；多日課程拆成多個單日活動；雙向提示連動關係。
+讓管理員透過 AI Agent 對行事曆執行 查詢 / 新增 / 修改 / 刪除，並嚴格區分「全域活動」「個人活動」與「課程梯次連動活動」三種情境。
 
 ---
 
-## 一、資料庫變更
+## 一、新增 Edge Function
 
-### 1. `course_sessions` 新增時間欄位
-```sql
-ALTER TABLE course_sessions
-  ADD COLUMN start_time time,
-  ADD COLUMN end_time time;
-```
+### `supabase/functions/api-admin-agent-calendar/index.ts`
+- 認證：沿用 `verify-admin-token.ts`（Bearer JWT + admin role check）
+- CORS、輸入驗證、錯誤碼一致於現有 admin agent functions
 
-### 2. `calendar_events` 新增起訖時間 + 連動標記
-```sql
-ALTER TABLE calendar_events
-  ADD COLUMN end_time time,                      -- 既有 event_time 當開始時間
-  ADD COLUMN session_id uuid,                    -- 連動的梯次 id（NULL = 一般活動）
-  ADD COLUMN session_day_index int;              -- 多日課程第幾天（1, 2, ...）
-CREATE INDEX idx_calendar_events_session ON calendar_events(session_id);
-```
-> `session_id` 不設 FK cascade，改用觸發器邏輯掌控刪除/同步行為，避免手動刪行事曆活動連帶炸掉梯次。
+### 端點行為（單一 function 用 `action` 路由）
 
-### 3. 觸發器：梯次 → 行事曆 自動同步
-建立 `sync_session_to_calendar()` 觸發器，AFTER INSERT/UPDATE 於 `course_sessions`：
+| Method | Action | 說明 |
+|---|---|---|
+| GET | `list` | Query: `scope=global|personal|session|all`、`date_from`、`date_to`、`q`（標題/描述模糊）、`limit/offset`。回傳含 `session_id`、`session_day_index`、是否 linked |
+| GET | `get` | `?id=<uuid>` 單筆（含關聯課程資訊） |
+| POST | `create` | 建立活動，需 `confirm:true` |
+| POST | `update` | 修改活動，需 `confirm:true`；若 `session_id != null` 一律回 `409 LINKED_TO_SESSION` 並附課程/梯次資訊 |
+| POST | `delete` | 刪除，需 `confirm:true` + `confirm_delete:true`；linked 活動同樣 409 拒絕 |
 
-- **同步條件**：`status <> 'scheduled'` 且有 `start_date`
-- **流程**：
-  1. 先刪除此 `session_id` 既有的 `calendar_events`（避免日期/時間/狀態變更後殘留舊活動）
-  2. 從 `start_date` 到 `end_date` 逐日建立活動（單日 = 1 筆，雙日 = 2 筆，依此類推）
-  3. 標題：`courses.title + (title_suffix)`，第 N 天會加 `（Day N/總天數）`
-  4. `is_global = true`、`color = 'gradient-cyan'`、帶入 `session_id`、`session_day_index`、`event_time = start_time`、`end_time = end_time`
-  5. 若狀態改回 `scheduled` 或被刪除 → 連動刪除 `session_id` 對應的所有 `calendar_events`
+### Scope 規則（重要）
+- `global` → `is_global = true AND session_id IS NULL`
+- `personal` → `user_id = <admin 自己 user id> AND is_global = false`
+- `session` → `session_id IS NOT NULL`（唯讀）
+- `all` → 上述聯集
 
----
+### 必填欄位（create / update）
+- `create`：`title`、`event_date`(YYYY-MM-DD)、`scope`('global' | 'personal')
+- 選填：`event_time`、`end_time`(HH:MM)、`description`、`color`(預設 `gradient-orange`)
+- `update`：`id` + 任一欲改欄位
 
-## 二、後端 Edge Function 不需改動
-Calendar 操作目前用 RLS 直連 supabase-js，現有 RLS 已支援 admin 全域 CRUD，不需加 function。
+### 安全攔截邏輯
+1. 取得目標活動
+2. 若 `session_id != null`：直接回 409，payload 含 `course_title`、`session_id`、`start_date`，並提示請改呼叫 `api-admin-agent-sessions`
+3. 寫入 `reg_operation_logs`（entity_type='calendar_event'）
 
 ---
 
-## 三、前端變更
+## 二、更新 Agent Skill 文件
 
-### A. `src/pages/admin/AdminLearning.tsx`（梯次管理）
-1. 梯次表單新增「開始時間 / 結束時間」兩個欄位（type=time，非必填）
-2. 批次建立梯次表單同步加上時間欄位
-3. 表格欄位顯示時段（若有時間）
-4. 提交 payload 加 `start_time` / `end_time`
+### `src/lib/agent-skills/admin-skill.ts`
+新增「12. 行事曆管理」段落，內容包含：
 
-### B. `src/pages/Calendar.tsx`（學員行事曆，已有編輯）
-1. 表單時間欄位拆成「開始時間 / 結束時間」（非必填）
-2. 顯示時間時改成 `09:00 ~ 17:00` 格式
-3. 點擊連動活動（`session_id != null`）時，顯示 readonly 提示：「此活動由課程梯次連動建立，請至『學習中心 → 梯次管理』修改」並停用編輯/刪除按鈕
+1. **⚠️ 開場必詢問（最高優先級）**
+   > 管理員同時擁有「管理員後台行事曆」與「學員端個人行事曆」兩種視角。任何行事曆操作前，Agent 必須先問：
+   > 「您要操作的是『管理員後台 全域活動』還是『您學員端的個人活動』？」
+   > 對應 → `scope: "global"` 或 `scope: "personal"`
 
-### C. 新增 `src/pages/admin/AdminCalendar.tsx`（管理員行事曆）
-> 目前行事曆只有學員側 `/calendar`，沒有 admin 專屬頁。需加一個讓 admin 管理「全域活動」的頁面：
-1. 顯示所有 `is_global = true` + admin 個人活動
-2. 可新增 / 修改 / 刪除全域活動（之前只有新增、刪除 → 補上修改）
-3. 起訖時間皆可填
-4. 編輯或刪除「`session_id != null`」活動時：
-   - 跳出警示 Dialog：「⚠️ 此活動為課程梯次『XXX』連動建立。直接修改僅影響行事曆顯示，下次梯次更新時會被覆寫。建議至『學習中心 → 梯次管理』修改梯次本體。」
-   - 提供兩個選項：「前往修改梯次」（跳轉 AdminLearning） / 「仍要直接編輯/刪除」
-5. 列表中連動活動加圖示標記（例如 🔗）區分
+2. **端點規格**：列出 list / get / create / update / delete 與 query/body 範例
 
-### D. `AdminSidebar.tsx` / 路由
-- 在 admin sidebar 加入「行事曆」項目，路由 `/admin/calendar` → `AdminCalendar`
+3. **連動活動處理規則**：
+   - 查詢結果遇到 `session_id != null` → 標示「🔗 課程連動」並附課程名稱、梯次日期
+   - 使用者要求修改/刪除 linked 活動 → **不可呼叫 calendar API**，改流程：
+     1. 告知「此活動由課程梯次連動建立」
+     2. 引導改用 `api-admin-agent-sessions`（修改梯次）或調整 status 回 `scheduled`（自動刪除行事曆）
+   - 若使用者堅持，依然回報 API 會拒絕，請改梯次
+
+4. **變更類流程（嚴格）**：
+   - **新增**：先覆述「scope / 標題 / 日期 / 起訖時間 / 描述」→ 等使用者確認 → `confirm:true`
+   - **修改**：先 GET 該筆 → 覆述「修改前 vs 修改後」→ 等確認 → `confirm:true`
+   - **刪除**：先 GET → 覆述標題/日期 → 警告無法復原 → 等「確認刪除」→ `confirm:true` + `confirm_delete:true`
+
+5. **錯誤碼**：補上 `409 LINKED_TO_SESSION`
+
+6. **自然語言範例**：
+   ```
+   使用者：幫我在 5/20 加一個全所員工會議
+   Agent：請問是要加在「管理員後台 全域活動」（所有學員看得到）
+         還是「您個人學員端行事曆」（只有您自己看得到）？
+   使用者：全域
+   Agent：即將新增：
+         - Scope：全域活動
+         - 標題：全所員工會議
+         - 日期：2026-05-20
+         - 時間：未填
+         確認執行嗎？
+   ```
+
+   ```
+   使用者：幫我把 5/9 的「Make 入門班 Day 1」刪掉
+   Agent：[GET list] 該活動 session_id=xxx，是課程梯次連動活動。
+         🔗 連動課程：Make 入門班（梯次 2026/05/09–05/10）
+         不能直接從行事曆刪除。請選：
+         A) 將梯次狀態改為「排程中」(對應行事曆會自動清掉)
+         B) 直接刪除整個梯次
+         需要我幫您改梯次嗎？
+   ```
 
 ---
 
-## 四、現有資料處理
-針對已存在、狀態非 `scheduled` 的梯次：migration 內跑一次回填，呼叫同樣邏輯把它們補建到 `calendar_events`。
-
----
-
-## 五、檔案清單
+## 三、檔案清單
 
 **新增**
-- `src/pages/admin/AdminCalendar.tsx`
-- migration：欄位新增 + 觸發器 + 回填
+- `supabase/functions/api-admin-agent-calendar/index.ts`
 
 **修改**
-- `src/pages/admin/AdminLearning.tsx`（梯次表單加時間欄位）
-- `src/pages/Calendar.tsx`（時間拆起訖、連動活動唯讀提示）
-- `src/components/admin/AdminSidebar.tsx`（加行事曆入口）
-- `src/App.tsx`（加 `/admin/calendar` 路由）
-- `src/integrations/supabase/types.ts` 會由 Supabase 自動更新
+- `src/lib/agent-skills/admin-skill.ts`（追加第 12 章 + 開場必詢問規則 + 錯誤碼補充）
+
+**不需改動**
+- 資料庫 schema（已有 `session_id`、起訖時間欄位）
+- `verify-admin-token.ts`、其他現有 agent functions
+- 前端 UI（行事曆管理頁已完成）
 
 ---
 
-## 六、影響範圍
-- **梯次管理**：新增時間欄位，原有資料 `start_time/end_time` 為 NULL 不影響顯示
-- **學員行事曆**：會看到所有狀態非排程中的梯次活動（is_global），原個人活動不受影響
-- **多日課程**：例如 2026/05/09–05/10 的兩日課，會自動產生 2 筆獨立行事曆活動
-- **狀態回到「排程中」**：對應行事曆活動會被自動清掉，避免顯示不該公開的梯次
-
-確認規劃 OK 嗎？OK 我就切換到實作模式執行。
+## 四、影響範圍
+- 管理員透過 Agent 可完整 CRUD 全域 / 個人活動
+- 課程連動活動受保護，避免行事曆與梯次資料不一致
+- 所有變更操作會寫入 `reg_operation_logs` 留稽核軌跡
+- 學員端 Agent（`AGENT_SKILL_MD`）不受影響，仍只能看自己的活動
 
