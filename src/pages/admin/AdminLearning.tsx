@@ -531,6 +531,9 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                 <TableCell>{s.title_suffix || "-"}</TableCell>
                 <TableCell className="text-sm font-mono">{formatDate(s.start_date)}</TableCell>
                 <TableCell className="text-sm font-mono">{formatDate(s.end_date)}</TableCell>
+                <TableCell className="text-sm font-mono">
+                  {s.start_time ? `${s.start_time.slice(0, 5)}${s.end_time ? ` ~ ${s.end_time.slice(0, 5)}` : ""}` : "-"}
+                </TableCell>
                 <TableCell className="text-sm">{s.location || "-"}</TableCell>
                 <TableCell className="text-sm font-medium">{getEnrollCount(s)}</TableCell>
                 <TableCell className="text-sm">{s.max_students || "不限"}</TableCell>
