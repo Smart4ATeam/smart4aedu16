@@ -515,6 +515,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <TableHead>梯次</TableHead>
               <TableHead>開課日</TableHead>
               <TableHead>結束日</TableHead>
+              <TableHead>時段</TableHead>
               <TableHead>地點</TableHead>
               <TableHead>已報名</TableHead>
               <TableHead>人數上限</TableHead>
