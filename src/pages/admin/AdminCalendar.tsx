@@ -168,13 +168,6 @@ export default function AdminCalendar() {
   const isToday = (day: number) =>
     year === now.getFullYear() && month === now.getMonth() && day === now.getDate();
 
-  const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
-    if (!matchesFilter(ev)) return acc;
-    if (!acc[ev.event_date]) acc[ev.event_date] = [];
-    acc[ev.event_date].push(ev);
-    return acc;
-  }, {});
-
   const matchesFilter = (ev: CalendarEvent) => {
     if (filterType === "global" && !(ev.is_global && !ev.session_id)) return false;
     if (filterType === "personal" && ev.is_global) return false;
@@ -190,6 +183,12 @@ export default function AdminCalendar() {
   };
 
   const filteredEvents = events.filter(matchesFilter);
+
+  const eventsByDate = filteredEvents.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
+    if (!acc[ev.event_date]) acc[ev.event_date] = [];
+    acc[ev.event_date].push(ev);
+    return acc;
+  }, {});
 
   const monthEvents = (scope === "range" && (filterFrom || filterTo || filterKeyword || filterType !== "all")
     ? filteredEvents
