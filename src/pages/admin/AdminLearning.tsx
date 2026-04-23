@@ -371,6 +371,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
     selectedMonths: [] as number[],
     day: "15",
     duration: "1",
+    start_time: "",
+    end_time: "",
     location: "",
     max_students: "",
     status: "open",
