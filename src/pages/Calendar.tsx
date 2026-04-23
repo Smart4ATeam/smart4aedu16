@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ type CalendarEvent = Tables<"calendar_events">;
 
 const DAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
-const EMPTY_FORM = { title: "", color: "gradient-orange", event_date: "", event_time: "", description: "" };
+const EMPTY_FORM = { title: "", color: "gradient-orange", event_date: "", event_time: "", end_time: "", description: "" };
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -26,6 +26,13 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
+}
+
+function formatTimeRange(start: string | null, end: string | null) {
+  if (!start) return "";
+  const s = start.slice(0, 5);
+  if (!end) return s;
+  return `${s} ~ ${end.slice(0, 5)}`;
 }
 
 const Calendar = () => {
@@ -37,6 +44,9 @@ const Calendar = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // 連動活動的唯讀檢視 dialog
+  const [viewing, setViewing] = useState<CalendarEvent | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -63,6 +73,11 @@ const Calendar = () => {
   };
 
   const openEdit = (ev: CalendarEvent) => {
+    // 連動活動：顯示唯讀提示
+    if (ev.session_id) {
+      setViewing(ev);
+      return;
+    }
     if (ev.is_global || ev.user_id !== user?.id) return;
     setEditingId(ev.id);
     setForm({
@@ -70,6 +85,7 @@ const Calendar = () => {
       color: ev.color,
       event_date: ev.event_date,
       event_time: ev.event_time ?? "",
+      end_time: ev.end_time ?? "",
       description: ev.description ?? "",
     });
     setShowDialog(true);
@@ -83,6 +99,7 @@ const Calendar = () => {
         color: form.color,
         event_date: form.event_date,
         event_time: form.event_time || null,
+        end_time: form.end_time || null,
         description: form.description || null,
       }).eq("id", editingId).eq("user_id", user.id);
       if (error) { toast.error("更新失敗：" + error.message); return; }
@@ -93,6 +110,7 @@ const Calendar = () => {
         color: form.color,
         event_date: form.event_date,
         event_time: form.event_time || null,
+        end_time: form.end_time || null,
         description: form.description || null,
         is_global: false,
         user_id: user.id,
@@ -151,6 +169,8 @@ const Calendar = () => {
   }
 
   const isOwn = (ev: CalendarEvent) => !ev.is_global && ev.user_id === user?.id;
+  const isLinked = (ev: CalendarEvent) => !!ev.session_id;
+  const clickable = (ev: CalendarEvent) => isOwn(ev) || isLinked(ev);
 
   return (
     <div className="space-y-6">
@@ -213,15 +233,15 @@ const Calendar = () => {
                       "gradient-cyan": "bg-chart-cyan/15 text-[hsl(200,35%,38%)] dark:text-chart-cyan border border-chart-cyan/20",
                     };
                     const colorClass = colorMap[ev.color] || colorMap["gradient-orange"];
-                    const editable = isOwn(ev);
+                    const canClick = clickable(ev);
                     return (
                       <div
                         key={ev.id}
-                        onClick={() => editable && openEdit(ev)}
-                        className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${colorClass} ${editable ? "cursor-pointer hover:opacity-80" : ""}`}
-                        title={editable ? "點擊編輯" : (ev.description || ev.title)}
+                        onClick={() => canClick && openEdit(ev)}
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-medium truncate ${colorClass} ${canClick ? "cursor-pointer hover:opacity-80" : ""}`}
+                        title={isLinked(ev) ? "點擊查看（課程連動）" : (isOwn(ev) ? "點擊編輯" : (ev.description || ev.title))}
                       >
-                        {ev.title}
+                        {isLinked(ev) ? "🔗 " : ""}{ev.title}
                       </div>
                     );
                   })}
@@ -253,6 +273,8 @@ const Calendar = () => {
           ) : (
             upcomingEvents.map((ev) => {
               const editable = isOwn(ev);
+              const linked = isLinked(ev);
+              const timeText = formatTimeRange(ev.event_time, ev.end_time);
               return (
                 <div key={ev.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                   <div className={`w-2 h-2 rounded-full ${
@@ -262,10 +284,13 @@ const Calendar = () => {
                     "bg-accent"
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">{ev.title}</p>
+                    <p className="text-xs font-medium text-foreground truncate flex items-center gap-1">
+                      {linked && <Link2 className="w-3 h-3 text-chart-cyan flex-shrink-0" />}
+                      {ev.title}
+                    </p>
                     <p className="text-[10px] text-muted-foreground">
-                      {ev.event_date}{ev.event_time ? ` ${ev.event_time}` : ""}
-                      {ev.is_global && " · 全域"}
+                      {ev.event_date}{timeText ? ` ${timeText}` : ""}
+                      {linked ? " · 課程連動" : (ev.is_global && " · 全域")}
                     </p>
                   </div>
                   {editable && (
@@ -286,6 +311,7 @@ const Calendar = () => {
         </div>
       </motion.div>
 
+      {/* 個人活動 編輯/新增 dialog */}
       <Dialog open={showDialog} onOpenChange={(o) => { if (!o) { setShowDialog(false); setEditingId(null); setForm(EMPTY_FORM); } }}>
         <DialogContent>
           <DialogHeader>
@@ -314,9 +340,19 @@ const Calendar = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex gap-3">
-              <Input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} className="flex-1" />
-              <Input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} className="w-32" />
+            <div>
+              <label className="text-xs text-muted-foreground">日期</label>
+              <Input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">開始時間（選填）</label>
+                <Input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">結束時間（選填）</label>
+                <Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} />
+              </div>
             </div>
           </div>
           <DialogFooter className="sm:justify-between">
@@ -329,6 +365,35 @@ const Calendar = () => {
               <Button variant="outline" onClick={() => { setShowDialog(false); setEditingId(null); setForm(EMPTY_FORM); }}>取消</Button>
               <Button onClick={handleSave}>{editingId ? "儲存" : "新增"}</Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 連動活動唯讀檢視 dialog */}
+      <Dialog open={!!viewing} onOpenChange={(o) => { if (!o) setViewing(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-chart-cyan" /> 課程梯次連動活動
+            </DialogTitle>
+            <DialogDescription>
+              此活動由課程梯次連動建立，無法直接編輯。如需修改，請至「學習中心 → 梯次管理」修改梯次本體。
+            </DialogDescription>
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-2 text-sm">
+              <div><span className="text-muted-foreground">標題：</span>{viewing.title}</div>
+              <div><span className="text-muted-foreground">日期：</span>{viewing.event_date}</div>
+              {viewing.event_time && (
+                <div><span className="text-muted-foreground">時段：</span>{formatTimeRange(viewing.event_time, viewing.end_time)}</div>
+              )}
+              {viewing.description && (
+                <div><span className="text-muted-foreground">地點：</span>{viewing.description}</div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setViewing(null)}>關閉</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
