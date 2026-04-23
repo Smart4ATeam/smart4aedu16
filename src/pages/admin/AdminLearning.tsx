@@ -384,6 +384,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
         title_suffix: form.title_suffix,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
+        start_time: form.start_time || null,
+        end_time: form.end_time || null,
         location: form.location,
         max_students: form.max_students ? +form.max_students : null,
         price: form.price ? +form.price : null,
