@@ -174,12 +174,38 @@ export default function AdminCalendar() {
     return acc;
   }, {});
 
-  const monthEvents = events
-    .filter((ev) => {
-      const d = new Date(ev.event_date);
-      return d.getFullYear() === year && d.getMonth() === month;
-    })
-    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+  const matchesFilter = (ev: CalendarEvent) => {
+    if (filterType === "global" && !(ev.is_global && !ev.session_id)) return false;
+    if (filterType === "personal" && ev.is_global) return false;
+    if (filterType === "session" && !ev.session_id) return false;
+    if (filterFrom && ev.event_date < filterFrom) return false;
+    if (filterTo && ev.event_date > filterTo) return false;
+    if (filterKeyword) {
+      const kw = filterKeyword.toLowerCase();
+      const hay = `${ev.title} ${ev.description ?? ""}`.toLowerCase();
+      if (!hay.includes(kw)) return false;
+    }
+    return true;
+  };
+
+  const filteredEvents = events.filter(matchesFilter);
+
+  const monthEvents = (scope === "range" && (filterFrom || filterTo || filterKeyword || filterType !== "all")
+    ? filteredEvents
+    : filteredEvents.filter((ev) => {
+        const d = new Date(ev.event_date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      })
+  ).sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+  const hasActiveFilter = filterType !== "all" || filterFrom || filterTo || filterKeyword;
+  const clearFilters = () => {
+    setFilterType("all");
+    setFilterFrom("");
+    setFilterTo("");
+    setFilterKeyword("");
+    setScope("month");
+  };
 
   if (loading) {
     return (
