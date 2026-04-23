@@ -301,7 +301,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
   const [batchOpen, setBatchOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [filterCourse, setFilterCourse] = useState<string>("all");
-  const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
+  const defaultForm = { course_id: "", title_suffix: "", start_date: "", end_date: "", start_time: "", end_time: "", location: "", max_students: "", price: "", schedule_type: "recurring", status: "scheduled", registration_url: "https://dao.smart4a.tw/registration" };
 
   // Query enrollment counts per session
   const { data: enrollmentCounts = {} } = useQuery({
@@ -371,6 +371,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
     selectedMonths: [] as number[],
     day: "15",
     duration: "1",
+    start_time: "",
+    end_time: "",
     location: "",
     max_students: "",
     status: "open",
@@ -384,6 +386,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
         title_suffix: form.title_suffix,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
+        start_time: form.start_time || null,
+        end_time: form.end_time || null,
         location: form.location,
         max_students: form.max_students ? +form.max_students : null,
         price: form.price ? +form.price : null,
@@ -434,6 +438,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
           title_suffix: `${year}年${m}月班`,
           start_date: startDate,
           end_date: endDate,
+          start_time: batchForm.start_time || null,
+          end_time: batchForm.end_time || null,
           location: batchForm.location || "",
           max_students: batchForm.max_students ? +batchForm.max_students : null,
           schedule_type: "recurring",
@@ -468,6 +474,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
       title_suffix: s.title_suffix || "",
       start_date: s.start_date || "",
       end_date: s.end_date || "",
+      start_time: s.start_time ? s.start_time.slice(0, 5) : "",
+      end_time: s.end_time ? s.end_time.slice(0, 5) : "",
       location: s.location || "",
       max_students: s.max_students?.toString() || "",
       price: s.price?.toString() || "",
@@ -511,6 +519,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <TableHead>梯次</TableHead>
               <TableHead>開課日</TableHead>
               <TableHead>結束日</TableHead>
+              <TableHead>時段</TableHead>
               <TableHead>地點</TableHead>
               <TableHead>已報名</TableHead>
               <TableHead>人數上限</TableHead>
@@ -526,6 +535,9 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
                 <TableCell>{s.title_suffix || "-"}</TableCell>
                 <TableCell className="text-sm font-mono">{formatDate(s.start_date)}</TableCell>
                 <TableCell className="text-sm font-mono">{formatDate(s.end_date)}</TableCell>
+                <TableCell className="text-sm font-mono">
+                  {s.start_time ? `${s.start_time.slice(0, 5)}${s.end_time ? ` ~ ${s.end_time.slice(0, 5)}` : ""}` : "-"}
+                </TableCell>
                 <TableCell className="text-sm">{s.location || "-"}</TableCell>
                 <TableCell className="text-sm font-medium">{getEnrollCount(s)}</TableCell>
                 <TableCell className="text-sm">{s.max_students || "不限"}</TableCell>
@@ -546,7 +558,7 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               </TableRow>
             ))}
             {sorted.length === 0 && (
-              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">尚無梯次資料</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -568,6 +580,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
             <div className="grid grid-cols-2 gap-4">
               <div><Label>開課日</Label><Input type="date" value={form.start_date} onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
               <div><Label>結束日</Label><Input type="date" value={form.end_date} onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>開始時間（選填）</Label><Input type="time" value={form.start_time} onChange={(e) => setForm(f => ({ ...f, start_time: e.target.value }))} /></div>
+              <div><Label>結束時間（選填）</Label><Input type="time" value={form.end_time} onChange={(e) => setForm(f => ({ ...f, end_time: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>地點</Label><Input value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} /></div>
@@ -658,6 +674,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
             <div className="grid grid-cols-2 gap-4">
               <div><Label>每月開課日（幾號）</Label><Input type="number" min={1} max={31} value={batchForm.day} onChange={(e) => setBatchForm(f => ({ ...f, day: e.target.value }))} /></div>
               <div><Label>課程天數</Label><Input type="number" min={1} max={14} value={batchForm.duration} onChange={(e) => setBatchForm(f => ({ ...f, duration: e.target.value }))} placeholder="1" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>開始時間（選填）</Label><Input type="time" value={batchForm.start_time} onChange={(e) => setBatchForm(f => ({ ...f, start_time: e.target.value }))} /></div>
+              <div><Label>結束時間（選填）</Label><Input type="time" value={batchForm.end_time} onChange={(e) => setBatchForm(f => ({ ...f, end_time: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

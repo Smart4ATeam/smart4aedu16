@@ -64,10 +64,13 @@ export type Database = {
           color: string
           created_at: string
           description: string | null
+          end_time: string | null
           event_date: string
           event_time: string | null
           id: string
           is_global: boolean
+          session_day_index: number | null
+          session_id: string | null
           title: string
           user_id: string | null
         }
@@ -75,10 +78,13 @@ export type Database = {
           color?: string
           created_at?: string
           description?: string | null
+          end_time?: string | null
           event_date: string
           event_time?: string | null
           id?: string
           is_global?: boolean
+          session_day_index?: number | null
+          session_id?: string | null
           title: string
           user_id?: string | null
         }
@@ -86,10 +92,13 @@ export type Database = {
           color?: string
           created_at?: string
           description?: string | null
+          end_time?: string | null
           event_date?: string
           event_time?: string | null
           id?: string
           is_global?: boolean
+          session_day_index?: number | null
+          session_id?: string | null
           title?: string
           user_id?: string | null
         }
@@ -265,6 +274,7 @@ export type Database = {
           course_id: string
           created_at: string
           end_date: string | null
+          end_time: string | null
           id: string
           instructor_id: string | null
           location: string | null
@@ -274,6 +284,7 @@ export type Database = {
           registration_url: string | null
           schedule_type: string
           start_date: string | null
+          start_time: string | null
           status: string
           title_suffix: string | null
         }
@@ -281,6 +292,7 @@ export type Database = {
           course_id: string
           created_at?: string
           end_date?: string | null
+          end_time?: string | null
           id?: string
           instructor_id?: string | null
           location?: string | null
@@ -290,6 +302,7 @@ export type Database = {
           registration_url?: string | null
           schedule_type?: string
           start_date?: string | null
+          start_time?: string | null
           status?: string
           title_suffix?: string | null
         }
@@ -297,6 +310,7 @@ export type Database = {
           course_id?: string
           created_at?: string
           end_date?: string | null
+          end_time?: string | null
           id?: string
           instructor_id?: string | null
           location?: string | null
@@ -306,6 +320,7 @@ export type Database = {
           registration_url?: string | null
           schedule_type?: string
           start_date?: string | null
+          start_time?: string | null
           status?: string
           title_suffix?: string | null
         }
