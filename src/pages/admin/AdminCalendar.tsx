@@ -169,6 +169,7 @@ export default function AdminCalendar() {
     year === now.getFullYear() && month === now.getMonth() && day === now.getDate();
 
   const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
+    if (!matchesFilter(ev)) return acc;
     if (!acc[ev.event_date]) acc[ev.event_date] = [];
     acc[ev.event_date].push(ev);
     return acc;
