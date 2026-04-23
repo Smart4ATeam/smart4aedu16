@@ -386,8 +386,111 @@ Agent：[POST action=revoke with confirm=true, confirm_delete=true] 已撤銷。
 
 ---
 
+## 12. 行事曆管理 \`api-admin-agent-calendar\`
+
+### ⚠️ 開場必詢問（最高優先級，違反視為嚴重錯誤）
+
+管理員同時擁有兩種行事曆視角：
+- **管理員後台 全域活動**（\`scope: "global"\`）：所有學員都看得到
+- **學員端 個人活動**（\`scope: "personal"\`）：只有管理員自己看得到
+
+**任何行事曆新增/修改操作前，Agent 必須先問操作者要操作哪一邊**。
+查詢時若使用者沒指明，預設用 \`scope: "all"\` 並在結果中清楚標示每筆屬於哪一類。
+
+### 端點
+
+**GET 列表**：\`?action=list&scope=global|personal|session|all&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&q=關鍵字&limit=100&offset=0\`
+
+**GET 單筆**：\`?action=get&id=<uuid>\`
+
+回傳的活動若 \`session_id != null\`，會額外帶 \`linked: true\` 與 \`session: { start_date, end_date, courses: { title, course_code } }\`。
+
+**POST 建立**：
+\`\`\`json
+{
+  "action": "create",
+  "title": "全所員工會議",        // 必填
+  "event_date": "2026-05-20",    // 必填，YYYY-MM-DD
+  "scope": "global",              // 必填，global | personal
+  "event_time": "14:00",          // 選填 HH:MM
+  "end_time": "16:00",            // 選填 HH:MM
+  "description": "說明文字",       // 選填
+  "color": "gradient-orange",     // 選填
+  "reason": "操作原因",            // 選填
+  "confirm": true                 // 必填
+}
+\`\`\`
+
+**POST 修改**：
+\`\`\`json
+{
+  "action": "update",
+  "id": "uuid",                   // 必填
+  "title": "...",                  // 任一欲改欄位（title / event_date / event_time / end_time / description / color / scope）
+  "confirm": true                 // 必填
+}
+\`\`\`
+
+**POST 刪除**：
+\`\`\`json
+{
+  "action": "delete",
+  "id": "uuid",
+  "reason": "刪除原因",
+  "confirm": true,
+  "confirm_delete": true          // 雙確認
+}
+\`\`\`
+
+### 🔗 課程連動活動（重要）
+
+若 GET 結果中某筆活動的 \`session_id != null\`：
+- 標示「🔗 課程連動」並附上課程名稱與梯次日期
+- **不可呼叫** \`update\` / \`delete\`（API 會回 \`409 LINKED_TO_SESSION\`）
+- 改流程：
+  1. 告知操作者「此活動由課程梯次連動建立，無法直接從行事曆修改」
+  2. 引導兩種選擇：
+     - A) 用 \`api-admin-agent-sessions\` 修改梯次（時間、地點等）→ 行事曆會自動同步
+     - B) 將該梯次 \`status\` 改回 \`scheduled\` → 對應行事曆活動會自動移除
+     - C) 直接刪除整個梯次（連動活動一併消失）
+
+### 變更類流程（嚴格遵守）
+
+- **新增**：覆述 scope / 標題 / 日期 / 起訖時間 / 描述 → 等使用者確認 → \`confirm:true\`
+- **修改**：先 GET 該筆 → 覆述「修改前 vs 修改後」→ 等確認 → \`confirm:true\`
+- **刪除**：先 GET → 覆述標題/日期 → 警告無法復原 → 等「確認刪除」→ \`confirm:true\` + \`confirm_delete:true\`
+
+### 自然語言範例
+
+\`\`\`
+使用者：幫我在 5/20 加一個全所員工會議
+Agent：請問是要加在「管理員後台 全域活動」（所有學員看得到）
+      還是「您個人學員端行事曆」（只有您自己看得到）？
+使用者：全域
+Agent：即將新增：
+      - Scope：全域活動
+      - 標題：全所員工會議
+      - 日期：2026-05-20
+      - 時間：未填
+      確認執行嗎？
+使用者：確認
+Agent：[POST action=create with confirm=true] 已建立。
+\`\`\`
+
+\`\`\`
+使用者：幫我把 5/9 的「Make 入門班 Day 1」刪掉
+Agent：[GET list] 該活動 session_id=xxx，是課程梯次連動活動。
+      🔗 連動課程：Make 入門班（梯次 2026/05/09–05/10）
+      不能直接從行事曆刪除。請選：
+      A) 將梯次狀態改為「排程中」（對應行事曆會自動清掉）
+      B) 直接刪除整個梯次
+      需要我幫您改梯次嗎？
+\`\`\`
+
+---
+
 ## 錯誤碼補充
 | 狀態碼 | 意義 |
 |---|---|
-| 409 | HAS_REFERENCES / HAS_ENROLLMENTS（被引用無法刪除）或重複（已擁有成就） |
+| 409 | HAS_REFERENCES / HAS_ENROLLMENTS（被引用無法刪除）、重複（已擁有成就）、LINKED_TO_SESSION（行事曆活動由課程梯次連動，請改梯次） |
 `;
