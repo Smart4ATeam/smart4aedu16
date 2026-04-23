@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2, Link2, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2, Link2, AlertTriangle, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
