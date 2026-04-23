@@ -470,6 +470,8 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
       title_suffix: s.title_suffix || "",
       start_date: s.start_date || "",
       end_date: s.end_date || "",
+      start_time: s.start_time ? s.start_time.slice(0, 5) : "",
+      end_time: s.end_time ? s.end_time.slice(0, 5) : "",
       location: s.location || "",
       max_students: s.max_students?.toString() || "",
       price: s.price?.toString() || "",
