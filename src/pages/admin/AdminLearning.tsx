@@ -574,6 +574,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <div><Label>結束日</Label><Input type="date" value={form.end_date} onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>開始時間（選填）</Label><Input type="time" value={form.start_time} onChange={(e) => setForm(f => ({ ...f, start_time: e.target.value }))} /></div>
+              <div><Label>結束時間（選填）</Label><Input type="time" value={form.end_time} onChange={(e) => setForm(f => ({ ...f, end_time: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>地點</Label><Input value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} /></div>
               <div><Label>人數上限</Label><Input type="number" value={form.max_students} onChange={(e) => setForm(f => ({ ...f, max_students: e.target.value }))} placeholder="留空=不限" /></div>
             </div>
