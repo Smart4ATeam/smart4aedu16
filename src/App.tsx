@@ -80,6 +80,7 @@ const App = () => (
             <Route path="/admin/integrations" element={<AdminProtectedRoute><AdminLayout><AdminIntegrations /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/learning" element={<AdminProtectedRoute><AdminLayout><AdminLearning /></AdminLayout></AdminProtectedRoute>} />
             <Route path="/admin/agent" element={<AdminProtectedRoute><AdminLayout><AdminAgent /></AdminLayout></AdminProtectedRoute>} />
+            <Route path="/admin/calendar" element={<AdminProtectedRoute><AdminLayout><AdminCalendar /></AdminLayout></AdminProtectedRoute>} />
             
             <Route path="/admin/import" element={<AdminProtectedRoute><AdminLayout><AdminImport /></AdminLayout></AdminProtectedRoute>} />
 
