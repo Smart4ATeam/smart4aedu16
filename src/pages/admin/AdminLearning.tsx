@@ -676,6 +676,10 @@ function SessionsTab({ sessions, courses, instructors, queryClient }: { sessions
               <div><Label>課程天數</Label><Input type="number" min={1} max={14} value={batchForm.duration} onChange={(e) => setBatchForm(f => ({ ...f, duration: e.target.value }))} placeholder="1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>開始時間（選填）</Label><Input type="time" value={batchForm.start_time} onChange={(e) => setBatchForm(f => ({ ...f, start_time: e.target.value }))} /></div>
+              <div><Label>結束時間（選填）</Label><Input type="time" value={batchForm.end_time} onChange={(e) => setBatchForm(f => ({ ...f, end_time: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>預設狀態</Label>
                 <Select value={batchForm.status} onValueChange={(v) => setBatchForm(f => ({ ...f, status: v }))}>
