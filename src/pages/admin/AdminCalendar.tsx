@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2, Link2, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2, Pencil, Trash2, Link2, AlertTriangle, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,13 @@ export default function AdminCalendar() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // filters
+  const [filterType, setFilterType] = useState<"all" | "global" | "personal" | "session">("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [filterKeyword, setFilterKeyword] = useState("");
+  const [scope, setScope] = useState<"month" | "range">("month");
 
   // linked-event warning dialog
   const [warning, setWarning] = useState<{ event: CalendarEvent; action: "edit" | "delete" } | null>(null);
@@ -161,18 +168,44 @@ export default function AdminCalendar() {
   const isToday = (day: number) =>
     year === now.getFullYear() && month === now.getMonth() && day === now.getDate();
 
-  const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
+  const matchesFilter = (ev: CalendarEvent) => {
+    if (filterType === "global" && !(ev.is_global && !ev.session_id)) return false;
+    if (filterType === "personal" && ev.is_global) return false;
+    if (filterType === "session" && !ev.session_id) return false;
+    if (filterFrom && ev.event_date < filterFrom) return false;
+    if (filterTo && ev.event_date > filterTo) return false;
+    if (filterKeyword) {
+      const kw = filterKeyword.toLowerCase();
+      const hay = `${ev.title} ${ev.description ?? ""}`.toLowerCase();
+      if (!hay.includes(kw)) return false;
+    }
+    return true;
+  };
+
+  const filteredEvents = events.filter(matchesFilter);
+
+  const eventsByDate = filteredEvents.reduce<Record<string, CalendarEvent[]>>((acc, ev) => {
     if (!acc[ev.event_date]) acc[ev.event_date] = [];
     acc[ev.event_date].push(ev);
     return acc;
   }, {});
 
-  const monthEvents = events
-    .filter((ev) => {
-      const d = new Date(ev.event_date);
-      return d.getFullYear() === year && d.getMonth() === month;
-    })
-    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+  const monthEvents = (scope === "range" && (filterFrom || filterTo || filterKeyword || filterType !== "all")
+    ? filteredEvents
+    : filteredEvents.filter((ev) => {
+        const d = new Date(ev.event_date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      })
+  ).sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+  const hasActiveFilter = filterType !== "all" || filterFrom || filterTo || filterKeyword;
+  const clearFilters = () => {
+    setFilterType("all");
+    setFilterFrom("");
+    setFilterTo("");
+    setFilterKeyword("");
+    setScope("month");
+  };
 
   if (loading) {
     return (
@@ -252,10 +285,64 @@ export default function AdminCalendar() {
         </div>
       </motion.div>
 
+      {/* Filters */}
+      <div className="glass-card rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">篩選條件</h3>
+          {hasActiveFilter && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-7 text-xs">
+              <X className="w-3 h-3" /> 清除
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <Label className="text-xs">類型</Label>
+            <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部</SelectItem>
+                <SelectItem value="global">全域活動</SelectItem>
+                <SelectItem value="personal">個人活動</SelectItem>
+                <SelectItem value="session">課程連動</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">起始日</Label>
+            <Input type="date" className="h-9" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">結束日</Label>
+            <Input type="date" className="h-9" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">關鍵字（標題/說明）</Label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input className="h-9 pl-8" placeholder="搜尋..." value={filterKeyword} onChange={(e) => setFilterKeyword(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">顯示範圍</Label>
+            <Select value={scope} onValueChange={(v: any) => setScope(v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">當前月份</SelectItem>
+                <SelectItem value="range">符合篩選的全部</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       {/* List */}
       <div className="glass-card rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold">本月活動清單</h3>
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold">
+            {scope === "range" && hasActiveFilter ? "符合篩選的活動" : "本月活動清單"}
+          </h3>
+          <span className="text-xs text-muted-foreground">共 {monthEvents.length} 筆</span>
         </div>
         <Table>
           <TableHeader>
@@ -270,7 +357,7 @@ export default function AdminCalendar() {
           </TableHeader>
           <TableBody>
             {monthEvents.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">本月沒有活動</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">沒有符合條件的活動</TableCell></TableRow>
             ) : monthEvents.map((ev) => (
               <TableRow key={ev.id}>
                 <TableCell className="font-medium">
