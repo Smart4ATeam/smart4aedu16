@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -18,12 +17,12 @@ import {
   Plug,
   BookOpen,
   Bot,
-  Settings,
   Sun,
   Moon,
   Monitor,
-  ChevronDown,
-  MessageSquare,
+  Bell,
+  User,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +30,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import logoFed from "@/assets/logo-fed.png";
@@ -58,6 +60,7 @@ export function AdminSidebar() {
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const displayName = profile?.display_name || "管理員";
   const initials = displayName.slice(0, 1);
+  const emailText = profile?.email || user?.email || "";
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -127,80 +130,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Bottom */}
-      <div className="p-5 space-y-3">
-        {/* Avatar Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="glass-card p-3 w-full text-left hover:bg-muted/40 transition-colors">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-8 h-8">
-                  {profile?.avatar_url ? (
-                    <AvatarImage src={profile.avatar_url} alt={displayName} />
-                  ) : null}
-                  <AvatarFallback className="gradient-purple text-xs font-bold text-primary-foreground">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">{displayName}</p>
-                  <div className="flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-primary" />
-                    <p className="text-[10px] text-muted-foreground">管理員</p>
-                  </div>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="min-w-[200px]">
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>設定</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/agent")}>
-              <Bot className="mr-2 h-4 w-4" />
-              <span>個人 Agent</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[10px] text-muted-foreground font-normal">主題</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setTheme("light")} className={theme === "light" ? "text-primary font-medium" : ""}>
-              <Sun className="mr-2 h-4 w-4" />
-              <span>淺色模式</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")} className={theme === "dark" ? "text-primary font-medium" : ""}>
-              <Moon className="mr-2 h-4 w-4" />
-              <span>深色模式</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")} className={theme === "system" ? "text-primary font-medium" : ""}>
-              <Monitor className="mr-2 h-4 w-4" />
-              <span>系統預設</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* 訊息中心入口 */}
-        <NavLink
-          to="/messages"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
-            isMessagesActive
-              ? "bg-primary/10 text-primary font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          }`}
-        >
-          <div className="relative">
-            <MessageSquare className="w-[18px] h-[18px]" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-destructive border border-sidebar" />
-            )}
-          </div>
-          <span className="flex-1">訊息中心</span>
-          {unreadCount > 0 && (
-            <Badge className="bg-destructive text-destructive-foreground text-[9px] px-1.5 py-0 h-4 min-w-[18px] justify-center border-0">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )}
-        </NavLink>
-
+      <div className="p-5 space-y-2">
         {/* 返回學員端入口 */}
         <NavLink
           to="/"
@@ -209,6 +139,87 @@ export function AdminSidebar() {
           <LogOut className="w-3.5 h-3.5" />
           <span>返回學員端</span>
         </NavLink>
+
+        {/* Avatar + Bell row */}
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex-1 flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors text-left min-w-0">
+                <Avatar className="w-9 h-9 flex-shrink-0">
+                  {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={displayName} /> : null}
+                  <AvatarFallback className="gradient-purple text-xs font-bold text-primary-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
+                  {emailText && (
+                    <p className="text-[10px] text-muted-foreground truncate">{emailText}</p>
+                  )}
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="min-w-[220px]">
+              <div className="px-2 py-2">
+                <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                {emailText && (
+                  <p className="text-xs text-muted-foreground truncate">{emailText}</p>
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <User className="mr-2 h-4 w-4" />
+                <span>個人資料</span>
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Sun className="mr-2 h-4 w-4" />
+                  <span>外觀模式</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setTheme("light")}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span className="flex-1">淺色模式</span>
+                      {theme === "light" && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("dark")}>
+                      <Moon className="mr-2 h-4 w-4" />
+                      <span className="flex-1">深色模式</span>
+                      {theme === "dark" && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme("system")}>
+                      <Monitor className="mr-2 h-4 w-4" />
+                      <span className="flex-1">系統預設</span>
+                      {theme === "system" && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => navigate("/agent")}>
+                <Bot className="mr-2 h-4 w-4" />
+                <span>個人 Agent</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* 訊息中心：僅圖示 */}
+          <NavLink
+            to="/messages"
+            aria-label="訊息中心"
+            title="訊息中心"
+            className={`relative flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${
+              isMessagesActive
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            <Bell className="w-[18px] h-[18px]" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+            )}
+          </NavLink>
+        </div>
       </div>
     </aside>
   );
