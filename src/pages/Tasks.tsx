@@ -240,6 +240,7 @@ const Tasks = () => {
 
       <PaymentActionPanel />
 
+      <div className="flex gap-3 flex-wrap items-center">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜尋任務標題、描述、標籤..." className="pl-9" />
