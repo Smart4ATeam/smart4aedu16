@@ -29,6 +29,26 @@ const Tasks = () => {
 
   useEffect(() => { fetchData(); }, [user]);
 
+  // Realtime: 任何人接案/狀態變動時即時刷新「已關閉」等狀態
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("tasks-page-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_applications" },
+        () => { fetchData(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => { fetchData(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const [takenTaskIds, setTakenTaskIds] = useState<Set<string>>(new Set());
 
   const fetchData = async () => {
