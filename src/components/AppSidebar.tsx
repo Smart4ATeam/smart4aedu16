@@ -12,18 +12,17 @@ import {
   Target,
   CalendarDays,
   Gem,
-  GraduationCap,
   BookOpen,
   Coins,
-  Settings,
   LogOut,
   ShieldCheck,
   Bot,
   Sun,
   Moon,
   Monitor,
-  ChevronDown,
-  MessageSquare,
+  Bell,
+  User,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +30,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import logoFed from "@/assets/logo-fed.png";
