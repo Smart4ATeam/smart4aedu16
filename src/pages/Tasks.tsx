@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { StatCard } from "@/components/StatCard";
 import { TaskCard } from "@/components/TaskCard";
 import { Target, Zap, CheckCircle, Clock, Loader2, Hourglass, Search } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -29,7 +29,18 @@ const Tasks = () => {
 
   useEffect(() => { fetchData(); }, [user]);
 
-  // Realtime: 任何人接案/狀態變動時即時刷新「已關閉」等狀態
+  // Debounced fetch：避免短時間內大量 realtime 事件觸發過多重刷
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      fetchData();
+      debounceTimerRef.current = null;
+    }, 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Realtime: 任何人接案/狀態變動時即時刷新（已防抖）
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -37,15 +48,21 @@ const Tasks = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "task_applications" },
-        () => { fetchData(); }
+        () => { debouncedFetch(); }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
-        () => { fetchData(); }
+        () => { debouncedFetch(); }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
