@@ -670,6 +670,153 @@ export type Database = {
         }
         Relationships: []
       }
+      payee_profile_updates: {
+        Row: {
+          changed_fields: string[]
+          created_at: string
+          id: string
+          new_snapshot: Json | null
+          old_snapshot: Json | null
+          purged_at: string | null
+          reason: string
+          user_id: string
+          webhook_callback_token: string | null
+          webhook_sent_at: string | null
+        }
+        Insert: {
+          changed_fields?: string[]
+          created_at?: string
+          id?: string
+          new_snapshot?: Json | null
+          old_snapshot?: Json | null
+          purged_at?: string | null
+          reason: string
+          user_id: string
+          webhook_callback_token?: string | null
+          webhook_sent_at?: string | null
+        }
+        Update: {
+          changed_fields?: string[]
+          created_at?: string
+          id?: string
+          new_snapshot?: Json | null
+          old_snapshot?: Json | null
+          purged_at?: string | null
+          reason?: string
+          user_id?: string
+          webhook_callback_token?: string | null
+          webhook_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      payee_profiles: {
+        Row: {
+          account_name: string
+          account_number: string
+          attachments_purged_at: string | null
+          bank_code: string
+          bank_name: string
+          bankbook_cover_cloud_url: string | null
+          bankbook_cover_url: string | null
+          branch_code: string | null
+          branch_name: string | null
+          consent_at: string | null
+          created_at: string
+          email: string | null
+          first_submitted_at: string | null
+          id: string
+          id_card_back_cloud_url: string | null
+          id_card_back_url: string | null
+          id_card_front_cloud_url: string | null
+          id_card_front_url: string | null
+          id_number: string
+          last_update_webhook_at: string | null
+          last_updated_via: string | null
+          name: string
+          payee_type: string
+          phone: string | null
+          registered_address: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          attachments_purged_at?: string | null
+          bank_code: string
+          bank_name: string
+          bankbook_cover_cloud_url?: string | null
+          bankbook_cover_url?: string | null
+          branch_code?: string | null
+          branch_name?: string | null
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          first_submitted_at?: string | null
+          id?: string
+          id_card_back_cloud_url?: string | null
+          id_card_back_url?: string | null
+          id_card_front_cloud_url?: string | null
+          id_card_front_url?: string | null
+          id_number: string
+          last_update_webhook_at?: string | null
+          last_updated_via?: string | null
+          name: string
+          payee_type?: string
+          phone?: string | null
+          registered_address: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          attachments_purged_at?: string | null
+          bank_code?: string
+          bank_name?: string
+          bankbook_cover_cloud_url?: string | null
+          bankbook_cover_url?: string | null
+          branch_code?: string | null
+          branch_name?: string | null
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          first_submitted_at?: string | null
+          id?: string
+          id_card_back_cloud_url?: string | null
+          id_card_back_url?: string | null
+          id_card_front_cloud_url?: string | null
+          id_card_front_url?: string | null
+          id_number?: string
+          last_update_webhook_at?: string | null
+          last_updated_via?: string | null
+          name?: string
+          payee_type?: string
+          phone?: string | null
+          registered_address?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_doc_sequences: {
+        Row: {
+          last_seq: number
+          updated_at: string
+          year_month: number
+        }
+        Insert: {
+          last_seq?: number
+          updated_at?: string
+          year_month: number
+        }
+        Update: {
+          last_seq?: number
+          updated_at?: string
+          year_month?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activated: boolean
@@ -1473,6 +1620,84 @@ export type Database = {
         }
         Relationships: []
       }
+      task_payment_documents: {
+        Row: {
+          admin_confirmed_at: string | null
+          admin_confirmed_by: string | null
+          application_id: string
+          created_at: string
+          doc_no: string
+          doc_seq_year_month: number
+          generated_at: string
+          gross_amount: number
+          id: string
+          is_first_payment: boolean
+          net_amount: number
+          nhi_supplement: number
+          paid_notified_at: string | null
+          purged_at: string | null
+          service_description: string
+          service_period: string
+          signed_at: string | null
+          signed_file_cloud_url: string | null
+          signed_file_url: string | null
+          updated_at: string
+          webhook_callback_token: string | null
+          webhook_sent_at: string | null
+          withholding_tax: number
+        }
+        Insert: {
+          admin_confirmed_at?: string | null
+          admin_confirmed_by?: string | null
+          application_id: string
+          created_at?: string
+          doc_no: string
+          doc_seq_year_month: number
+          generated_at?: string
+          gross_amount?: number
+          id?: string
+          is_first_payment?: boolean
+          net_amount?: number
+          nhi_supplement?: number
+          paid_notified_at?: string | null
+          purged_at?: string | null
+          service_description: string
+          service_period: string
+          signed_at?: string | null
+          signed_file_cloud_url?: string | null
+          signed_file_url?: string | null
+          updated_at?: string
+          webhook_callback_token?: string | null
+          webhook_sent_at?: string | null
+          withholding_tax?: number
+        }
+        Update: {
+          admin_confirmed_at?: string | null
+          admin_confirmed_by?: string | null
+          application_id?: string
+          created_at?: string
+          doc_no?: string
+          doc_seq_year_month?: number
+          generated_at?: string
+          gross_amount?: number
+          id?: string
+          is_first_payment?: boolean
+          net_amount?: number
+          nhi_supplement?: number
+          paid_notified_at?: string | null
+          purged_at?: string | null
+          service_description?: string
+          service_period?: string
+          signed_at?: string | null
+          signed_file_cloud_url?: string | null
+          signed_file_url?: string | null
+          updated_at?: string
+          webhook_callback_token?: string | null
+          webhook_sent_at?: string | null
+          withholding_tax?: number
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           admin_notes: string
@@ -1722,6 +1947,11 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      next_payment_doc_no: { Args: { _ym: number }; Returns: string }
+      promote_pending_info_apps: {
+        Args: { _user_id: string }
+        Returns: undefined
       }
       run_task_daily_maintenance: { Args: never; Returns: Json }
       send_system_message: {
