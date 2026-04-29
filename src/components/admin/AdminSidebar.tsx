@@ -60,6 +60,7 @@ export function AdminSidebar() {
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const displayName = profile?.display_name || "管理員";
   const initials = displayName.slice(0, 1);
+  const emailText = profile?.email || user?.email || "";
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
