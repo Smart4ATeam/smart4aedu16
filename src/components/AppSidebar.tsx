@@ -6,7 +6,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+
 import {
   LayoutDashboard,
   Target,
