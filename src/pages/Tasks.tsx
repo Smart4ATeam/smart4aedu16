@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { Tables } from "@/integrations/supabase/types";
+import { PaymentActionPanel } from "@/components/payment/PaymentActionPanel";
 
 type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
 type SortType = "newest" | "amount-desc" | "amount-asc" | "deadline";
@@ -237,7 +238,8 @@ const Tasks = () => {
         <StatCard icon={<Clock className="w-5 h-5" />} value={`$${stats.totalRevenue.toLocaleString()}`} label="累計收益" variant="warning" delay={0.15} />
       </div>
 
-      <div className="flex gap-3 flex-wrap items-center">
+      <PaymentActionPanel />
+
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜尋任務標題、描述、標籤..." className="pl-9" />
