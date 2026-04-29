@@ -29,13 +29,19 @@ const Tasks = () => {
 
   useEffect(() => { fetchData(); }, [user]);
 
+  const [takenTaskIds, setTakenTaskIds] = useState<Set<string>>(new Set());
+
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
-    const [tasksRes, appsRes, countsRes] = await Promise.all([
+    const [tasksRes, appsRes, countsRes, takenRes] = await Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("task_applications").select("*").eq("user_id", user.id),
       supabase.rpc("get_task_application_counts"),
+      supabase
+        .from("task_applications")
+        .select("task_id")
+        .in("status", ["approved", "pending_completion", "completed"]),
     ]);
     if (tasksRes.error) toast.error("載入任務失敗");
     else setTasks(tasksRes.data ?? []);
@@ -46,6 +52,9 @@ const Tasks = () => {
         counts[r.task_id] = Number(r.count);
       });
       setAppCounts(counts);
+    }
+    if (!takenRes.error && takenRes.data) {
+      setTakenTaskIds(new Set((takenRes.data as { task_id: string }[]).map((r) => r.task_id)));
     }
     setLoading(false);
   };
@@ -82,13 +91,13 @@ const Tasks = () => {
         }
         quotedAmount = a.quoted_amount ?? undefined;
         finalAmount = a.final_amount ?? undefined;
-      } else if (task.status === "closed") {
+      } else if (task.status === "closed" || takenTaskIds.has(task.id)) {
         effectiveStatus = "closed";
       }
 
       return { ...task, effectiveStatus, applicationId, rejectReason, failedReason, quotedAmount, finalAmount };
     });
-  }, [tasks, applications]);
+  }, [tasks, applications, takenTaskIds]);
 
   const filtered = useMemo(() => {
     let list = filter === "all"
