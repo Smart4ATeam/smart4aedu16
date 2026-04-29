@@ -766,6 +766,13 @@ export default function AdminIntegrations() {
           description="學員申請結訓證書時，系統會 POST 到此 URL 請求產生證書，對應端點：api-certificate-callback"
           placeholder="https://hook.example.com/certificate"
         />
+        <div className="border-t border-border" />
+        <WebhookUrlSettingItem
+          keyName="PAYMENT_WEBHOOK_URL"
+          label="勞報單 / 付款 Webhook URL"
+          description="管理員確認簽回勞報單後，系統會 POST 學員個資與勞報單資料到此 URL；學員自助修改收款資料時亦會送出。callback 端點：payment-webhook-callback。此 URL 不與其他功能共用。"
+          placeholder="https://hook.example.com/payment"
+        />
       </div>
 
 
