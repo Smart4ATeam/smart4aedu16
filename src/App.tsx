@@ -38,6 +38,8 @@ import QuizEntry from "./pages/QuizEntry";
 import QuizExam from "./pages/QuizExam";
 import QuizResult from "./pages/QuizResult";
 import CertificateView from "./pages/CertificateView";
+import PayeeForm from "./pages/PayeeForm";
+import TaskPayment from "./pages/TaskPayment";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +71,8 @@ const App = () => (
             <Route path="/quiz/:quizId/exam" element={<ProtectedRoute><AppLayout><QuizExam /></AppLayout></ProtectedRoute>} />
             <Route path="/quiz/:quizId/result/:attemptId" element={<ProtectedRoute><AppLayout><QuizResult /></AppLayout></ProtectedRoute>} />
             <Route path="/certificate/:certificateId" element={<ProtectedRoute><AppLayout><CertificateView /></AppLayout></ProtectedRoute>} />
+            <Route path="/payee-form" element={<ProtectedRoute><AppLayout><PayeeForm /></AppLayout></ProtectedRoute>} />
+            <Route path="/tasks/:applicationId/payment" element={<ProtectedRoute><AppLayout><TaskPayment /></AppLayout></ProtectedRoute>} />
 
             {/* Protected admin routes */}
             <Route path="/admin" element={<AdminProtectedRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminProtectedRoute>} />
