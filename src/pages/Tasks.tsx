@@ -91,13 +91,13 @@ const Tasks = () => {
         }
         quotedAmount = a.quoted_amount ?? undefined;
         finalAmount = a.final_amount ?? undefined;
-      } else if (task.status === "closed") {
+      } else if (task.status === "closed" || takenTaskIds.has(task.id)) {
         effectiveStatus = "closed";
       }
 
       return { ...task, effectiveStatus, applicationId, rejectReason, failedReason, quotedAmount, finalAmount };
     });
-  }, [tasks, applications]);
+  }, [tasks, applications, takenTaskIds]);
 
   const filtered = useMemo(() => {
     let list = filter === "all"
