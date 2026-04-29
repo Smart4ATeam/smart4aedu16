@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -18,12 +17,12 @@ import {
   Plug,
   BookOpen,
   Bot,
-  Settings,
   Sun,
   Moon,
   Monitor,
-  ChevronDown,
-  MessageSquare,
+  Bell,
+  User,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +30,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import logoFed from "@/assets/logo-fed.png";
