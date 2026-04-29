@@ -163,19 +163,13 @@ export default function PayeeForm() {
       const oldSnap = { ...profile };
       const newSnap = { ...form };
 
-      const updates: Record<string, unknown> = {
+      const updates = {
         ...form,
         bankbook_cover_url: newBankbook,
-        bankbook_cover_cloud_url: null,
+        bankbook_cover_cloud_url: null as string | null,
+        ...(newFront ? { id_card_front_url: newFront, id_card_front_cloud_url: null as string | null } : {}),
+        ...(newBack ? { id_card_back_url: newBack, id_card_back_cloud_url: null as string | null } : {}),
       };
-      if (newFront) {
-        updates.id_card_front_url = newFront;
-        updates.id_card_front_cloud_url = null;
-      }
-      if (newBack) {
-        updates.id_card_back_url = newBack;
-        updates.id_card_back_cloud_url = null;
-      }
 
       const { error: upErr } = await supabase
         .from("payee_profiles")
