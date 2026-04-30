@@ -1,6 +1,6 @@
-# 任務付款 / 勞報單流程完整規劃（v3.2）
+# 任務付款 / 勞報單流程完整規劃（v3.3）
 
-> 相對 v3.1 的差異：把 webhook「是否帶附件」的判斷從 `task_payment_documents.is_first_payment` 解耦，改由 `payee_profiles` 的雲端歸檔狀態決定，避免 promote 流程造成首次付款卻不帶附件的漏洞。
+> 相對 v3.2 的差異：明確定位 webhook 的本質目的為「**檔案搬家服務**」（將 supabase storage 的檔案搬到外部雲端硬碟以節省空間）。`send-payment-webhook` 改為精簡 payload，只送勞報單資料 + 簽回 PDF signed url，不再帶任何個資與附件（個資/附件由 `send-payee-update-webhook` 獨立負責，全程一次性處理）。
 
 ## 一、流程總覽
 
@@ -30,32 +30,33 @@ payee_profiles.user_id 存在 AND first_submitted_at IS NOT NULL
 ```
 不滿足 → 停在 `payment_pending_info`，由 `on_payee_first_submitted` trigger 在首次 callback 後一次補升級。
 
-### 決策 2：webhook「要不要帶附件」的判斷（v3.2 重點）
-**不讀 `task_payment_documents.is_first_payment`**，改用以下邏輯：
+### 決策 2：webhook 的本質定位 = 「檔案搬家服務」（v3.3 重寫）
 
-```ts
-// send-payment-webhook 內部
-const profile = await getPayeeProfile(userId);
+**所有 webhook 的唯一目的**：把 supabase storage 的學員上傳檔（簽回 PDF / 身分證 / 存摺）搬到外部雲端，搬完刪 storage 原檔。
 
-const attachmentsArchived =
-  !!profile.id_card_front_cloud_url &&
-  !!profile.id_card_back_cloud_url &&
-  !!profile.bankbook_cover_cloud_url;
+**兩條完全獨立的搬家流程**（共用同一個 callback endpoint，用 `event` 區分）：
 
-const includeAttachments = !attachmentsArchived;
-// 只要外部還沒歸檔過附件 → 一律帶（即便這已是這個用戶的第 N 份勞報單）
+| Webhook | 觸發 | Payload 內容 | callback 事件 |
+|---|---|---|---|
+| `send-payee-update-webhook` | 學員填表 / 自助修改個資 | 個資全欄位 + 3 個附件 signed url | `payee_profile_archived` → 寫 3 個 `*_cloud_url` + 刪 payee-documents 附件 |
+| `send-payment-webhook` | admin 確認簽回 | 勞報單 9 個欄位 + 簽回 PDF signed url（**不含個資、不含附件**） | `payment_document_archived` → 寫 `signed_file_cloud_url` + 刪 payment-signed-docs PDF |
+
+**`send-payment-webhook` payload 規格**（最終版）：
+```json
+{
+  "event": "payment_document",
+  "callback_token": "uuid",
+  "callback_url": "https://.../payment-webhook-callback",
+  "document": {
+    "doc_no", "application_id", "task_title",
+    "gross_amount", "tax_amount", "nhi_amount", "net_amount",
+    "generated_at", "signed_pdf_signed_url"
+  }
+}
 ```
 
-理由（你提的情境）：
-1. 學員第一次填表 → 任務 A completed → `payment_pending_info`
-2. callback 寫入 `first_submitted_at` → trigger promote 任務 A → 產生 doc（`is_first_payment=false`）
-3. 外部系統其實**從未拿到任務 A 的附件**（首次歸檔的是「個資 update」事件，跟 doc 無關）
-4. 若用 `is_first_payment` 判斷會跳過附件 → 外部端缺檔
-5. 改用「`*_cloud_url` 是否齊備」直接反映外部端的真實歸檔狀態，**永遠不會缺**
-
-進一步的好處：
-- 學員自助修改個資後 callback 會更新 `*_cloud_url`，舊連結被新連結覆蓋；若中間有勞報單尚未送 webhook，下一次送出時會自動帶最新一輪附件（cloud url 仍存在 → 不重送 storage signed url），符合直覺。
-- 即使外部端清掉雲端檔（極端情況），admin 在資料庫把 `*_cloud_url` 設回 null，下一次 webhook 自動補帶附件，不需改程式。
+**為什麼勞報單 webhook 不需要帶附件？**
+個資/附件的搬家由 `send-payee-update-webhook` 在學員填表當下就獨立完成（學員是因為任務完成才被通知去填表，所以時序上一定先於勞報單 webhook）。外部端要把勞報單歸檔到對應學員資料夾時，靠 `document.application_id` → 自家資料庫對應到先前歸檔的個資即可。
 
 ### 決策 3：`task_payment_documents.is_first_payment` 欄位的語意
 保留欄位但**只當作審計用**，不作為流程判斷依據：
@@ -83,7 +84,7 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 **status 新值**：`payment_pending_info`, `payment_pending_signature`, `payment_pending_review`, `payment_processing`, `paid`
 
 **新表**
-- `payee_profiles`：含 `first_submitted_at`、`id_card_front_url/back_url/bankbook_cover_url`（storage path）、`*_cloud_url`（外部歸檔連結，**這三個是 webhook 是否帶附件的真正判斷依據**）、`attachments_purged_at`、`last_updated_via`
+- `payee_profiles`：含 `first_submitted_at`、`id_card_front_url/back_url/bankbook_cover_url`（storage path）、`*_cloud_url`（外部歸檔後寫入的永久連結；callback 寫入後即刪除對應 storage 附件）、`attachments_purged_at`、`last_updated_via`
 - `payee_profile_updates`：變更歷史
 - `task_payment_documents`：含 `is_first_payment`（審計用，不做流程判斷）、`signed_file_url`、`signed_file_cloud_url`、`webhook_callback_token`
 - `payment_doc_sequences`：流水號
@@ -103,16 +104,16 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 
 ## 四、Edge Functions
 
-| Function | 觸發 | 帶附件判斷 | 動作 |
+| Function | 觸發 | Payload 重點 | 對應 callback event |
 |---|---|---|---|
-| `send-payment-webhook` | admin 確認簽回 | **由 `payee_profiles.*_cloud_url` 是否齊備決定**（v3.2） | 送勞報單 + 個資 |
-| `send-payee-update-webhook` | 學員自助更新 | 一律帶新上傳的附件 | 送 `payee_profile_updated` |
-| `payment-webhook-callback` | 外部回傳 | — | 依 event 寫雲端連結、刪 storage、首次寫 `first_submitted_at` |
+| `send-payment-webhook` | admin 確認簽回 | 勞報單 9 欄位 + 簽回 PDF signed url（不含個資/附件） | `payment_document_archived` |
+| `send-payee-update-webhook` | 學員填表 / 自助更新個資 | 個資全欄位 + 3 個附件 signed url（一律重帶最新上傳） | `payee_profile_archived` |
+| `payment-webhook-callback` | 外部搬完雲端後回呼 | 依 event 寫 cloud_url 並刪 storage 原檔 | — |
 
-**callback 區分（payload 帶 `event` 欄位）**
-- `payment_document_archived` → 寫 doc 雲端連結 + 刪簽回檔
-- `payee_profile_archived` → 寫三個 `*_cloud_url`、刪三個 storage 附件、若 `first_submitted_at IS NULL` 則寫入 `now()`
-- 注意：寫 `first_submitted_at` 觸發 `on_payee_first_submitted` → 自動 promote → 那些被 promote 的 doc 之後送 webhook 時，由於 cloud_url 已齊 → 自動不帶附件，**符合外部期望**
+**callback 行為（payload 帶 `event` 欄位）**
+- `payment_document_archived` → 寫 `signed_file_cloud_url` + 刪 payment-signed-docs PDF
+- `payee_profile_archived` → 寫三個 `*_cloud_url`、刪三個 payee-documents 附件；若 `first_submitted_at IS NULL` 則寫入 `now()`
+- 寫 `first_submitted_at` 會觸發 `on_payee_first_submitted` → 自動 promote 那些等填表的任務到 `payment_pending_signature`
 
 ## 五、前端
 
@@ -151,7 +152,7 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 | 風險 | 處理方式 |
 |---|---|
 | 第二次付款 webhook 未回前又 completed | 方案 B：`first_submitted_at IS NOT NULL` 才走簽回；否則停 `payment_pending_info`，callback 後 trigger 補升 |
-| **promote 出來的 doc 被外部當「非首次」漏附件**（v3.2） | webhook 改讀 `payee_profiles.*_cloud_url` 是否齊備來決定帶不帶附件，與 `is_first_payment` 解耦 |
+| 勞報單 webhook 是否要重帶個資/附件（v3.3） | **不帶**。個資/附件由 `send-payee-update-webhook` 在學員填表當下獨立搬家；外部端用 `document.application_id` 對應到先前歸檔的個資 |
 | 流水號併發 | `next_payment_doc_no()` atomic + `promote_pending_info_apps()` FOR LOOP 逐筆呼叫，`FOR UPDATE` 鎖 |
 | 學員修改銀行/個資 | 獨立「申請修改」流程：必傳新存摺封面 + 原因，寫變更歷史，獨立 webhook |
 | 進行中勞報單想改個資 | 兩條流程獨立；admin 可對未簽回的勞報單按「重新產生」 |

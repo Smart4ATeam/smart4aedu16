@@ -1,6 +1,12 @@
 // Send labor-report (勞報單) data to external webhook for archiving.
 // Triggered by admin clicking "確認簽回" in admin tasks tab.
 //
+// PURPOSE: 將學員上傳的「簽回勞報單 PDF」搬到外部雲端硬碟，搬完後
+// 刪除 supabase storage 中的檔案以節省空間。
+//
+// Payload 只包含勞報單必要資料 + 簽回 PDF 的 signed url，不含個資與附件
+// （個資/附件由 send-payee-update-webhook 獨立負責）。
+//
 // Caller is the logged-in admin (uses their JWT to call this function).
 // Internally we use service role to read all data + write callback token.
 
@@ -51,7 +57,7 @@ Deno.serve(async (req) => {
     const { document_id } = body as { document_id?: string };
     if (!document_id) return json({ error: "document_id required" }, 400);
 
-    // Load doc + application + task + payee profile
+    // Load doc + task title (only fields needed in payload)
     const { data: doc, error: docErr } = await admin
       .from("task_payment_documents")
       .select("*")
@@ -59,23 +65,20 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (docErr || !doc) return json({ error: "Document not found" }, 404);
 
+    if (!doc.signed_file_url) {
+      return json({ error: "尚未上傳簽回檔" }, 400);
+    }
+
     const { data: app } = await admin
       .from("task_applications")
-      .select("*")
+      .select("task_id")
       .eq("id", doc.application_id)
       .single();
     const { data: task } = await admin
       .from("tasks")
-      .select("*")
+      .select("title")
       .eq("id", app.task_id)
       .single();
-    const { data: profile } = await admin
-      .from("payee_profiles")
-      .select("*")
-      .eq("user_id", app.user_id)
-      .single();
-
-    if (!profile) return json({ error: "Payee profile not found" }, 400);
 
     // Get webhook URL from system_settings
     const { data: setting } = await admin
@@ -86,34 +89,12 @@ Deno.serve(async (req) => {
     const webhookUrl = setting?.value?.trim();
     if (!webhookUrl) return json({ error: "PAYMENT_WEBHOOK_URL 未設定" }, 400);
 
-    // === v3.2 KEY LOGIC ===
-    // Decide whether to attach payee identity files based on whether
-    // they have already been archived (cloud_url present), NOT on is_first_payment.
-    const attachmentsArchived =
-      !!profile.id_card_front_cloud_url &&
-      !!profile.id_card_back_cloud_url &&
-      !!profile.bankbook_cover_cloud_url;
-    const includeAttachments = !attachmentsArchived;
-
-    // Generate signed URLs for the signed labor report PDF (always sent)
-    const signedPdfUrl = doc.signed_file_url
-      ? await signed(admin, "payment-signed-docs", doc.signed_file_url)
-      : null;
-
-    let attachments: Record<string, string | null> | undefined;
-    if (includeAttachments) {
-      attachments = {
-        id_card_front: profile.id_card_front_url
-          ? await signed(admin, "payee-documents", profile.id_card_front_url)
-          : null,
-        id_card_back: profile.id_card_back_url
-          ? await signed(admin, "payee-documents", profile.id_card_back_url)
-          : null,
-        bankbook_cover: profile.bankbook_cover_url
-          ? await signed(admin, "payee-documents", profile.bankbook_cover_url)
-          : null,
-      };
-    }
+    // Generate signed URL for the signed labor report PDF (24h)
+    const signedPdfSignedUrl = await signed(
+      admin,
+      "payment-signed-docs",
+      doc.signed_file_url,
+    );
 
     // Generate callback token
     const token = crypto.randomUUID();
@@ -131,50 +112,23 @@ Deno.serve(async (req) => {
     await admin
       .from("task_applications")
       .update({ status: "payment_processing" })
-      .eq("id", app.id);
+      .eq("id", doc.application_id);
 
-    // Build payload
+    // Build minimal payload — only what external端 needs to fetch & archive the PDF
     const payload = {
-      event: "payment_document_archive_request",
+      event: "payment_document",
       callback_token: token,
       callback_url: `${url}/functions/v1/payment-webhook-callback`,
       document: {
-        id: doc.id,
         doc_no: doc.doc_no,
-        generated_at: doc.generated_at,
-        service_period: doc.service_period,
-        service_description: doc.service_description,
+        application_id: doc.application_id,
+        task_title: task?.title ?? null,
         gross_amount: Number(doc.gross_amount),
-        withholding_tax: Number(doc.withholding_tax),
-        nhi_supplement: Number(doc.nhi_supplement),
+        tax_amount: Number(doc.withholding_tax),
+        nhi_amount: Number(doc.nhi_supplement),
         net_amount: Number(doc.net_amount),
-        is_first_payment: doc.is_first_payment, // audit only
-        signed_pdf_url: signedPdfUrl,
-      },
-      task: {
-        id: task.id,
-        title: task.title,
-        category: task.category,
-      },
-      payee: {
-        user_id: profile.user_id,
-        name: profile.name,
-        id_number: profile.id_number,
-        phone: profile.phone,
-        email: profile.email,
-        registered_address: profile.registered_address,
-        bank_code: profile.bank_code,
-        bank_name: profile.bank_name,
-        branch_code: profile.branch_code,
-        branch_name: profile.branch_name,
-        account_number: profile.account_number,
-        account_name: profile.account_name,
-      },
-      attachments_included: includeAttachments,
-      attachments: attachments ?? null,
-      company: {
-        name: "禹動科技整合股份有限公司",
-        brand: "Smart4A",
+        generated_at: doc.generated_at,
+        signed_pdf_signed_url: signedPdfSignedUrl,
       },
     };
 
