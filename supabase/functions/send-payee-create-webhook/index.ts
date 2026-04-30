@@ -1,6 +1,6 @@
-// Triggered when student updates an EXISTING payee profile.
+// Triggered when student submits payee profile FOR THE FIRST TIME.
 // Caller is the logged-in student.
-// Sends event=payee_profile_updated with ONLY the attachments that changed.
+// Sends event=payee_profile_created with ALL three attachments.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -10,8 +10,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-type AttachmentKey = "id_card_front" | "id_card_back" | "bankbook_cover";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -33,27 +31,6 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const body = await req.json().catch(() => ({}));
-    const { update_id, changed_attachments } = body as {
-      update_id?: string;
-      changed_attachments?: AttachmentKey[];
-    };
-    if (!update_id) return json({ error: "update_id required" }, 400);
-
-    const attachmentsToMigrate: AttachmentKey[] = Array.isArray(changed_attachments)
-      ? changed_attachments.filter((k) =>
-          ["id_card_front", "id_card_back", "bankbook_cover"].includes(k),
-        )
-      : [];
-
-    const { data: upd } = await admin
-      .from("payee_profile_updates")
-      .select("*")
-      .eq("id", update_id)
-      .single();
-    if (!upd || upd.user_id !== userId)
-      return json({ error: "Update not found" }, 404);
-
     const { data: profile } = await admin
       .from("payee_profiles")
       .select("*")
@@ -69,48 +46,50 @@ Deno.serve(async (req) => {
     const webhookUrl = setting?.value?.trim();
     if (!webhookUrl) return json({ error: "PAYMENT_WEBHOOK_URL 未設定" }, 400);
 
-    // Only sign URLs for attachments that actually changed; others = null
+    // First-time: ALWAYS migrate all three attachments
     const attachments = {
-      id_card_front:
-        attachmentsToMigrate.includes("id_card_front") && profile.id_card_front_url
-          ? await signed(admin, "payee-documents", profile.id_card_front_url)
-          : null,
-      id_card_back:
-        attachmentsToMigrate.includes("id_card_back") && profile.id_card_back_url
-          ? await signed(admin, "payee-documents", profile.id_card_back_url)
-          : null,
-      bankbook_cover:
-        attachmentsToMigrate.includes("bankbook_cover") && profile.bankbook_cover_url
-          ? await signed(admin, "payee-documents", profile.bankbook_cover_url)
-          : null,
+      id_card_front: profile.id_card_front_url
+        ? await signed(admin, "payee-documents", profile.id_card_front_url)
+        : null,
+      id_card_back: profile.id_card_back_url
+        ? await signed(admin, "payee-documents", profile.id_card_back_url)
+        : null,
+      bankbook_cover: profile.bankbook_cover_url
+        ? await signed(admin, "payee-documents", profile.bankbook_cover_url)
+        : null,
     };
 
     const token = crypto.randomUUID();
 
-    await admin
+    // Create an update row to track the callback (reuse the table for tracking)
+    const { data: updRow, error: insErr } = await admin
       .from("payee_profile_updates")
-      .update({
+      .insert({
+        user_id: userId,
+        changed_fields: ["id_card_front", "id_card_back", "bankbook_cover"],
+        old_snapshot: {},
+        new_snapshot: profile,
+        reason: "首次建檔",
         webhook_sent_at: new Date().toISOString(),
         webhook_callback_token: token,
       })
-      .eq("id", update_id);
+      .select("id")
+      .single();
+    if (insErr) throw insErr;
 
     await admin
       .from("payee_profiles")
       .update({
-        last_updated_via: "self_update",
+        last_updated_via: "initial",
         last_update_webhook_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
 
     const payload = {
-      event: "payee_profile_updated",
+      event: "payee_profile_created",
       callback_token: token,
       callback_url: `${url}/functions/v1/payment-webhook-callback`,
-      update_id,
-      reason: upd.reason,
-      changed_fields: upd.changed_fields,
-      attachments_to_migrate: attachmentsToMigrate,
+      update_id: updRow.id,
       payee: {
         user_id: profile.user_id,
         name: profile.name,
@@ -125,6 +104,7 @@ Deno.serve(async (req) => {
         account_number: profile.account_number,
         account_name: profile.account_name,
       },
+      attachments_to_migrate: ["id_card_front", "id_card_back", "bankbook_cover"],
       attachments,
       company: {
         name: "禹動科技整合股份有限公司",
@@ -140,13 +120,13 @@ Deno.serve(async (req) => {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => "");
-      console.error("update webhook failed", resp.status, text);
+      console.error("create webhook failed", resp.status, text);
       return json({ error: `Webhook failed: ${resp.status} ${text}` }, 502);
     }
 
-    return json({ success: true, callback_token: token, attachments_to_migrate: attachmentsToMigrate });
+    return json({ success: true, callback_token: token });
   } catch (e) {
-    console.error("send-payee-update-webhook error", e);
+    console.error("send-payee-create-webhook error", e);
     const msg = e instanceof Error ? e.message : String(e);
     return json({ error: msg }, 500);
   }

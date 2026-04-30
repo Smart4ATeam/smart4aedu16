@@ -64,35 +64,56 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    if (event === "payee_profile_archived") {
+    // payee_profile_created  → first-time archive (always all 3 attachments)
+    // payee_profile_updated  → only the attachments listed in attachments_to_migrate
+    // payee_profile_archived → legacy alias, treated like updated (back-compat)
+    if (
+      event === "payee_profile_created" ||
+      event === "payee_profile_updated" ||
+      event === "payee_profile_archived"
+    ) {
       const {
         id_card_front_cloud_url,
         id_card_back_cloud_url,
         bankbook_cover_cloud_url,
-      } = body as Record<string, string>;
+      } = body as Record<string, string | undefined>;
 
-      // Find via document or update token
-      const { data: doc } = await admin
-        .from("task_payment_documents")
-        .select("application_id")
+      // For updated event, external should echo back which keys it migrated.
+      // If absent, infer from which *_cloud_url fields are present.
+      const echoedKeys = (body as { attachments_migrated?: string[] }).attachments_migrated;
+      const migratedKeys: Set<string> = new Set(
+        Array.isArray(echoedKeys) && echoedKeys.length > 0
+          ? echoedKeys
+          : [
+              id_card_front_cloud_url ? "id_card_front" : null,
+              id_card_back_cloud_url ? "id_card_back" : null,
+              bankbook_cover_cloud_url ? "bankbook_cover" : null,
+            ].filter(Boolean) as string[],
+      );
+
+      // Locate user via update token
+      const { data: upd } = await admin
+        .from("payee_profile_updates")
+        .select("user_id")
         .eq("webhook_callback_token", callback_token)
         .maybeSingle();
+      let userId: string | null = upd?.user_id ?? null;
 
-      let userId: string | null = null;
-      if (doc) {
-        const { data: app } = await admin
-          .from("task_applications")
-          .select("user_id")
-          .eq("id", doc.application_id)
-          .single();
-        userId = app?.user_id ?? null;
-      } else {
-        const { data: upd } = await admin
-          .from("payee_profile_updates")
-          .select("user_id")
+      // Fallback: legacy payment_document path
+      if (!userId) {
+        const { data: doc } = await admin
+          .from("task_payment_documents")
+          .select("application_id")
           .eq("webhook_callback_token", callback_token)
           .maybeSingle();
-        userId = upd?.user_id ?? null;
+        if (doc) {
+          const { data: app } = await admin
+            .from("task_applications")
+            .select("user_id")
+            .eq("id", doc.application_id)
+            .single();
+          userId = app?.user_id ?? null;
+        }
       }
 
       if (!userId) return json({ error: "Invalid callback_token" }, 401);
@@ -116,27 +137,37 @@ Deno.serve(async (req) => {
         updates.first_submitted_at = new Date().toISOString();
       }
 
-      // Delete storage attachments
+      // Only delete the storage files that were actually migrated
       const toDelete: string[] = [];
-      if (profile.id_card_front_url) toDelete.push(profile.id_card_front_url);
-      if (profile.id_card_back_url) toDelete.push(profile.id_card_back_url);
-      if (profile.bankbook_cover_url) toDelete.push(profile.bankbook_cover_url);
+      if (migratedKeys.has("id_card_front") && profile.id_card_front_url) {
+        toDelete.push(profile.id_card_front_url);
+        updates.id_card_front_url = null;
+      }
+      if (migratedKeys.has("id_card_back") && profile.id_card_back_url) {
+        toDelete.push(profile.id_card_back_url);
+        updates.id_card_back_url = null;
+      }
+      if (migratedKeys.has("bankbook_cover") && profile.bankbook_cover_url) {
+        toDelete.push(profile.bankbook_cover_url);
+        updates.bankbook_cover_url = null;
+      }
       if (toDelete.length > 0) {
         await admin.storage.from("payee-documents").remove(toDelete);
-        updates.id_card_front_url = null;
-        updates.id_card_back_url = null;
-        updates.bankbook_cover_url = null;
       }
 
       await admin.from("payee_profiles").update(updates).eq("user_id", userId);
 
-      // Mark update record purged if applicable
+      // Mark update record purged
       await admin
         .from("payee_profile_updates")
         .update({ purged_at: new Date().toISOString() })
         .eq("webhook_callback_token", callback_token);
 
-      return json({ success: true, first_archive: !profile.first_submitted_at });
+      return json({
+        success: true,
+        first_archive: !profile.first_submitted_at,
+        deleted: Array.from(migratedKeys),
+      });
     }
 
     return json({ error: "Unknown event" }, 400);

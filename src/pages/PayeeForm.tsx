@@ -140,7 +140,14 @@ export default function PayeeForm() {
         last_updated_via: "initial",
       });
       if (error) throw error;
-      toast.success("收款資料已建立，等待管理員審核並進行外部歸檔");
+
+      // Trigger first-time create webhook (sends all 3 attachments)
+      const { error: fnErr } = await supabase.functions.invoke("send-payee-create-webhook", {
+        body: {},
+      });
+      if (fnErr) throw fnErr;
+
+      toast.success("收款資料已建立，已通知外部系統進行歸檔");
       await load();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -190,9 +197,14 @@ export default function PayeeForm() {
         .single();
       if (insErr) throw insErr;
 
-      // Trigger webhook
+      // Compute which attachments actually changed (bankbook is always required on update)
+      const changedAttachments: string[] = ["bankbook_cover"];
+      if (newFront) changedAttachments.push("id_card_front");
+      if (newBack) changedAttachments.push("id_card_back");
+
+      // Trigger webhook with the precise list of attachments to migrate
       const { error: fnErr } = await supabase.functions.invoke("send-payee-update-webhook", {
-        body: { update_id: updRow.id },
+        body: { update_id: updRow.id, changed_attachments: changedAttachments },
       });
       if (fnErr) throw fnErr;
 

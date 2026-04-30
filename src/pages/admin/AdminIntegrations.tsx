@@ -492,16 +492,17 @@ const endpoints: ApiEndpoint[] = [
     path: "/payment-webhook-callback",
     authType: "callback_token（每次外送 webhook 隨附的一次性 token，非 x-api-key）",
     description:
-      "📦 本機制的核心目的：將學員上傳到 supabase storage 的檔案（簽回勞報單 PDF、身分證、存摺封面）搬到您的雲端硬碟後，回寫永久連結，由系統刪除 supabase storage 中的原檔以節省空間。\n\n本端點不使用 x-api-key，改以 outbound webhook 內帶的 callback_token 對應原始請求（一次性、每次不同）。\n\n支援兩種事件（以 payload 的 event 欄位區分）：\n① payment_document_archived：簽回的勞報單 PDF 已搬至雲端 → 寫入 signed_file_cloud_url，刪除 storage 內的簽回 PDF。\n② payee_profile_archived：身分證/存摺等個資附件已搬至雲端 → 寫入三個 *_cloud_url，刪除 storage 附件；若為首次歸檔則寫入 first_submitted_at，自動觸發所有 payment_pending_info 任務升級為 payment_pending_signature。",
+      "📦 本機制的核心目的：將學員上傳到 supabase storage 的檔案（簽回勞報單 PDF、身分證、存摺封面）搬到您的雲端硬碟後，回寫永久連結，由系統刪除 supabase storage 中的原檔以節省空間。\n\n本端點不使用 x-api-key，改以 outbound webhook 內帶的 callback_token 對應原始請求（一次性、每次不同）。\n\n支援三種事件（以 payload 的 event 欄位區分）：\n① payment_document_archived：簽回的勞報單 PDF 已搬至雲端 → 寫入 signed_file_cloud_url，刪除 storage 內的簽回 PDF。\n② payee_profile_created：首次建檔的個資附件（身分證正反面 + 存摺）已搬至雲端 → 寫入三個 *_cloud_url，刪除 storage 內三個附件，並寫入 first_submitted_at（自動觸發 payment_pending_info 任務升級為 payment_pending_signature）。\n③ payee_profile_updated：學員自助修改後的附件已搬至雲端 → 只寫入並刪除『attachments_migrated 列出』的欄位，未變更的附件保留不動。\n\n💡 attachments_migrated 欄位：建議於回調時帶上實際搬遷成功的附件 key 陣列（如 [\"bankbook_cover\"]），系統會嚴格依此清單刪除原檔；若未帶，則退回以 *_cloud_url 是否存在來推斷。",
     requiredFields: [
-      { name: "event", type: "string", required: true, desc: "事件類型：payment_document_archived 或 payee_profile_archived" },
+      { name: "event", type: "string", required: true, desc: "事件類型：payment_document_archived / payee_profile_created / payee_profile_updated" },
       { name: "callback_token", type: "string", required: true, desc: "outbound webhook payload 內的 callback_token（每次請求皆不同，一次性使用）" },
     ],
     optionalFields: [
       { name: "signed_pdf_cloud_url", type: "string", desc: "【event = payment_document_archived 時必填】簽回勞報單 PDF 的雲端永久連結" },
-      { name: "id_card_front_cloud_url", type: "string", desc: "【event = payee_profile_archived】身分證正面的雲端連結" },
-      { name: "id_card_back_cloud_url", type: "string", desc: "【event = payee_profile_archived】身分證反面的雲端連結" },
-      { name: "bankbook_cover_cloud_url", type: "string", desc: "【event = payee_profile_archived】存摺封面的雲端連結" },
+      { name: "id_card_front_cloud_url", type: "string", desc: "【event = payee_profile_created/updated】身分證正面的雲端連結（updated 時若該檔未變更則不要回傳）" },
+      { name: "id_card_back_cloud_url", type: "string", desc: "【event = payee_profile_created/updated】身分證反面的雲端連結（updated 時若該檔未變更則不要回傳）" },
+      { name: "bankbook_cover_cloud_url", type: "string", desc: "【event = payee_profile_created/updated】存摺封面的雲端連結（updated 時若該檔未變更則不要回傳）" },
+      { name: "attachments_migrated", type: "string[]", desc: "【建議】實際搬遷成功並要求系統刪除原檔的 key 列表，例如 [\"bankbook_cover\"]" },
     ],
     exampleBody: {
       event: "payment_document_archived",
@@ -511,13 +512,23 @@ const endpoints: ApiEndpoint[] = [
     exampleResponse: { success: true },
     extraExamples: [
       {
-        title: "事件 ②：個資/附件歸檔回調（payee_profile_archived）",
+        title: "事件 ②：首次建檔個資歸檔回調（payee_profile_created）— 三個附件全搬",
         body: {
-          event: "payee_profile_archived",
+          event: "payee_profile_created",
           callback_token: "ef56gh78-...-yyyy",
+          attachments_migrated: ["id_card_front", "id_card_back", "bankbook_cover"],
           id_card_front_cloud_url: "https://drive.example.com/archive/payee/uuid/id_front.jpg",
           id_card_back_cloud_url: "https://drive.example.com/archive/payee/uuid/id_back.jpg",
           bankbook_cover_cloud_url: "https://drive.example.com/archive/payee/uuid/bankbook.jpg",
+        },
+      },
+      {
+        title: "事件 ③：自助修改個資歸檔回調（payee_profile_updated）— 只搬本次變更的附件",
+        body: {
+          event: "payee_profile_updated",
+          callback_token: "ij90kl12-...-zzzz",
+          attachments_migrated: ["bankbook_cover"],
+          bankbook_cover_cloud_url: "https://drive.example.com/archive/payee/uuid/bankbook_v2.jpg",
         },
       },
       {
@@ -540,14 +551,13 @@ const endpoints: ApiEndpoint[] = [
         },
       },
       {
-        title: "系統送出的 outbound payload ②（send-payee-update-webhook → 學員填表/自助修改收款資料時）— 個資歸檔請求",
+        title: "系統送出的 outbound payload ②（send-payee-create-webhook → 學員首次填表完成時）— 個資首次建檔請求",
         body: {
-          event: "payee_profile_update_request",
+          event: "payee_profile_created",
           callback_token: "ef56gh78-...-yyyy",
           callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/payment-webhook-callback",
-          update_id: "uuid-update（首次填表時為 null）",
-          reason: "更換銀行帳號（自助修改才有，首次填表為 null）",
-          changed_fields: ["bank_code", "account_number", "bankbook_cover_url"],
+          update_id: "uuid-update",
+          attachments_to_migrate: ["id_card_front", "id_card_back", "bankbook_cover"],
           payee: {
             user_id: "uuid-user",
             name: "王小明",
@@ -566,6 +576,38 @@ const endpoints: ApiEndpoint[] = [
             id_card_front: "https://...?token=...（signed url，24h 有效）",
             id_card_back: "https://...?token=...",
             bankbook_cover: "https://...?token=...",
+          },
+          company: { name: "禹動科技整合股份有限公司", brand: "Smart4A" },
+        },
+      },
+      {
+        title: "系統送出的 outbound payload ③（send-payee-update-webhook → 學員自助修改收款資料時）— 個資修改請求（只帶變更的附件）",
+        body: {
+          event: "payee_profile_updated",
+          callback_token: "ij90kl12-...-zzzz",
+          callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/payment-webhook-callback",
+          update_id: "uuid-update",
+          reason: "更換銀行帳號",
+          changed_fields: ["bank_code", "account_number"],
+          attachments_to_migrate: ["bankbook_cover"],
+          payee: {
+            user_id: "uuid-user",
+            name: "王小明",
+            id_number: "A123456789",
+            phone: "0912345678",
+            email: "ming@example.com",
+            registered_address: "台北市...",
+            bank_code: "822",
+            bank_name: "中國信託",
+            branch_code: "0011",
+            branch_name: "城東分行",
+            account_number: "9999888877",
+            account_name: "王小明",
+          },
+          attachments: {
+            id_card_front: null,
+            id_card_back: null,
+            bankbook_cover: "https://...?token=...（signed url，24h 有效，僅本次變更的檔案才會帶值）",
           },
           company: { name: "禹動科技整合股份有限公司", brand: "Smart4A" },
         },
