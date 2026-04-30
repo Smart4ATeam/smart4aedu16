@@ -1,6 +1,6 @@
-# 任務付款 / 勞報單流程完整規劃（v3.3）
+# 任務付款 / 勞報單流程完整規劃（v3.4）
 
-> 相對 v3.2 的差異：明確定位 webhook 的本質目的為「**檔案搬家服務**」（將 supabase storage 的檔案搬到外部雲端硬碟以節省空間）。`send-payment-webhook` 改為精簡 payload，只送勞報單資料 + 簽回 PDF signed url，不再帶任何個資與附件（個資/附件由 `send-payee-update-webhook` 獨立負責，全程一次性處理）。
+> 相對 v3.3 的差異：將「個資搬家 webhook」拆成兩支獨立 Edge Function — `send-payee-create-webhook`（首次建檔，必送 3 個附件）與 `send-payee-update-webhook`（自助修改，只送本次變更的附件並帶 `attachments_to_migrate` 陣列）。callback 端依此精準刪除 storage 原檔，避免誤刪未變更的附件。修補 v3.3 漏洞：首次填表完成會立即觸發 webhook（v3.3 完全沒呼叫）。
 
 ## 一、流程總覽
 
