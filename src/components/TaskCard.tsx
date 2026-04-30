@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock, Coins } from "lucide-react";
+import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock, Coins, Wallet, FileSignature, BadgeCheck, Banknote } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
