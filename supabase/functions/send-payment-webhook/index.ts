@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     const { data: app } = await admin
       .from("task_applications")
-      .select("task_id")
+      .select("task_id, user_id")
       .eq("id", doc.application_id)
       .single();
     const { data: task } = await admin
@@ -79,6 +79,16 @@ Deno.serve(async (req) => {
       .select("title")
       .eq("id", app.task_id)
       .single();
+
+    // Load payee profile (needed for filename composition on external side)
+    const { data: payee } = await admin
+      .from("payee_profiles")
+      .select("name, id_number, bank_name, branch_name, account_number, account_name")
+      .eq("user_id", app.user_id)
+      .maybeSingle();
+    if (!payee) {
+      return json({ error: "找不到收款人資料（payee_profiles）" }, 400);
+    }
 
     // Get webhook URL from system_settings
     const { data: setting } = await admin
@@ -128,6 +138,14 @@ Deno.serve(async (req) => {
         nhi_amount: Number(doc.nhi_supplement),
         net_amount: Number(doc.net_amount),
         generated_at: doc.generated_at,
+        payee: {
+          name: payee.name,
+          id_number: payee.id_number,
+          bank_name: payee.bank_name,
+          branch_name: payee.branch_name,
+          account_number: payee.account_number,
+          account_name: payee.account_name,
+        },
         signed_pdf_signed_url: signedPdfSignedUrl,
       },
     };

@@ -532,7 +532,7 @@ const endpoints: ApiEndpoint[] = [
         },
       },
       {
-        title: "系統送出的 outbound payload ①（send-payment-webhook → 您的系統會收到）— 勞報單歸檔請求",
+        title: "系統送出的 outbound payload ①（send-payment-webhook → 您的系統會收到）— 勞報單歸檔請求（含收款人資訊供檔名命名用）",
         body: {
           event: "payment_document",
           callback_token: "ab12cd34-...-xxxx",
@@ -546,6 +546,14 @@ const endpoints: ApiEndpoint[] = [
             nhi_amount: 422,
             net_amount: 17578,
             generated_at: "2026-04-30T08:00:00Z",
+            payee: {
+              name: "王小明",
+              id_number: "A123456789",
+              bank_name: "中國信託",
+              branch_name: "城東分行",
+              account_number: "9999888877",
+              account_name: "王小明",
+            },
             signed_pdf_signed_url: "https://...supabase.co/.../signed.pdf?token=...（24h 有效，請於有效期內下載）",
           },
         },
