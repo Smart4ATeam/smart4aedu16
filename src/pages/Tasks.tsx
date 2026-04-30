@@ -143,9 +143,12 @@ const Tasks = () => {
   }, [tasks, applications, takenTaskIds]);
 
   const filtered = useMemo(() => {
+    const completedLike: EffectiveStatus[] = ["completed", "payment-info", "payment-signature", "payment-review", "payment-processing", "paid"];
     let list = filter === "all"
       ? tasksWithUserStatus
-      : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
+      : filter === "completed"
+        ? tasksWithUserStatus.filter((t) => completedLike.includes(t.effectiveStatus))
+        : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
 
     if (keyword.trim()) {
       const k = keyword.trim().toLowerCase();
