@@ -629,13 +629,13 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   const fullUrl = `${BASE_URL}${endpoint.path}`;
 
   const isGet = endpoint.method === "GET";
+  const usesApiKey = !endpoint.authType.toLowerCase().startsWith("callback_token");
+  const authHeader = usesApiKey ? `  -H "x-api-key: <YOUR_API_KEY>" \\\n` : "";
   const curlExample = isGet
-    ? `curl -X GET "${fullUrl}?order_no=ORD20250401001" \\
-  -H "x-api-key: <YOUR_API_KEY>"`
+    ? `curl -X GET "${fullUrl}?order_no=ORD20250401001"${usesApiKey ? ` \\\n  -H "x-api-key: <YOUR_API_KEY>"` : ""}`
     : `curl -X ${endpoint.method} "${fullUrl}" \\
   -H "Content-Type: application/json" \\
-  -H "x-api-key: <YOUR_API_KEY>" \\
-  -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
+${authHeader}  -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
 
   return (
     <div className="glass-card overflow-hidden">
