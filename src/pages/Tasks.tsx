@@ -79,7 +79,7 @@ const Tasks = () => {
       supabase
         .from("task_applications")
         .select("task_id")
-        .in("status", ["approved", "pending_completion", "completed"]),
+        .in("status", ["approved", "pending_completion", "completed", "payment_pending_info", "payment_pending_signature", "payment_pending_review", "payment_processing", "paid"]),
     ]);
     if (tasksRes.error) toast.error("載入任務失敗");
     else setTasks(tasksRes.data ?? []);
@@ -116,7 +116,14 @@ const Tasks = () => {
           case "applied": effectiveStatus = "pending"; break;
           case "approved": effectiveStatus = "in-progress"; break;
           case "pending_completion": effectiveStatus = "pending-completion"; break;
-          case "completed": effectiveStatus = "completed"; break;
+          case "completed":
+          case "payment_pending_info":
+          case "payment_pending_signature":
+          case "payment_pending_review":
+          case "payment_processing":
+          case "paid":
+            effectiveStatus = "completed";
+            break;
           case "rejected":
             effectiveStatus = "rejected";
             rejectReason = a.reject_reason || undefined;
