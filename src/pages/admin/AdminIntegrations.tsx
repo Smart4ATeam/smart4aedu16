@@ -532,7 +532,7 @@ const endpoints: ApiEndpoint[] = [
         },
       },
       {
-        title: "系統送出的 outbound payload ①（send-payment-webhook → 您的系統會收到）— 勞報單歸檔請求",
+        title: "系統送出的 outbound payload ①（send-payment-webhook → 您的系統會收到）— 勞報單歸檔請求（含收款人資訊供檔名命名用）",
         body: {
           event: "payment_document",
           callback_token: "ab12cd34-...-xxxx",
