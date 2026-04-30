@@ -392,15 +392,29 @@ export function PaymentDocumentPDF({ data }: { data: PaymentDocumentData }) {
 
               <View style={styles.signBlock}>
                 <Text style={styles.signLabel}>簽收日期</Text>
-                <View style={styles.dateLine}>
-                  <Text>民國</Text>
-                  <View style={styles.dateBlank} />
-                  <Text>年</Text>
-                  <View style={styles.dateBlank} />
-                  <Text>月</Text>
-                  <View style={styles.dateBlank} />
-                  <Text>日</Text>
-                </View>
+                {data.signature_data_url ? (
+                  (() => {
+                    const now = new Date();
+                    const rocYear = now.getFullYear() - 1911;
+                    const month = now.getMonth() + 1;
+                    const day = now.getDate();
+                    return (
+                      <View style={styles.dateLine}>
+                        <Text>{`民國  ${rocYear}  年  ${month}  月  ${day}  日`}</Text>
+                      </View>
+                    );
+                  })()
+                ) : (
+                  <View style={styles.dateLine}>
+                    <Text>民國</Text>
+                    <View style={styles.dateBlank} />
+                    <Text>年</Text>
+                    <View style={styles.dateBlank} />
+                    <Text>月</Text>
+                    <View style={styles.dateBlank} />
+                    <Text>日</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
