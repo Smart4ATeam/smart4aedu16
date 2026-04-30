@@ -929,6 +929,8 @@ export default function AdminIntegrations() {
         />
       </div>
 
+      {/* Replay Payee Create Webhook Tool */}
+      <ReplayPayeeCreateWebhookTool />
 
       {/* Endpoint List */}
       <div>
