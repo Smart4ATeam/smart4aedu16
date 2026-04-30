@@ -590,9 +590,9 @@ const AdminTasks = () => {
           <TabsTrigger value="review">申請審核</TabsTrigger>
           <TabsTrigger value="payment-review">待確認簽回</TabsTrigger>
           <TabsTrigger value="payment-payout">待匯款</TabsTrigger>
+          <TabsTrigger value="payment-history">匯款紀錄</TabsTrigger>
           <TabsTrigger value="point-logs">積分發放紀錄</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
-        </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex justify-between items-start gap-4 flex-wrap">
