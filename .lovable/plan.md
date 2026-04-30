@@ -84,7 +84,7 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 **status 新值**：`payment_pending_info`, `payment_pending_signature`, `payment_pending_review`, `payment_processing`, `paid`
 
 **新表**
-- `payee_profiles`：含 `first_submitted_at`、`id_card_front_url/back_url/bankbook_cover_url`（storage path）、`*_cloud_url`（外部歸檔連結，**這三個是 webhook 是否帶附件的真正判斷依據**）、`attachments_purged_at`、`last_updated_via`
+- `payee_profiles`：含 `first_submitted_at`、`id_card_front_url/back_url/bankbook_cover_url`（storage path）、`*_cloud_url`（外部歸檔後寫入的永久連結；callback 寫入後即刪除對應 storage 附件）、`attachments_purged_at`、`last_updated_via`
 - `payee_profile_updates`：變更歷史
 - `task_payment_documents`：含 `is_first_payment`（審計用，不做流程判斷）、`signed_file_url`、`signed_file_cloud_url`、`webhook_callback_token`
 - `payment_doc_sequences`：流水號
