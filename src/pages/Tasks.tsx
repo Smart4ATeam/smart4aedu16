@@ -97,7 +97,7 @@ const Tasks = () => {
     setLoading(false);
   };
 
-  type EffectiveStatus = "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+  type EffectiveStatus = "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" | "payment-info" | "payment-signature" | "payment-review" | "payment-processing" | "paid";
 
   const tasksWithUserStatus = useMemo(() => {
     const appMap = new Map(applications.map((a) => [a.task_id, a]));
