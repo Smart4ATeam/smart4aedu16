@@ -30,15 +30,16 @@ payee_profiles.user_id 存在 AND first_submitted_at IS NOT NULL
 ```
 不滿足 → 停在 `payment_pending_info`，由 `on_payee_first_submitted` trigger 在首次 callback 後一次補升級。
 
-### 決策 2：webhook 的本質定位 = 「檔案搬家服務」（v3.3 重寫）
+### 決策 2：webhook 的本質定位 = 「檔案搬家服務」（v3.4 拆分個資 webhook）
 
 **所有 webhook 的唯一目的**：把 supabase storage 的學員上傳檔（簽回 PDF / 身分證 / 存摺）搬到外部雲端，搬完刪 storage 原檔。
 
-**兩條完全獨立的搬家流程**（共用同一個 callback endpoint，用 `event` 區分）：
+**三條完全獨立的搬家流程**（共用同一個 callback endpoint，用 `event` 區分）：
 
 | Webhook | 觸發 | Payload 內容 | callback 事件 |
 |---|---|---|---|
-| `send-payee-update-webhook` | 學員填表 / 自助修改個資 | 個資全欄位 + 3 個附件 signed url | `payee_profile_archived` → 寫 3 個 `*_cloud_url` + 刪 payee-documents 附件 |
+| `send-payee-create-webhook` | 學員**首次填表**完成 | 個資全欄位 + **3 個附件** signed url + `attachments_to_migrate=[全 3 個]` | `payee_profile_created` → 寫 3 個 `*_cloud_url` + 刪 3 個 payee-documents 附件 + 寫 `first_submitted_at`（觸發 promote） |
+| `send-payee-update-webhook` | 學員**自助修改**個資 | 個資全欄位 + **只本次變更的**附件 signed url（其他為 null）+ `attachments_to_migrate=[只變更的]` | `payee_profile_updated` → 只寫並刪 `attachments_migrated` 列出的欄位，未變更附件保留不動 |
 | `send-payment-webhook` | admin 確認簽回 | 勞報單 9 個欄位 + 簽回 PDF signed url（**不含個資、不含附件**） | `payment_document_archived` → 寫 `signed_file_cloud_url` + 刪 payment-signed-docs PDF |
 
 **`send-payment-webhook` payload 規格**（最終版）：
