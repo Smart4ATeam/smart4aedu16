@@ -33,8 +33,26 @@ export function PaymentPayoutTab() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchRunning, setBatchRunning] = useState(false);
 
   useEffect(() => { load(); }, []);
+
+  const allSelected = rows.length > 0 && selected.size === rows.length;
+  const someSelected = selected.size > 0 && selected.size < rows.length;
+  const selectedRows = useMemo(() => rows.filter((r) => selected.has(r.application_id)), [rows, selected]);
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(rows.map((r) => r.application_id)) : new Set());
+  }
 
   async function load() {
     setLoading(true);
