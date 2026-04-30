@@ -18,7 +18,7 @@ interface Task {
   amountMax: number;
   category?: string;
   tags: string[];
-  status: "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+  status: "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" | "payment-info" | "payment-signature" | "payment-review" | "payment-processing" | "paid";
   deadline: string;
   difficulty: string;
   rejectReason?: string;
