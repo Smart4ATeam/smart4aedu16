@@ -152,7 +152,7 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 | 風險 | 處理方式 |
 |---|---|
 | 第二次付款 webhook 未回前又 completed | 方案 B：`first_submitted_at IS NOT NULL` 才走簽回；否則停 `payment_pending_info`，callback 後 trigger 補升 |
-| **promote 出來的 doc 被外部當「非首次」漏附件**（v3.2） | webhook 改讀 `payee_profiles.*_cloud_url` 是否齊備來決定帶不帶附件，與 `is_first_payment` 解耦 |
+| 勞報單 webhook 是否要重帶個資/附件（v3.3） | **不帶**。個資/附件由 `send-payee-update-webhook` 在學員填表當下獨立搬家；外部端用 `document.application_id` 對應到先前歸檔的個資 |
 | 流水號併發 | `next_payment_doc_no()` atomic + `promote_pending_info_apps()` FOR LOOP 逐筆呼叫，`FOR UPDATE` 鎖 |
 | 學員修改銀行/個資 | 獨立「申請修改」流程：必傳新存摺封面 + 原因，寫變更歷史，獨立 webhook |
 | 進行中勞報單想改個資 | 兩條流程獨立；admin 可對未簽回的勞報單按「重新產生」 |
