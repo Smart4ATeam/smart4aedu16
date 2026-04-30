@@ -1,6 +1,6 @@
-# 任務付款 / 勞報單流程完整規劃（v3.2）
+# 任務付款 / 勞報單流程完整規劃（v3.3）
 
-> 相對 v3.1 的差異：把 webhook「是否帶附件」的判斷從 `task_payment_documents.is_first_payment` 解耦，改由 `payee_profiles` 的雲端歸檔狀態決定，避免 promote 流程造成首次付款卻不帶附件的漏洞。
+> 相對 v3.2 的差異：明確定位 webhook 的本質目的為「**檔案搬家服務**」（將 supabase storage 的檔案搬到外部雲端硬碟以節省空間）。`send-payment-webhook` 改為精簡 payload，只送勞報單資料 + 簽回 PDF signed url，不再帶任何個資與附件（個資/附件由 `send-payee-update-webhook` 獨立負責，全程一次性處理）。
 
 ## 一、流程總覽
 
