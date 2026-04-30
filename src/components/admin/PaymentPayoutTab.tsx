@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, BadgeCheck, RotateCcw, Download } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,8 +33,26 @@ export function PaymentPayoutTab() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchRunning, setBatchRunning] = useState(false);
 
   useEffect(() => { load(); }, []);
+
+  const allSelected = rows.length > 0 && selected.size === rows.length;
+  const someSelected = selected.size > 0 && selected.size < rows.length;
+  const selectedRows = useMemo(() => rows.filter((r) => selected.has(r.application_id)), [rows, selected]);
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(rows.map((r) => r.application_id)) : new Set());
+  }
 
   async function load() {
     setLoading(true);
@@ -135,19 +154,22 @@ export function PaymentPayoutTab() {
     toast.success(`已下載 ${rows.length} 筆明細`);
   }
 
+  async function markPaidRow(r: Row): Promise<void> {
+    const { error } = await supabase.from("task_applications").update({ status: "paid" }).eq("id", r.application_id);
+    if (error) throw error;
+    await supabase.from("task_payment_documents").update({ paid_notified_at: new Date().toISOString() }).eq("id", r.doc_id);
+    await supabase.rpc("send_system_message", {
+      _user_id: r.user_id,
+      _title: "已完成付款",
+      _content: `任務「${r.task_title}」之勞務報酬 NT$ ${r.net_amount.toLocaleString()} 已匯款（單號：${r.doc_no}），請查收。`,
+      _category: "task",
+    });
+  }
+
   async function markPaid(r: Row) {
     setBusy(r.application_id);
     try {
-      const { error } = await supabase.from("task_applications").update({ status: "paid" }).eq("id", r.application_id);
-      if (error) throw error;
-      await supabase.from("task_payment_documents").update({ paid_notified_at: new Date().toISOString() }).eq("id", r.doc_id);
-      // notify student
-      await supabase.rpc("send_system_message", {
-        _user_id: r.user_id,
-        _title: "已完成付款",
-        _content: `任務「${r.task_title}」之勞務報酬 NT$ ${r.net_amount.toLocaleString()} 已匯款（單號：${r.doc_no}），請查收。`,
-        _category: "task",
-      });
+      await markPaidRow(r);
       toast.success("已標記為已付款並通知學員");
       await load();
     } catch (e) {
@@ -158,19 +180,74 @@ export function PaymentPayoutTab() {
     }
   }
 
+  async function batchMarkPaid() {
+    if (selectedRows.length === 0) {
+      toast.error("請先勾選要標記的項目");
+      return;
+    }
+    if (!window.confirm(`確定要將 ${selectedRows.length} 筆標記為已付款並通知學員？`)) return;
+    setBatchRunning(true);
+    let ok = 0;
+    const fails: string[] = [];
+    for (const r of selectedRows) {
+      try {
+        await markPaidRow(r);
+        ok++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        fails.push(`${r.doc_no}：${msg}`);
+      }
+    }
+    setBatchRunning(false);
+    setSelected(new Set());
+    if (fails.length === 0) {
+      toast.success(`已批次標記 ${ok} 筆並通知學員`);
+    } else {
+      toast.error(`完成 ${ok} 筆，失敗 ${fails.length} 筆\n${fails.slice(0, 3).join("\n")}`);
+    }
+    await load();
+  }
+
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   if (rows.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">目前沒有待匯款項目</Card>;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm text-muted-foreground">共 {rows.length} 筆待匯款</p>
-        <Button size="sm" variant="outline" onClick={downloadCsv} className="gap-1">
-          <Download className="w-3.5 h-3.5" /> 下載匯款明細 CSV
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              onCheckedChange={(v) => toggleAll(v === true)}
+            />
+            全選
+          </label>
+          <p className="text-sm text-muted-foreground">
+            共 {rows.length} 筆待匯款{selected.size > 0 ? `，已選 ${selected.size} 筆` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={batchMarkPaid}
+            disabled={batchRunning || selected.size === 0}
+            className="gap-1"
+          >
+            {batchRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
+            批次標記已付款並通知{selected.size > 0 ? `（${selected.size}）` : ""}
+          </Button>
+          <Button size="sm" variant="outline" onClick={downloadCsv} className="gap-1">
+            <Download className="w-3.5 h-3.5" /> 下載匯款明細 CSV
+          </Button>
+        </div>
       </div>
       {rows.map((r) => (
         <Card key={r.application_id} className="p-4 flex items-center gap-3 flex-wrap">
+          <Checkbox
+            checked={selected.has(r.application_id)}
+            onCheckedChange={(v) => toggleOne(r.application_id, v === true)}
+            disabled={batchRunning}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold">{r.task_title}</p>
@@ -180,7 +257,7 @@ export function PaymentPayoutTab() {
               學員：{r.student_name} · 實付 NT${r.net_amount.toLocaleString()} · {r.bank_name || "-"} / {r.account_name || "-"} / {r.account_number || "-"}
             </p>
           </div>
-          <Button size="sm" onClick={() => markPaid(r)} disabled={busy === r.application_id} className="gap-1">
+          <Button size="sm" onClick={() => markPaid(r)} disabled={busy === r.application_id || batchRunning} className="gap-1">
             {busy === r.application_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
             標記已付款並通知
           </Button>
