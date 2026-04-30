@@ -138,6 +138,14 @@ Deno.serve(async (req) => {
         nhi_amount: Number(doc.nhi_supplement),
         net_amount: Number(doc.net_amount),
         generated_at: doc.generated_at,
+        payee: {
+          name: payee.name,
+          id_number: payee.id_number,
+          bank_name: payee.bank_name,
+          branch_name: payee.branch_name,
+          account_number: payee.account_number,
+          account_name: payee.account_name,
+        },
         signed_pdf_signed_url: signedPdfSignedUrl,
       },
     };
