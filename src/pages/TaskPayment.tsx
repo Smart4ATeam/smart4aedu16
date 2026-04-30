@@ -75,7 +75,7 @@ export default function TaskPayment() {
 
     const { data: app } = await supabase
       .from("task_applications")
-      .select("id, status, user_id, task_id, created_at")
+      .select("id, status, user_id, task_id, applied_at")
       .eq("id", applicationId)
       .maybeSingle();
     if (!app || app.user_id !== user.id) {
@@ -87,24 +87,19 @@ export default function TaskPayment() {
 
     const { data: task } = await supabase
       .from("tasks")
-      .select("title, service_date, created_by")
+      .select("title, deadline, created_by")
       .eq("id", app.task_id)
       .single();
     setTaskTitle(task?.title ?? "");
-    setServiceDate(task?.service_date ?? "");
+    setServiceDate(task?.deadline ?? "");
 
     if (task?.created_by) {
       const { data: creator } = await supabase
         .from("profiles")
-        .select("display_name, full_name")
-        .eq("user_id", task.created_by)
+        .select("display_name")
+        .eq("id", task.created_by)
         .maybeSingle();
-      setCreatorName(
-        (creator as { display_name?: string; full_name?: string } | null)
-          ?.display_name ||
-          (creator as { full_name?: string } | null)?.full_name ||
-          "",
-      );
+      setCreatorName(creator?.display_name ?? "");
     }
 
     const { data: d } = await supabase
