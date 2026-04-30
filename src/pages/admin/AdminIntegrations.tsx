@@ -865,71 +865,8 @@ function WebhookUrlSettingItem({
   );
 }
 
-function ReplayPayeeCreateWebhookTool() {
-  const [userId, setUserId] = useState("9b036eda-69af-4078-b0a9-3a769c609d19");
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; data: unknown } | null>(null);
 
-  const handleRun = async () => {
-    const target = userId.trim();
-    if (!target) { toast.error("請輸入 user_id"); return; }
-    setRunning(true);
-    setResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("admin-replay-payee-create-webhook", {
-        body: { target_user_id: target },
-      });
-      if (error) {
-        setResult({ ok: false, data: { error: error.message, context: (error as any).context ?? null } });
-        toast.error("補發失敗：" + error.message);
-      } else {
-        setResult({ ok: true, data });
-        toast.success("補發成功");
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setResult({ ok: false, data: { error: msg } });
-      toast.error("補發失敗：" + msg);
-    } finally {
-      setRunning(false);
-    }
-  };
 
-  return (
-    <div className="glass-card p-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-5 rounded-full bg-destructive" />
-        <h2 className="text-sm font-semibold text-foreground">補發首次建檔 Webhook（一次性工具）</h2>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        當 payee_profiles 已建立但 create webhook 未送出時，可手動補發 <code className="px-1 py-0.5 rounded bg-muted font-mono">payee_profile_created</code> 事件至 PAYMENT_WEBHOOK_URL。會以 service role 重新產生附件 signed URL（24h）。
-      </p>
-      <div className="flex gap-2">
-        <Input
-          placeholder="目標 user_id (UUID)"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          className="flex-1 text-xs font-mono"
-        />
-        <Button onClick={handleRun} disabled={running} size="sm" variant="destructive" className="gap-1.5">
-          <Send className="w-3.5 h-3.5" /> {running ? "補發中..." : "補發 Webhook"}
-        </Button>
-      </div>
-      {result && (
-        <div className={`text-xs rounded-lg p-3 border ${result.ok ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"}`}>
-          <p className={`font-semibold mb-1.5 ${result.ok ? "text-primary" : "text-destructive"}`}>
-            {result.ok ? "✓ 成功" : "✗ 失敗"}
-          </p>
-          <pre className="whitespace-pre-wrap break-all font-mono text-[11px] text-foreground/80 max-h-64 overflow-auto">
-{JSON.stringify(result.data, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
       {/* Header */}
