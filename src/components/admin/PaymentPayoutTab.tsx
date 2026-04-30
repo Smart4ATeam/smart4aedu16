@@ -154,19 +154,22 @@ export function PaymentPayoutTab() {
     toast.success(`已下載 ${rows.length} 筆明細`);
   }
 
+  async function markPaidRow(r: Row): Promise<void> {
+    const { error } = await supabase.from("task_applications").update({ status: "paid" }).eq("id", r.application_id);
+    if (error) throw error;
+    await supabase.from("task_payment_documents").update({ paid_notified_at: new Date().toISOString() }).eq("id", r.doc_id);
+    await supabase.rpc("send_system_message", {
+      _user_id: r.user_id,
+      _title: "已完成付款",
+      _content: `任務「${r.task_title}」之勞務報酬 NT$ ${r.net_amount.toLocaleString()} 已匯款（單號：${r.doc_no}），請查收。`,
+      _category: "task",
+    });
+  }
+
   async function markPaid(r: Row) {
     setBusy(r.application_id);
     try {
-      const { error } = await supabase.from("task_applications").update({ status: "paid" }).eq("id", r.application_id);
-      if (error) throw error;
-      await supabase.from("task_payment_documents").update({ paid_notified_at: new Date().toISOString() }).eq("id", r.doc_id);
-      // notify student
-      await supabase.rpc("send_system_message", {
-        _user_id: r.user_id,
-        _title: "已完成付款",
-        _content: `任務「${r.task_title}」之勞務報酬 NT$ ${r.net_amount.toLocaleString()} 已匯款（單號：${r.doc_no}），請查收。`,
-        _category: "task",
-      });
+      await markPaidRow(r);
       toast.success("已標記為已付款並通知學員");
       await load();
     } catch (e) {
@@ -175,6 +178,34 @@ export function PaymentPayoutTab() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function batchMarkPaid() {
+    if (selectedRows.length === 0) {
+      toast.error("請先勾選要標記的項目");
+      return;
+    }
+    if (!window.confirm(`確定要將 ${selectedRows.length} 筆標記為已付款並通知學員？`)) return;
+    setBatchRunning(true);
+    let ok = 0;
+    const fails: string[] = [];
+    for (const r of selectedRows) {
+      try {
+        await markPaidRow(r);
+        ok++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        fails.push(`${r.doc_no}：${msg}`);
+      }
+    }
+    setBatchRunning(false);
+    setSelected(new Set());
+    if (fails.length === 0) {
+      toast.success(`已批次標記 ${ok} 筆並通知學員`);
+    } else {
+      toast.error(`完成 ${ok} 筆，失敗 ${fails.length} 筆\n${fails.slice(0, 3).join("\n")}`);
+    }
+    await load();
   }
 
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
