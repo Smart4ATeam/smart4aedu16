@@ -13,7 +13,7 @@ import {
 import type { Tables } from "@/integrations/supabase/types";
 import { PaymentActionPanel } from "@/components/payment/PaymentActionPanel";
 
-type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "paid" | "rejected" | "failed" | "closed";
 type SortType = "newest" | "amount-desc" | "amount-asc" | "deadline";
 
 const Tasks = () => {
@@ -97,7 +97,7 @@ const Tasks = () => {
     setLoading(false);
   };
 
-  type EffectiveStatus = "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+  type EffectiveStatus = "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" | "payment-info" | "payment-signature" | "payment-review" | "payment-processing" | "paid";
 
   const tasksWithUserStatus = useMemo(() => {
     const appMap = new Map(applications.map((a) => [a.task_id, a]));
@@ -116,14 +116,12 @@ const Tasks = () => {
           case "applied": effectiveStatus = "pending"; break;
           case "approved": effectiveStatus = "in-progress"; break;
           case "pending_completion": effectiveStatus = "pending-completion"; break;
-          case "completed":
-          case "payment_pending_info":
-          case "payment_pending_signature":
-          case "payment_pending_review":
-          case "payment_processing":
-          case "paid":
-            effectiveStatus = "completed";
-            break;
+          case "completed": effectiveStatus = "completed"; break;
+          case "payment_pending_info": effectiveStatus = "payment-info"; break;
+          case "payment_pending_signature": effectiveStatus = "payment-signature"; break;
+          case "payment_pending_review": effectiveStatus = "payment-review"; break;
+          case "payment_processing": effectiveStatus = "payment-processing"; break;
+          case "paid": effectiveStatus = "paid"; break;
           case "rejected":
             effectiveStatus = "rejected";
             rejectReason = a.reject_reason || undefined;
@@ -145,9 +143,12 @@ const Tasks = () => {
   }, [tasks, applications, takenTaskIds]);
 
   const filtered = useMemo(() => {
+    const completedLike: EffectiveStatus[] = ["completed", "payment-info", "payment-signature", "payment-review", "payment-processing", "paid"];
     let list = filter === "all"
       ? tasksWithUserStatus
-      : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
+      : filter === "completed"
+        ? tasksWithUserStatus.filter((t) => completedLike.includes(t.effectiveStatus))
+        : tasksWithUserStatus.filter((t) => t.effectiveStatus === filter);
 
     if (keyword.trim()) {
       const k = keyword.trim().toLowerCase();
@@ -180,11 +181,12 @@ const Tasks = () => {
   }, [tasksWithUserStatus, filter, keyword, sort]);
 
   const stats = useMemo(() => {
+    const completedLike: EffectiveStatus[] = ["completed", "payment-info", "payment-signature", "payment-review", "payment-processing", "paid"];
     const available = tasksWithUserStatus.filter((t) => t.effectiveStatus === "available").length;
     const pending = tasksWithUserStatus.filter((t) => t.effectiveStatus === "pending").length;
     const inProgress = tasksWithUserStatus.filter((t) => t.effectiveStatus === "in-progress").length;
     const totalRevenue = tasksWithUserStatus
-      .filter((t) => t.effectiveStatus === "completed")
+      .filter((t) => completedLike.includes(t.effectiveStatus))
       .reduce((sum, t) => sum + Number(t.finalAmount ?? t.quotedAmount ?? t.amount), 0);
     return { available, pending, inProgress, totalRevenue };
   }, [tasksWithUserStatus]);
@@ -226,6 +228,7 @@ const Tasks = () => {
     { key: "in-progress", label: "進行中" },
     { key: "pending-completion", label: "待確認完成" },
     { key: "completed", label: "已完成" },
+    { key: "paid", label: "已付款" },
     { key: "rejected", label: "已退回" },
     { key: "failed", label: "已失敗" },
     { key: "closed", label: "已關閉" },
@@ -296,7 +299,7 @@ const Tasks = () => {
                 amountMax: Number(task.amount_max ?? task.amount),
                 category: task.category,
                 tags: task.tags,
-                status: task.effectiveStatus as "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed",
+                status: task.effectiveStatus,
                 deadline: task.deadline ?? "",
                 difficulty: task.difficulty,
                 rejectReason: task.rejectReason,

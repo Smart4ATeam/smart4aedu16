@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock, Coins } from "lucide-react";
+import { DollarSign, ArrowRight, CheckCircle, Clock, Loader2, Calendar, Eye, AlertCircle, Hourglass, Send, Users, XCircle, Lock, Coins, Wallet, FileSignature, BadgeCheck, Banknote } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -18,7 +18,7 @@ interface Task {
   amountMax: number;
   category?: string;
   tags: string[];
-  status: "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+  status: "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed" | "payment-info" | "payment-signature" | "payment-review" | "payment-processing" | "paid";
   deadline: string;
   difficulty: string;
   rejectReason?: string;
@@ -76,6 +76,16 @@ export function TaskCard({ task, delay = 0, onApply, onReportComplete, applying,
         return <span className="text-xs text-chart-yellow font-medium flex items-center gap-1 border border-chart-yellow/30 px-3 py-1.5 rounded-lg bg-chart-yellow/10"><Send className="w-3.5 h-3.5" />已回報完成</span>;
       case "completed":
         return <span className="text-xs text-chart-green font-medium flex items-center gap-1 border border-chart-green/30 px-3 py-1.5 rounded-lg bg-chart-green/10"><CheckCircle className="w-3.5 h-3.5" />已完成</span>;
+      case "payment-info":
+        return <span className="text-xs text-amber-600 font-medium flex items-center gap-1 border border-amber-500/30 px-3 py-1.5 rounded-lg bg-amber-500/10"><Wallet className="w-3.5 h-3.5" />待填收款資料</span>;
+      case "payment-signature":
+        return <span className="text-xs text-amber-600 font-medium flex items-center gap-1 border border-amber-500/30 px-3 py-1.5 rounded-lg bg-amber-500/10"><FileSignature className="w-3.5 h-3.5" />待簽回勞報單</span>;
+      case "payment-review":
+        return <span className="text-xs text-sky-600 font-medium flex items-center gap-1 border border-sky-500/30 px-3 py-1.5 rounded-lg bg-sky-500/10"><Hourglass className="w-3.5 h-3.5" />待管理員確認</span>;
+      case "payment-processing":
+        return <span className="text-xs text-sky-600 font-medium flex items-center gap-1 border border-sky-500/30 px-3 py-1.5 rounded-lg bg-sky-500/10"><Banknote className="w-3.5 h-3.5" />待匯款</span>;
+      case "paid":
+        return <span className="text-xs text-emerald-600 font-medium flex items-center gap-1 border border-emerald-500/30 px-3 py-1.5 rounded-lg bg-emerald-500/10"><BadgeCheck className="w-3.5 h-3.5" />已付款</span>;
       case "rejected":
         return <span className="text-xs text-destructive font-medium flex items-center gap-1 border border-destructive/30 px-3 py-1.5 rounded-lg bg-destructive/10"><AlertCircle className="w-3.5 h-3.5" />已退回</span>;
       case "failed":
