@@ -104,16 +104,16 @@ PDF 與 SQL 一律用 `Asia/Taipei`：
 
 ## 四、Edge Functions
 
-| Function | 觸發 | 帶附件判斷 | 動作 |
+| Function | 觸發 | Payload 重點 | 對應 callback event |
 |---|---|---|---|
-| `send-payment-webhook` | admin 確認簽回 | **由 `payee_profiles.*_cloud_url` 是否齊備決定**（v3.2） | 送勞報單 + 個資 |
-| `send-payee-update-webhook` | 學員自助更新 | 一律帶新上傳的附件 | 送 `payee_profile_updated` |
-| `payment-webhook-callback` | 外部回傳 | — | 依 event 寫雲端連結、刪 storage、首次寫 `first_submitted_at` |
+| `send-payment-webhook` | admin 確認簽回 | 勞報單 9 欄位 + 簽回 PDF signed url（不含個資/附件） | `payment_document_archived` |
+| `send-payee-update-webhook` | 學員填表 / 自助更新個資 | 個資全欄位 + 3 個附件 signed url（一律重帶最新上傳） | `payee_profile_archived` |
+| `payment-webhook-callback` | 外部搬完雲端後回呼 | 依 event 寫 cloud_url 並刪 storage 原檔 | — |
 
-**callback 區分（payload 帶 `event` 欄位）**
-- `payment_document_archived` → 寫 doc 雲端連結 + 刪簽回檔
-- `payee_profile_archived` → 寫三個 `*_cloud_url`、刪三個 storage 附件、若 `first_submitted_at IS NULL` 則寫入 `now()`
-- 注意：寫 `first_submitted_at` 觸發 `on_payee_first_submitted` → 自動 promote → 那些被 promote 的 doc 之後送 webhook 時，由於 cloud_url 已齊 → 自動不帶附件，**符合外部期望**
+**callback 行為（payload 帶 `event` 欄位）**
+- `payment_document_archived` → 寫 `signed_file_cloud_url` + 刪 payment-signed-docs PDF
+- `payee_profile_archived` → 寫三個 `*_cloud_url`、刪三個 payee-documents 附件；若 `first_submitted_at IS NULL` 則寫入 `now()`
+- 寫 `first_submitted_at` 會觸發 `on_payee_first_submitted` → 自動 promote 那些等填表的任務到 `payment_pending_signature`
 
 ## 五、前端
 
