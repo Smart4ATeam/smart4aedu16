@@ -593,6 +593,7 @@ const AdminTasks = () => {
           <TabsTrigger value="payment-history">匯款紀錄</TabsTrigger>
           <TabsTrigger value="point-logs">積分發放紀錄</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
           <div className="flex justify-between items-start gap-4 flex-wrap">
