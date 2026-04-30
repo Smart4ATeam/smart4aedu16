@@ -993,9 +993,6 @@ export default function AdminIntegrations() {
         />
       </div>
 
-      {/* Replay Payee Create Webhook Tool */}
-      <ReplayPayeeCreateWebhookTool />
-
       {/* Endpoint List */}
       <div>
         <div className="flex items-center gap-2 mb-3">
