@@ -181,11 +181,12 @@ const Tasks = () => {
   }, [tasksWithUserStatus, filter, keyword, sort]);
 
   const stats = useMemo(() => {
+    const completedLike: EffectiveStatus[] = ["completed", "payment-info", "payment-signature", "payment-review", "payment-processing", "paid"];
     const available = tasksWithUserStatus.filter((t) => t.effectiveStatus === "available").length;
     const pending = tasksWithUserStatus.filter((t) => t.effectiveStatus === "pending").length;
     const inProgress = tasksWithUserStatus.filter((t) => t.effectiveStatus === "in-progress").length;
     const totalRevenue = tasksWithUserStatus
-      .filter((t) => t.effectiveStatus === "completed")
+      .filter((t) => completedLike.includes(t.effectiveStatus))
       .reduce((sum, t) => sum + Number(t.finalAmount ?? t.quotedAmount ?? t.amount), 0);
     return { available, pending, inProgress, totalRevenue };
   }, [tasksWithUserStatus]);
