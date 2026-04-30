@@ -299,7 +299,7 @@ const Tasks = () => {
                 amountMax: Number(task.amount_max ?? task.amount),
                 category: task.category,
                 tags: task.tags,
-                status: task.effectiveStatus as "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed",
+                status: task.effectiveStatus,
                 deadline: task.deadline ?? "",
                 difficulty: task.difficulty,
                 rejectReason: task.rejectReason,
