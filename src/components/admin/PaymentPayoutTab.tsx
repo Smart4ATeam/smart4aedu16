@@ -214,13 +214,40 @@ export function PaymentPayoutTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm text-muted-foreground">共 {rows.length} 筆待匯款</p>
-        <Button size="sm" variant="outline" onClick={downloadCsv} className="gap-1">
-          <Download className="w-3.5 h-3.5" /> 下載匯款明細 CSV
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              onCheckedChange={(v) => toggleAll(v === true)}
+            />
+            全選
+          </label>
+          <p className="text-sm text-muted-foreground">
+            共 {rows.length} 筆待匯款{selected.size > 0 ? `，已選 ${selected.size} 筆` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={batchMarkPaid}
+            disabled={batchRunning || selected.size === 0}
+            className="gap-1"
+          >
+            {batchRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
+            批次標記已付款並通知{selected.size > 0 ? `（${selected.size}）` : ""}
+          </Button>
+          <Button size="sm" variant="outline" onClick={downloadCsv} className="gap-1">
+            <Download className="w-3.5 h-3.5" /> 下載匯款明細 CSV
+          </Button>
+        </div>
       </div>
       {rows.map((r) => (
         <Card key={r.application_id} className="p-4 flex items-center gap-3 flex-wrap">
+          <Checkbox
+            checked={selected.has(r.application_id)}
+            onCheckedChange={(v) => toggleOne(r.application_id, v === true)}
+            disabled={batchRunning}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold">{r.task_title}</p>
@@ -230,7 +257,7 @@ export function PaymentPayoutTab() {
               學員：{r.student_name} · 實付 NT${r.net_amount.toLocaleString()} · {r.bank_name || "-"} / {r.account_name || "-"} / {r.account_number || "-"}
             </p>
           </div>
-          <Button size="sm" onClick={() => markPaid(r)} disabled={busy === r.application_id} className="gap-1">
+          <Button size="sm" onClick={() => markPaid(r)} disabled={busy === r.application_id || batchRunning} className="gap-1">
             {busy === r.application_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
             標記已付款並通知
           </Button>
