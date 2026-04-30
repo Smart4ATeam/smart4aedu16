@@ -8,20 +8,23 @@ import {
   Image,
 } from "@react-pdf/renderer";
 
-// Register Noto Sans TC for Chinese support
+// Register Noto Sans TC for Chinese support (use jsDelivr — gstatic /ea/ path is unreliable / CORS-blocked)
 Font.register({
   family: "NotoSansTC",
   fonts: [
     {
-      src: "https://fonts.gstatic.com/ea/notosanstc/v1/NotoSansTC-Regular.otf",
+      src: "https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf",
       fontWeight: "normal",
     },
     {
-      src: "https://fonts.gstatic.com/ea/notosanstc/v1/NotoSansTC-Bold.otf",
+      src: "https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Bold.otf",
       fontWeight: "bold",
     },
   ],
 });
+
+// Disable hyphenation (CJK doesn't need it and it can throw)
+Font.registerHyphenationCallback((word) => [word]);
 
 export interface PaymentDocumentData {
   doc_no: string;
