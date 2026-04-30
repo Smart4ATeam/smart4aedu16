@@ -874,7 +874,7 @@ export default function AdminIntegrations() {
         <WebhookUrlSettingItem
           keyName="PAYMENT_WEBHOOK_URL"
           label="勞報單 / 付款 Webhook URL"
-          description="管理員確認簽回勞報單後，系統會 POST 學員個資與勞報單資料到此 URL；學員自助修改收款資料時亦會送出。callback 端點：payment-webhook-callback。此 URL 不與其他功能共用。"
+          description="兩種事件會送到此 URL：①管理員確認簽回勞報單後，送出勞報單資料 + 簽回 PDF signed url（不含個資/附件）。②學員填寫或自助修改收款資料時，送出個資 + 附件 signed url。外部端搬至雲端後，回呼 payment-webhook-callback 寫回永久連結，系統據此刪除 supabase storage 原檔以節省空間。此 URL 不與其他功能共用。"
           placeholder="https://hook.example.com/payment"
         />
       </div>
