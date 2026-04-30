@@ -484,6 +484,116 @@ const endpoints: ApiEndpoint[] = [
       },
     ],
   },
+  {
+    id: "payment-webhook-callback",
+    name: "勞報單 / 收款資料歸檔回調",
+    icon: <Webhook className="w-4 h-4" />,
+    method: "POST",
+    path: "/payment-webhook-callback",
+    authType: "callback_token（每次外送 webhook 隨附的一次性 token，非 x-api-key）",
+    description:
+      "外部系統（Make.com 等）將勞報單簽回檔或收款人個資/附件歸檔到雲端後，呼叫此端點回寫雲端連結並觸發後續流程。本端點不使用 x-api-key，改以 outbound webhook 內帶的 callback_token 對應原始請求。\n\n支援兩種事件（以 payload 的 event 欄位區分）：\n① payment_document_archived：學員簽回的勞報單 PDF 已歸檔 → 寫入 signed_file_cloud_url，並刪除 storage 內的簽回檔。\n② payee_profile_archived：學員的個資/存摺/身分證附件已歸檔 → 寫入三個 *_cloud_url，刪除 storage 附件，若為首次歸檔則寫入 first_submitted_at，自動觸發所有 payment_pending_info 任務升級為 payment_pending_signature。\n\n注意：send-payment-webhook 是否帶附件，是依 payee_profiles.*_cloud_url 是否齊備來判斷，因此務必正確回傳三個 cloud url，否則下次送單會重複帶附件。",
+    requiredFields: [
+      { name: "event", type: "string", required: true, desc: "事件類型：payment_document_archived 或 payee_profile_archived" },
+      { name: "callback_token", type: "string", required: true, desc: "outbound webhook payload 內的 callback_token（每次請求皆不同，一次性使用）" },
+    ],
+    optionalFields: [
+      { name: "signed_pdf_cloud_url", type: "string", desc: "【event = payment_document_archived 時必填】簽回勞報單 PDF 的雲端永久連結" },
+      { name: "id_card_front_cloud_url", type: "string", desc: "【event = payee_profile_archived】身分證正面的雲端連結" },
+      { name: "id_card_back_cloud_url", type: "string", desc: "【event = payee_profile_archived】身分證反面的雲端連結" },
+      { name: "bankbook_cover_cloud_url", type: "string", desc: "【event = payee_profile_archived】存摺封面的雲端連結" },
+    ],
+    exampleBody: {
+      event: "payment_document_archived",
+      callback_token: "ab12cd34-...-xxxx",
+      signed_pdf_cloud_url: "https://drive.example.com/archive/labor-report/LR-202604-0001-signed.pdf",
+    },
+    exampleResponse: { success: true },
+    extraExamples: [
+      {
+        title: "事件 ②：個資/附件歸檔（payee_profile_archived）",
+        body: {
+          event: "payee_profile_archived",
+          callback_token: "ef56gh78-...-yyyy",
+          id_card_front_cloud_url: "https://drive.example.com/archive/payee/uuid/id_front.jpg",
+          id_card_back_cloud_url: "https://drive.example.com/archive/payee/uuid/id_back.jpg",
+          bankbook_cover_cloud_url: "https://drive.example.com/archive/payee/uuid/bankbook.jpg",
+        },
+      },
+      {
+        title: "系統送出的 outbound payload 範例 ①（send-payment-webhook → 您的系統會收到）",
+        body: {
+          event: "payment_document",
+          callback_token: "ab12cd34-...-xxxx",
+          callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/payment-webhook-callback",
+          document: {
+            doc_no: "LR-202604-0001",
+            application_id: "uuid-xxx",
+            task_title: "設計 CRM 自動化流程",
+            gross_amount: 20000,
+            tax_amount: 2000,
+            nhi_amount: 422,
+            net_amount: 17578,
+            generated_at: "2026-04-30T08:00:00Z",
+            signed_pdf_signed_url: "https://...supabase.co/.../signed.pdf?token=...",
+          },
+          payee: {
+            user_id: "uuid-user",
+            name: "王小明",
+            id_number: "A123456789",
+            phone: "0912345678",
+            email: "ming@example.com",
+            registered_address: "台北市...",
+            bank_code: "812",
+            bank_name: "台新銀行",
+            branch_code: "0011",
+            branch_name: "城東分行",
+            account_number: "1234567890",
+            account_name: "王小明",
+          },
+          attachments: {
+            id_card_front: "https://...supabase.co/.../id_front.jpg?token=...（首次才會帶；雲端已歸檔則為 null）",
+            id_card_back: "https://...?token=...（同上）",
+            bankbook_cover: "https://...?token=...（同上）",
+          },
+          company: { name: "禹動科技整合股份有限公司", brand: "Smart4A" },
+        },
+      },
+      {
+        title: "系統送出的 outbound payload 範例 ②（send-payee-update-webhook → 學員自助修改收款資料）",
+        body: {
+          event: "payee_profile_update_request",
+          callback_token: "ef56gh78-...-yyyy",
+          callback_url: "https://clwruolkostoirdwnnuy.supabase.co/functions/v1/payment-webhook-callback",
+          update_id: "uuid-update",
+          reason: "更換銀行帳號",
+          changed_fields: ["bank_code", "account_number", "bankbook_cover_url"],
+          payee: {
+            user_id: "uuid-user",
+            name: "王小明",
+            bank_code: "822",
+            bank_name: "中國信託",
+            account_number: "9999888877",
+            account_name: "王小明",
+          },
+          attachments: {
+            id_card_front: "https://...?token=...（自助修改一律重帶新上傳的附件）",
+            id_card_back: "https://...?token=...",
+            bankbook_cover: "https://...?token=...",
+          },
+          company: { name: "禹動科技整合股份有限公司", brand: "Smart4A" },
+        },
+      },
+      {
+        title: "錯誤回應：callback_token 無效或不存在",
+        body: { error: "Invalid callback_token" },
+      },
+      {
+        title: "錯誤回應：未指定 event",
+        body: { error: "Unknown event" },
+      },
+    ],
+  },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -519,13 +629,13 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
   const fullUrl = `${BASE_URL}${endpoint.path}`;
 
   const isGet = endpoint.method === "GET";
+  const usesApiKey = !endpoint.authType.toLowerCase().startsWith("callback_token");
+  const authHeader = usesApiKey ? `  -H "x-api-key: <YOUR_API_KEY>" \\\n` : "";
   const curlExample = isGet
-    ? `curl -X GET "${fullUrl}?order_no=ORD20250401001" \\
-  -H "x-api-key: <YOUR_API_KEY>"`
+    ? `curl -X GET "${fullUrl}?order_no=ORD20250401001"${usesApiKey ? ` \\\n  -H "x-api-key: <YOUR_API_KEY>"` : ""}`
     : `curl -X ${endpoint.method} "${fullUrl}" \\
   -H "Content-Type: application/json" \\
-  -H "x-api-key: <YOUR_API_KEY>" \\
-  -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
+${authHeader}  -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
 
   return (
     <div className="glass-card overflow-hidden">
@@ -632,19 +742,27 @@ function EndpointCard({ endpoint }: { endpoint: ApiEndpoint }) {
 
           {/* Extra Examples */}
           {endpoint.extraExamples && endpoint.extraExamples.length > 0 && (
-            endpoint.extraExamples.map((ex, idx) => (
-              <div key={idx}>
-                <p className="text-xs font-medium text-foreground mb-1">{ex.title}</p>
-                <CodeBlock
-                  code={
-                    ex.title.startsWith("錯誤回應")
-                      ? JSON.stringify(ex.body, null, 2)
-                      : `curl -X ${endpoint.method} "${fullUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: <YOUR_API_KEY>" \\\n  -d '${JSON.stringify(ex.body, null, 2)}'`
-                  }
-                  language={ex.title.startsWith("錯誤回應") ? "json" : "bash"}
-                />
-              </div>
-            ))
+            endpoint.extraExamples.map((ex, idx) => {
+              const isJsonOnly =
+                ex.title.startsWith("錯誤回應") ||
+                ex.title.startsWith("系統發送") ||
+                ex.title.startsWith("系統送出") ||
+                ex.title.includes("Webhook Payload") ||
+                ex.title.includes("outbound payload");
+              return (
+                <div key={idx}>
+                  <p className="text-xs font-medium text-foreground mb-1">{ex.title}</p>
+                  <CodeBlock
+                    code={
+                      isJsonOnly
+                        ? JSON.stringify(ex.body, null, 2)
+                        : `curl -X ${endpoint.method} "${fullUrl}" \\\n  -H "Content-Type: application/json" \\\n${usesApiKey ? `  -H "x-api-key: <YOUR_API_KEY>" \\\n` : ""}  -d '${JSON.stringify(ex.body, null, 2)}'`
+                    }
+                    language={isJsonOnly ? "json" : "bash"}
+                  />
+                </div>
+              );
+            })
           )}
 
           {/* Response Example */}
