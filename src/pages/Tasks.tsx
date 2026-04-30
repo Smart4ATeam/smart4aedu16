@@ -116,14 +116,12 @@ const Tasks = () => {
           case "applied": effectiveStatus = "pending"; break;
           case "approved": effectiveStatus = "in-progress"; break;
           case "pending_completion": effectiveStatus = "pending-completion"; break;
-          case "completed":
-          case "payment_pending_info":
-          case "payment_pending_signature":
-          case "payment_pending_review":
-          case "payment_processing":
-          case "paid":
-            effectiveStatus = "completed";
-            break;
+          case "completed": effectiveStatus = "completed"; break;
+          case "payment_pending_info": effectiveStatus = "payment-info"; break;
+          case "payment_pending_signature": effectiveStatus = "payment-signature"; break;
+          case "payment_pending_review": effectiveStatus = "payment-review"; break;
+          case "payment_processing": effectiveStatus = "payment-processing"; break;
+          case "paid": effectiveStatus = "paid"; break;
           case "rejected":
             effectiveStatus = "rejected";
             rejectReason = a.reject_reason || undefined;
