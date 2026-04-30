@@ -228,6 +228,7 @@ const Tasks = () => {
     { key: "in-progress", label: "進行中" },
     { key: "pending-completion", label: "待確認完成" },
     { key: "completed", label: "已完成" },
+    { key: "paid", label: "已付款" },
     { key: "rejected", label: "已退回" },
     { key: "failed", label: "已失敗" },
     { key: "closed", label: "已關閉" },
