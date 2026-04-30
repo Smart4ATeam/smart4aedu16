@@ -30,7 +30,9 @@ payee_profiles.user_id 存在 AND first_submitted_at IS NOT NULL
 ```
 不滿足 → 停在 `payment_pending_info`，由 `on_payee_first_submitted` trigger 在首次 callback 後一次補升級。
 
-### 決策 2：webhook「要不要帶附件」的判斷（v3.2 重點）
+# 任務付款 / 勞報單流程完整規劃（v3.3）
+
+> 相對 v3.2 的差異：明確定位 webhook 的本質目的為「**檔案搬家服務**」（將 supabase storage 的檔案搬到外部雲端硬碟以節省空間）。`send-payment-webhook` 改為精簡 payload，只送勞報單資料 + 簽回 PDF signed url，不再帶任何個資與附件（個資/附件由 `send-payee-update-webhook` 獨立負責）。
 **不讀 `task_payment_documents.is_first_payment`**，改用以下邏輯：
 
 ```ts
