@@ -13,7 +13,7 @@ import {
 import type { Tables } from "@/integrations/supabase/types";
 import { PaymentActionPanel } from "@/components/payment/PaymentActionPanel";
 
-type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "rejected" | "failed" | "closed";
+type FilterType = "all" | "available" | "pending" | "in-progress" | "pending-completion" | "completed" | "paid" | "rejected" | "failed" | "closed";
 type SortType = "newest" | "amount-desc" | "amount-asc" | "deadline";
 
 const Tasks = () => {
