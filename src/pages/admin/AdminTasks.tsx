@@ -21,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentReviewTab } from "@/components/admin/PaymentReviewTab";
 import { PaymentPayoutTab } from "@/components/admin/PaymentPayoutTab";
+import { PaymentHistoryTab } from "@/components/admin/PaymentHistoryTab";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import TaskOptionsManager from "@/components/admin/TaskOptionsManager";
