@@ -742,19 +742,27 @@ ${authHeader}  -d '${JSON.stringify(endpoint.exampleBody, null, 2)}'`;
 
           {/* Extra Examples */}
           {endpoint.extraExamples && endpoint.extraExamples.length > 0 && (
-            endpoint.extraExamples.map((ex, idx) => (
-              <div key={idx}>
-                <p className="text-xs font-medium text-foreground mb-1">{ex.title}</p>
-                <CodeBlock
-                  code={
-                    ex.title.startsWith("錯誤回應")
-                      ? JSON.stringify(ex.body, null, 2)
-                      : `curl -X ${endpoint.method} "${fullUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: <YOUR_API_KEY>" \\\n  -d '${JSON.stringify(ex.body, null, 2)}'`
-                  }
-                  language={ex.title.startsWith("錯誤回應") ? "json" : "bash"}
-                />
-              </div>
-            ))
+            endpoint.extraExamples.map((ex, idx) => {
+              const isJsonOnly =
+                ex.title.startsWith("錯誤回應") ||
+                ex.title.startsWith("系統發送") ||
+                ex.title.startsWith("系統送出") ||
+                ex.title.includes("Webhook Payload") ||
+                ex.title.includes("outbound payload");
+              return (
+                <div key={idx}>
+                  <p className="text-xs font-medium text-foreground mb-1">{ex.title}</p>
+                  <CodeBlock
+                    code={
+                      isJsonOnly
+                        ? JSON.stringify(ex.body, null, 2)
+                        : `curl -X ${endpoint.method} "${fullUrl}" \\\n  -H "Content-Type: application/json" \\\n${usesApiKey ? `  -H "x-api-key: <YOUR_API_KEY>" \\\n` : ""}  -d '${JSON.stringify(ex.body, null, 2)}'`
+                    }
+                    language={isJsonOnly ? "json" : "bash"}
+                  />
+                </div>
+              );
+            })
           )}
 
           {/* Response Example */}
