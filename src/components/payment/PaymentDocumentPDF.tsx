@@ -9,16 +9,17 @@ import {
 } from "@react-pdf/renderer";
 import { SMART4A_LOGO_BASE64 } from "@/assets/smart4a-logo-base64";
 
-// Register Noto Sans TC for Chinese support (jsDelivr — CORS-friendly)
+// Register Noto Sans TC from local public assets.
+// Remote font URLs can fail inside @react-pdf during download/signature upload.
 Font.register({
   family: "NotoSansTC",
   fonts: [
     {
-      src: "https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf",
+      src: "/fonts/NotoSansCJKtc-Regular.otf",
       fontWeight: "normal",
     },
     {
-      src: "https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Bold.otf",
+      src: "/fonts/NotoSansCJKtc-Bold.otf",
       fontWeight: "bold",
     },
   ],
