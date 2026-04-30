@@ -5,6 +5,3 @@ verify_jwt = true
 
 [functions.send-payee-update-webhook]
 verify_jwt = true
-
-[functions.admin-replay-payee-create-webhook]
-verify_jwt = true
