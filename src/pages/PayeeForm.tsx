@@ -197,9 +197,14 @@ export default function PayeeForm() {
         .single();
       if (insErr) throw insErr;
 
-      // Trigger webhook
+      // Compute which attachments actually changed (bankbook is always required on update)
+      const changedAttachments: string[] = ["bankbook_cover"];
+      if (newFront) changedAttachments.push("id_card_front");
+      if (newBack) changedAttachments.push("id_card_back");
+
+      // Trigger webhook with the precise list of attachments to migrate
       const { error: fnErr } = await supabase.functions.invoke("send-payee-update-webhook", {
-        body: { update_id: updRow.id },
+        body: { update_id: updRow.id, changed_attachments: changedAttachments },
       });
       if (fnErr) throw fnErr;
 
