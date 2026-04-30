@@ -21,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentReviewTab } from "@/components/admin/PaymentReviewTab";
 import { PaymentPayoutTab } from "@/components/admin/PaymentPayoutTab";
+import { PaymentHistoryTab } from "@/components/admin/PaymentHistoryTab";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import TaskOptionsManager from "@/components/admin/TaskOptionsManager";
@@ -589,6 +590,7 @@ const AdminTasks = () => {
           <TabsTrigger value="review">申請審核</TabsTrigger>
           <TabsTrigger value="payment-review">待確認簽回</TabsTrigger>
           <TabsTrigger value="payment-payout">待匯款</TabsTrigger>
+          <TabsTrigger value="payment-history">匯款紀錄</TabsTrigger>
           <TabsTrigger value="point-logs">積分發放紀錄</TabsTrigger>
           <TabsTrigger value="options">任務選項</TabsTrigger>
         </TabsList>
@@ -922,6 +924,10 @@ const AdminTasks = () => {
 
         <TabsContent value="payment-payout" className="space-y-4">
           <PaymentPayoutTab />
+        </TabsContent>
+
+        <TabsContent value="payment-history" className="space-y-4">
+          <PaymentHistoryTab />
         </TabsContent>
 
         <TabsContent value="point-logs" className="space-y-4">
