@@ -1,1 +1,7 @@
 project_id = "clwruolkostoirdwnnuy"
+
+[functions.send-payee-create-webhook]
+verify_jwt = true
+
+[functions.send-payee-update-webhook]
+verify_jwt = true
