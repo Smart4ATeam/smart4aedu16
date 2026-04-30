@@ -79,7 +79,7 @@ const Tasks = () => {
       supabase
         .from("task_applications")
         .select("task_id")
-        .in("status", ["approved", "pending_completion", "completed"]),
+        .in("status", ["approved", "pending_completion", "completed", "payment_pending_info", "payment_pending_signature", "payment_pending_review", "payment_processing", "paid"]),
     ]);
     if (tasksRes.error) toast.error("載入任務失敗");
     else setTasks(tasksRes.data ?? []);
