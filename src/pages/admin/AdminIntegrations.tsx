@@ -908,6 +908,13 @@ export default function AdminIntegrations() {
           <h2 className="text-sm font-semibold text-foreground">Webhook URL 設定</h2>
         </div>
         <WebhookUrlSettingItem
+          keyName="APP_BASE_URL"
+          label="網站正式網域（APP_BASE_URL）"
+          description="系統發送通知訊息時用來組成勞報單下載連結與「填寫收款資料」連結的網域；請填寫不含結尾斜線的完整網址，例如 https://edu.smart4a.tw。修改後新發出的訊息會立即套用。"
+          placeholder="https://edu.smart4a.tw"
+        />
+        <div className="border-t border-border" />
+        <WebhookUrlSettingItem
           keyName="trial_webhook_url"
           label="資源試用 Webhook URL"
           description="學員領用試用資源（套件 / 範本）時，系統會自動 POST 到此 URL，對應端點：api-resource-trial-callback"
